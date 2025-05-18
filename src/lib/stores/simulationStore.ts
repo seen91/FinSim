@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 
 export interface SimulationSettings {
+	
   initialAmount: number;
   monthlyContribution: number;
   annualReturn: number;
