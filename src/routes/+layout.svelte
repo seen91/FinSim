@@ -22,7 +22,7 @@
 			</div>
 			
 			<nav class="hidden md:flex space-x-8">
-				{#each navItems as item}
+				{#each navItems as item (item.href)}
 					<a 
 						href={item.href} 
 						class="text-gray-600 hover:text-blue-700 px-3 py-2 text-sm font-medium" 

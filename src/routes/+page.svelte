@@ -1,9 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { simulationSettings } from '$lib/stores/simulationStore';
   import { formatCurrency, formatPercentage } from '$lib/utils/format';
   import Button from '$lib/components/Button.svelte';
-  import { createFragment, calculateFragmentValues, type Fragment } from '$lib/utils/fragmentCreator';
+  import { createFragment, type Fragment } from '$lib/utils/fragmentCreator';
   import { loadFragments, saveFragment, exportFragmentsToFile } from '$lib/utils/storage';
 
   let showNewFragmentForm = false;
@@ -178,7 +177,7 @@
     </div>
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each fragments as fragment}
+      {#each fragments as fragment (fragment.id)}
         <div class="bg-white rounded-lg shadow p-6">
           <h3 class="text-lg font-medium mb-2">{fragment.name}</h3>
           <div class="text-sm text-gray-500 mb-4">

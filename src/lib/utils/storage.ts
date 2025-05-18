@@ -162,16 +162,16 @@ export async function importFragmentsFromJson(jsonData: string): Promise<boolean
  * @param obj Object to check
  * @returns true if object is a valid Fragment
  */
-function isValidFragment(obj: any): obj is Fragment {
+function isValidFragment(obj: unknown): obj is Fragment {
   return (
     obj &&
     typeof obj === 'object' &&
-    typeof obj.id === 'string' &&
-    typeof obj.name === 'string' &&
-    typeof obj.initialAmount === 'number' &&
-    typeof obj.periodicContribution === 'number' &&
-    typeof obj.expectedReturn === 'number' &&
-    typeof obj.years === 'number' &&
-    typeof obj.type === 'string'
+    typeof (obj as Fragment).id === 'string' &&
+    typeof (obj as Fragment).name === 'string' &&
+    typeof (obj as Fragment).initialAmount === 'number' &&
+    typeof (obj as Fragment).periodicContribution === 'number' &&
+    typeof (obj as Fragment).expectedReturn === 'number' &&
+    typeof (obj as Fragment).years === 'number' &&
+    typeof (obj as Fragment).type === 'string'
   );
 }

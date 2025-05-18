@@ -3,7 +3,7 @@ import typography from '@tailwindcss/typography';
 import forms from '@tailwindcss/forms';
 
 export default {
-  content: ['./src/**/*.{html,js,svelte,ts}'],
+  content: ['./src/**/*.{html,svelte,ts}'],
   theme: {
     extend: {
       colors: {
@@ -68,7 +68,7 @@ export default {
           'monospace'
         ]
       },
-      typography: (theme: any) => ({
+      typography: (theme: (path: string) => string) => ({
         DEFAULT: {
           css: {
             color: theme('colors.gray.800'),
