@@ -1,7 +1,8 @@
 {
 	"name": "finsim",
+	"description": "Financial planning and simulation application for compound interest scenarios",
 	"private": true,
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -45,6 +46,17 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
-		"tailwind-merge": "^2.6.0"
+		"tailwind-merge": "^3.3.0"
+	},
+	"keywords": [
+		"finance",
+		"investment",
+		"compound-interest",
+		"simulation",
+		"svelte",
+		"financial-planning"
+	],
+	"engines": {
+		"node": ">=18.0.0"
 	}
 }

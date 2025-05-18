@@ -1,10 +1,24 @@
 # FinSim
 
-Financial simulation and modeling application built with SvelteKit.
+A sophisticated financial planning and simulation application focused on calculating compound interest scenarios with the ability to model complex financial strategies across different time periods.
 
 ## About
 
-FinSim is a web-based tool for simulating financial scenarios, helping users make better financial decisions through interactive visualizations and modeling.
+FinSim enables users to create, analyze, and compare financial scenarios through a modular "fragment" system. Each fragment represents a distinct investment, expense, or financial strategy that can be individually analyzed or combined with others to model complex scenarios.
+
+### Key Features
+
+- **Financial Fragments**: Create self-contained financial scenarios with configurable parameters
+- **Compound Interest Modeling**: Analyze the growth of investments over time with various contribution schedules
+- **Fragment Combinations**: Combine multiple fragments to model complex financial strategies
+- **Local Storage**: Save your financial scenarios in the browser for future sessions
+- **Data Export/Import**: Save your work and share it across devices
+
+## Technical Architecture
+
+- **Client-side first approach**: All calculations and simulations run in the browser
+- **Minimal dependencies**: Custom financial modeling logic
+- **Persistence**: Client-side storage (localStorage) with import/export functionality
 
 ## Development
 
@@ -30,17 +44,33 @@ npm run preview
 
 ```bash
 # Run Vitest unit tests
-npm run test
+npm run test:unit
 
 # Run Playwright e2e tests
 npm run test:e2e
 ```
 
-## Technology Stack
+## Implementation Roadmap
 
-- SvelteKit
-- Svelte 5 (with runes)
-- TypeScript
-- Tailwind CSS
-- Vitest for unit testing
-- Playwright for E2E testing
+### Phase 1: Core Functionality ✅
+- Basic UI/UX design
+- Single fragment creation and configuration
+- Simple interest calculations
+- Basic data persistence
+
+### Phase 2: Advanced Features 🔄
+- Fragment combination functionality
+- Enhanced visualization options
+- Data import capability
+- Basic simulation features
+
+### Phase 3: Simulation Expansion 🔜
+- Monte Carlo simulation implementation
+- Web Worker optimization
+- Advanced scenario modeling
+- Enhanced UI for complex comparisons
+
+### Phase 4: Optimization & Expansion 🔜
+- Performance improvements
+- WebAssembly integration for complex calculations
+- Additional financial models and strategies
