@@ -12,36 +12,20 @@
 	];
 </script>
 
-<div class="min-h-screen flex flex-col">
-	<header class="bg-white shadow">
-		<div class="container mx-auto px-4 py-4 flex items-center justify-between">
+<div class="min-h-screen bg-gray-100 flex flex-col">
+	<nav class="bg-white shadow-sm">
+		<div class="container mx-auto px-4 py-3 flex justify-between items-center">
 			<div class="flex items-center">
-				<a href="/" class="flex items-center">
-					<span class="text-blue-700 text-xl font-bold">FinSim</span>
-				</a>
+				<a href="/" class="font-bold text-xl text-blue-600">FinSim</a>
 			</div>
 			
-			<nav class="hidden md:flex space-x-8">
-				{#each navItems as item (item.href)}
-					<a 
-						href={item.href} 
-						class="text-gray-600 hover:text-blue-700 px-3 py-2 text-sm font-medium" 
-						aria-current={$page.url.pathname === item.href ? 'page' : undefined}
-					>
-						{item.name}
-					</a>
-				{/each}
-			</nav>
-			
-			<div class="md:hidden">
-				<button type="button" class="text-gray-500 hover:text-blue-700">
-					<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-					</svg>
-				</button>
+			<div class="hidden md:flex space-x-6">
+				<a href="/" class="text-gray-700 hover:text-blue-600 transition-colors">Home</a>
+				<a href="#" class="text-gray-700 hover:text-blue-600 transition-colors">Documentation</a>
+				<a href="https://github.com/your-username/finsim" target="_blank" rel="noopener noreferrer" class="text-gray-700 hover:text-blue-600 transition-colors">GitHub</a>
 			</div>
 		</div>
-	</header>
+	</nav>
 
 	<main class="flex-grow">
 		{@render children()}
@@ -49,20 +33,44 @@
 
 	<footer class="bg-gray-800 text-white py-8">
 		<div class="container mx-auto px-4">
-			<div class="flex flex-col md:flex-row justify-between">
-				<div class="mb-4 md:mb-0">
-					<h3 class="text-lg font-semibold mb-2">FinSim</h3>
-					<p class="text-gray-400 text-sm">Financial planning and simulation tool</p>
-				</div>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 				<div>
-					<h4 class="text-md font-medium mb-2">Resources</h4>
-					<ul class="text-gray-400 text-sm">
-						<li class="mb-1"><a href="https://github.com/example/finsim" class="hover:text-white">GitHub</a></li>
-						<li class="mb-1"><a href="/docs" class="hover:text-white">Documentation</a></li>
+					<h3 class="text-lg font-semibold mb-4">FinSim</h3>
+					<p class="text-gray-300">
+						A financial planning and simulation tool for calculating compound interest scenarios and modeling 
+						complex financial strategies across different time periods.
+					</p>
+				</div>
+				
+				<div>
+					<h3 class="text-lg font-semibold mb-4">Resources</h3>
+					<ul class="space-y-2">
+						<li><a href="#" class="text-gray-300 hover:text-white transition-colors">User Guide</a></li>
+						<li><a href="#" class="text-gray-300 hover:text-white transition-colors">Financial Formulas</a></li>
+						<li><a href="#" class="text-gray-300 hover:text-white transition-colors">Privacy Policy</a></li>
 					</ul>
 				</div>
+				
+				<div>
+					<h3 class="text-lg font-semibold mb-4">About</h3>
+					<p class="text-gray-300">
+						FinSim is an open-source project built with Svelte and TypeScript.
+						Contributions and feedback are welcome.
+					</p>
+					<div class="mt-4">
+						<a 
+							href="https://github.com/your-username/finsim" 
+							target="_blank" 
+							rel="noopener noreferrer"
+							class="inline-block px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
+						>
+							View on GitHub
+						</a>
+					</div>
+				</div>
 			</div>
-			<div class="mt-8 pt-4 border-t border-gray-700 text-gray-400 text-sm">
+			
+			<div class="mt-8 pt-8 border-t border-gray-700 text-center text-gray-400">
 				<p>© {new Date().getFullYear()} FinSim. All rights reserved.</p>
 			</div>
 		</div>

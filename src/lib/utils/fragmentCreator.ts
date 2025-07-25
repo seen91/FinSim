@@ -1,163 +1,104 @@
+import { v4 as uuidv4 } from 'uuid';
+import type { SimulationSettings } from '../stores/simulationStore';
+import { calculateCompoundInterest, type SimulationDataPoint } from './financialCalculations';
+
+/**
+ * Fragment types for different financial scenarios
+ */
+export enum FragmentType {
+  APPRECIATION = 'appreciation',
+  DEPRECIATION = 'depreciation',
+  EXPENSE = 'expense',
+  INCOME = 'income',
+  CUSTOM = 'custom',
+  COMBINED = 'combined'
+}
+
+/**
+ * Interface representing a financial fragment - a reusable financial scenario
+ */
 export interface Fragment {
   id: string;
   name: string;
-  initialAmount: number;
-  periodicContribution: number;
-  contributionFrequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
-  expectedReturn: number;
-  years: number;
-  createdAt: Date;
-  updatedAt: Date;
-  type: 'appreciation' | 'depreciation' | 'imported';
-}
-
-export interface FragmentParams {
-  name: string;
-  initialAmount: number;
-  periodicContribution: number;
-  contributionFrequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
-  expectedReturn: number;
-  years: number;
-  type?: 'appreciation' | 'depreciation' | 'imported';
+  description: string;
+  type: FragmentType;
+  settings: SimulationSettings;
+  created: Date;
+  modified: Date;
+  parentIds?: string[]; // For combined fragments
+  color?: string; // For visualization
 }
 
 /**
- * Creates a new financial fragment
- * @param params Fragment parameters
- * @returns A new Fragment object
+ * Create a new financial fragment
  */
-export function createFragment(params: FragmentParams): Fragment {
-  const now = new Date();
-  const type = determineFragmentType(params.expectedReturn);
-  
+export function createFragment(
+  name: string,
+  description: string,
+  type: FragmentType,
+  settings: SimulationSettings,
+  color?: string
+): Fragment {
   return {
-    id: generateFragmentId(),
-    name: params.name,
-    initialAmount: params.initialAmount,
-    periodicContribution: params.periodicContribution,
-    contributionFrequency: params.contributionFrequency,
-    expectedReturn: params.expectedReturn,
-    years: params.years,
-    createdAt: now,
-    updatedAt: now,
-    type: params.type || type
-  };
-}
-
-/**
- * Determines the fragment type based on expected return
- * @param expectedReturn The expected rate of return
- * @returns The fragment type
- */
-function determineFragmentType(expectedReturn: number): 'appreciation' | 'depreciation' | 'imported' {
-  if (expectedReturn >= 0) {
-    return 'appreciation';
-  } else {
-    return 'depreciation';
-  }
-}
-
-/**
- * Generates a unique ID for a fragment
- * @returns A unique ID string
- */
-function generateFragmentId(): string {
-  return `fragment_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
-
-/**
- * Calculates future value of a financial fragment
- * @param fragment The fragment to calculate for
- * @returns Array of yearly values
- */
-export function calculateFragmentValues(fragment: Fragment): { year: number; value: number }[] {
-  const periodsPerYear = getPeriodsPerYear(fragment.contributionFrequency);
-  const totalPeriods = fragment.years * periodsPerYear;
-  const ratePerPeriod = fragment.expectedReturn / periodsPerYear;
-  
-  const values = [];
-  let currentValue = fragment.initialAmount;
-  
-  for (let period = 1; period <= totalPeriods; period++) {
-    // Add periodic contribution
-    currentValue += fragment.periodicContribution;
-    
-    // Apply interest/return
-    currentValue *= (1 + ratePerPeriod);
-    
-    // If this is the end of a year, record the value
-    if (period % periodsPerYear === 0) {
-      const year = period / periodsPerYear;
-      values.push({ year, value: currentValue });
-    }
-  }
-  
-  return values;
-}
-
-/**
- * Gets the number of periods per year based on contribution frequency
- * @param frequency The contribution frequency
- * @returns Number of periods per year
- */
-function getPeriodsPerYear(frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'): number {
-  switch (frequency) {
-    case 'daily': return 365;
-    case 'weekly': return 52;
-    case 'monthly': return 12;
-    case 'quarterly': return 4;
-    case 'yearly': return 1;
-    default: return 12; // Default to monthly
-  }
-}
-
-/**
- * Combines multiple fragments into a single result
- * @param fragments Array of fragments to combine
- * @param name Name for the combined fragment
- * @returns A new combined fragment
- */
-export function combineFragments(fragments: Fragment[], name: string): Fragment {
-  if (fragments.length === 0) {
-    throw new Error('Cannot combine empty fragment array');
-  }
-  
-  // Use the first fragment as a base for the combined fragment
-  const baseFragment = fragments[0];
-  
-  // Create a new fragment with combined properties
-  return {
-    id: generateFragmentId(),
+    id: uuidv4(),
     name,
-    initialAmount: fragments.reduce((sum, f) => sum + f.initialAmount, 0),
-    periodicContribution: fragments.reduce((sum, f) => sum + f.periodicContribution, 0),
-    contributionFrequency: baseFragment.contributionFrequency, // Using the first fragment's frequency
-    expectedReturn: calculateWeightedReturn(fragments),
-    years: Math.max(...fragments.map(f => f.years)),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    type: 'appreciation' // Default to appreciation for combined fragments
+    description,
+    type,
+    settings,
+    created: new Date(),
+    modified: new Date(),
+    color: color || generateRandomColor()
   };
 }
 
 /**
- * Calculates the weighted average return rate across multiple fragments
- * @param fragments Array of fragments
- * @returns Weighted average return rate
+ * Create a combined fragment from multiple fragments
  */
-function calculateWeightedReturn(fragments: Fragment[]): number {
-  const totalValue = fragments.reduce((sum, f) => sum + f.initialAmount, 0);
+export function combineFragments(
+  name: string, 
+  description: string,
+  fragments: Fragment[], 
+  color?: string
+): Fragment {
+  // Start with settings from the first fragment
+  const combinedSettings: SimulationSettings = { ...fragments[0].settings };
   
-  if (totalValue === 0) {
-    // Simple average if all initial amounts are zero
-    return fragments.reduce((sum, f) => sum + f.expectedReturn, 0) / fragments.length;
+  // Combine key financial parameters
+  for (let i = 1; i < fragments.length; i++) {
+    const fragment = fragments[i];
+    combinedSettings.initialAmount += fragment.settings.initialAmount;
+    combinedSettings.monthlyContribution += fragment.settings.monthlyContribution;
+    // Use weighted average for rates based on initial amount
+    // More sophisticated combination logic could be implemented here
   }
-  
-  // Weighted average based on initial amounts
-  const weightedSum = fragments.reduce(
-    (sum, f) => sum + (f.expectedReturn * (f.initialAmount / totalValue)), 
-    0
-  );
-  
-  return weightedSum;
+
+  return {
+    id: uuidv4(),
+    name,
+    description,
+    type: FragmentType.COMBINED,
+    settings: combinedSettings,
+    created: new Date(),
+    modified: new Date(),
+    parentIds: fragments.map(f => f.id),
+    color: color || generateRandomColor()
+  };
+}
+
+/**
+ * Calculate simulation results for a fragment
+ */
+export function calculateFragmentResults(fragment: Fragment): SimulationDataPoint[] {
+  return calculateCompoundInterest(fragment.settings);
+}
+
+/**
+ * Generate a random color for fragment visualization
+ */
+function generateRandomColor(): string {
+  const colors = [
+    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+    '#9966FF', '#FF9F40', '#62BFAD', '#F27173'
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
 }

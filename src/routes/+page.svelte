@@ -1,202 +1,250 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { formatCurrency, formatPercentage } from '$lib/utils/format';
+  import { 
+    simulationSettings, 
+    simulationResults,
+    fragments,
+    activeFragmentId,
+    saveFragment as storeFragmentSave,
+    deleteFragment as storeFragmentDelete,
+    runSimulation
+  } from '$lib/stores/simulationStore';
+  import type { SimulationDataPoint } from '$lib/utils/financialCalculations';
+  import type { Fragment } from '$lib/utils/fragmentCreator';
   import Button from '$lib/components/Button.svelte';
-  import { createFragment, type Fragment } from '$lib/utils/fragmentCreator';
-  import { loadFragments, saveFragment, exportFragmentsToFile } from '$lib/utils/storage';
+  import FragmentForm from '$lib/components/FragmentForm.svelte';
+  import SimulationResults from '$lib/components/SimulationResults.svelte';
+  import { calculateCompoundInterest } from '$lib/utils/financialCalculations';
+  import { formatDate, formatPercentage, formatCurrency } from '$lib/utils/format';
+  import { exportFragments } from '$lib/utils/storage';
 
-  let showNewFragmentForm = false;
-  let fragments: Fragment[] = [];
+  // Component state
+  let showFragmentForm = false;
+  let editingFragment: Fragment | null = null;
+  let results: SimulationDataPoint[] = [];
+  let activeFragment: Fragment | null = null;
+  let userFragments: Fragment[] = [];
+  let isEditing = false;
+  let isMounted = false; // Track if component is mounted
+  
+  // Subscribe to store updates
+  $: settings = $simulationSettings;
+  $: results = $simulationResults;
+  $: userFragments = $fragments;
 
-  // Form values
-  let fragmentName = '';
-  let initialAmount = 1000;
-  let periodicContribution = 100;
-  let contributionFrequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'monthly';
-  let expectedReturn = 0.07;
-  let years = 10;
+  // Watch for active fragment changes
+  $: {
+    if ($activeFragmentId && isMounted) {
+      activeFragment = userFragments.find(f => f.id === $activeFragmentId) || null;
+    } else {
+      activeFragment = null;
+    }
+  }
 
+  // Run initial simulation when component mounts in browser
   onMount(() => {
-    // Load saved fragments from localStorage
-    fragments = loadFragments();
+    isMounted = true;
+    runSimulation($simulationSettings);
+    return () => {
+      isMounted = false;
+    };
   });
 
-  function toggleNewFragmentForm() {
-    showNewFragmentForm = !showNewFragmentForm;
+  // Create/Edit fragment handlers
+  function showCreateForm() {
+    editingFragment = null;
+    isEditing = false;
+    showFragmentForm = true;
   }
 
-  function createNewFragment() {
-    const newFragment = createFragment({
-      name: fragmentName || 'Unnamed Fragment',
-      initialAmount,
-      periodicContribution,
-      contributionFrequency,
-      expectedReturn,
-      years
-    });
+  function showEditForm(fragment: Fragment) {
+    editingFragment = fragment;
+    isEditing = true;
+    showFragmentForm = true;
+  }
+
+  function cancelFragmentForm() {
+    showFragmentForm = false;
+    editingFragment = null;
+  }
+
+  function saveFragment(event: CustomEvent<{fragment: Fragment}>) {
+    const { fragment } = event.detail;
+    storeFragmentSave(fragment);
+    showFragmentForm = false;
     
-    fragments = [...fragments, newFragment];
+    // Set as active fragment and run simulation
+    activeFragmentId.set(fragment.id);
+    runSimulation(fragment.settings);
+  }
+
+  function selectFragment(fragment: Fragment) {
+    activeFragmentId.set(fragment.id);
+    runSimulation(fragment.settings);
+  }
+
+  function deleteSelectedFragment() {
+    if (!activeFragment) return;
     
-    // Save to localStorage
-    saveFragment(newFragment);
-    
-    showNewFragmentForm = false;
-    
-    // Reset form
-    fragmentName = '';
-    initialAmount = 1000;
-    periodicContribution = 100;
-    contributionFrequency = 'monthly';
-    expectedReturn = 0.07;
-    years = 10;
+    if (confirm(`Are you sure you want to delete "${activeFragment.name}"?`)) {
+      const id = activeFragment.id;
+      storeFragmentDelete(id);
+      activeFragmentId.set(null);
+      runSimulation($simulationSettings);
+    }
+  }
+
+  function exportAllFragments() {
+    exportFragments();
+  }
+
+  // File import handling
+  let fileInput: HTMLInputElement;
+  
+  function importFile() {
+    if (fileInput) {
+      fileInput.click();
+    }
   }
   
-  function exportFragments() {
-    exportFragmentsToFile();
-  }
-  
-  function viewFragmentDetails(fragment: Fragment) {
-    // This will be implemented in the future to show detailed
-    // projections and graphs for a specific fragment
-    alert(`Viewing details for ${fragment.name} will be implemented in a future update.`);
+  function handleFileImport(event: Event) {
+    const target = event.target as HTMLInputElement;
+    if (!target.files || target.files.length === 0) return;
+    
+    const file = target.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        try {
+          const importedData = JSON.parse(result);
+          // TODO: Implement import logic
+          console.log('Imported data:', importedData);
+          // Clear the input to allow the same file to be imported again
+          target.value = '';
+        } catch (error) {
+          console.error('Error parsing imported file:', error);
+          alert('Error importing file. Please make sure it is a valid JSON file.');
+          target.value = '';
+        }
+      }
+    };
+    
+    reader.readAsText(file);
   }
 </script>
 
-<div class="container mx-auto px-4 py-8 max-w-6xl">
+<svelte:head>
+  <title>FinSim - Financial Simulator</title>
+</svelte:head>
+
+<div class="container mx-auto px-4 py-8">
   <header class="mb-8">
-    <h1 class="text-3xl font-bold text-blue-700">FinSim</h1>
-    <p class="text-gray-600 mt-2">Financial planning and simulation for compound interest scenarios</p>
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800">FinSim</h1>
+        <p class="text-gray-600">Financial Planning & Simulation Tool</p>
+      </div>
+      <div class="mt-4 md:mt-0 flex space-x-3">
+        <Button variant="primary" on:click={showCreateForm}>Create Fragment</Button>
+        <Button variant="outline" on:click={exportAllFragments}>Export All</Button>
+        <Button variant="outline" on:click={importFile}>Import</Button>
+        <input 
+          type="file" 
+          accept=".json" 
+          style="display: none;" 
+          bind:this={fileInput} 
+          on:change={handleFileImport}
+        />
+      </div>
+    </div>
   </header>
 
-  <div class="mb-6 flex justify-between items-center">
-    <h2 class="text-xl font-semibold">Financial Fragments</h2>
-    <div class="flex space-x-2">
-      {#if fragments.length > 0}
-        <Button variant="secondary" on:click={exportFragments}>
-          Export Fragments
-        </Button>
-      {/if}
-      <Button on:click={toggleNewFragmentForm}>
-        {showNewFragmentForm ? 'Cancel' : 'Create New Fragment'}
-      </Button>
-    </div>
-  </div>
-
-  {#if showNewFragmentForm}
-    <div class="bg-gray-50 p-6 rounded-lg shadow mb-6">
-      <h3 class="text-lg font-medium mb-4">Create New Fragment</h3>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="mb-4">
-          <label for="fragmentName" class="block text-sm font-medium text-gray-700 mb-1">Fragment Name</label>
-          <input 
-            type="text" 
-            id="fragmentName" 
-            bind:value={fragmentName}
-            placeholder="My Investment Strategy" 
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-        
-        <div class="mb-4">
-          <label for="initialAmount" class="block text-sm font-medium text-gray-700 mb-1">Initial Amount</label>
-          <input 
-            type="number" 
-            id="initialAmount" 
-            bind:value={initialAmount}
-            min="0"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-        
-        <div class="mb-4">
-          <label for="periodicContribution" class="block text-sm font-medium text-gray-700 mb-1">Periodic Contribution</label>
-          <input 
-            type="number" 
-            id="periodicContribution" 
-            bind:value={periodicContribution}
-            min="0"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-        
-        <div class="mb-4">
-          <label for="contributionFrequency" class="block text-sm font-medium text-gray-700 mb-1">Contribution Frequency</label>
-          <select 
-            id="contributionFrequency" 
-            bind:value={contributionFrequency}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="yearly">Yearly</option>
-          </select>
-        </div>
-        
-        <div class="mb-4">
-          <label for="expectedReturn" class="block text-sm font-medium text-gray-700 mb-1">Expected Annual Return (%)</label>
-          <input 
-            type="number" 
-            id="expectedReturn" 
-            bind:value={expectedReturn}
-            step="0.01"
-            min="-1"
-            max="1"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
-          <span class="text-gray-500 text-xs">Enter as decimal (e.g., 0.07 for 7%)</span>
-        </div>
-        
-        <div class="mb-4">
-          <label for="years" class="block text-sm font-medium text-gray-700 mb-1">Time Period (Years)</label>
-          <input 
-            type="number" 
-            id="years" 
-            bind:value={years}
-            min="1"
-            max="100"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-      </div>
-      
-      <div class="flex justify-end mt-4">
-        <Button on:click={createNewFragment} variant="primary">Create Fragment</Button>
-      </div>
-    </div>
-  {/if}
-
-  {#if fragments.length === 0}
-    <div class="bg-gray-50 p-8 rounded-lg border border-dashed border-gray-300 flex flex-col items-center justify-center">
-      <p class="text-gray-600 mb-4">You haven't created any financial fragments yet.</p>
-      {#if !showNewFragmentForm}
-        <Button variant="secondary" on:click={toggleNewFragmentForm}>Create Your First Fragment</Button>
-      {/if}
+  {#if showFragmentForm}
+    <div class="mb-8">
+      <FragmentForm 
+        initialSettings={editingFragment?.settings || $simulationSettings}
+        existingFragment={editingFragment}
+        on:save={saveFragment}
+        on:cancel={cancelFragmentForm}
+      />
     </div>
   {:else}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each fragments as fragment (fragment.id)}
-        <div class="bg-white rounded-lg shadow p-6">
-          <h3 class="text-lg font-medium mb-2">{fragment.name}</h3>
-          <div class="text-sm text-gray-500 mb-4">
-            <div>Initial: {formatCurrency(fragment.initialAmount)}</div>
-            <div>{formatCurrency(fragment.periodicContribution)} {fragment.contributionFrequency}</div>
-            <div>Return: {formatPercentage(fragment.expectedReturn)}</div>
-            <div>Duration: {fragment.years} years</div>
-          </div>
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <!-- Fragment List (Sidebar) -->
+      <div class="lg:col-span-1">
+        <div class="bg-white p-4 rounded-lg shadow-md">
+          <h2 class="text-xl font-semibold mb-4">Your Fragments</h2>
           
-          <div class="h-40 bg-gray-100 flex items-center justify-center rounded mb-4">
-            <span class="text-gray-400">Graph visualization will appear here</span>
-          </div>
-          
-          <div class="flex justify-between">
-            <Button variant="outline" size="sm">Edit</Button>
-            <Button variant="primary" size="sm" on:click={() => viewFragmentDetails(fragment)}>View Details</Button>
-          </div>
+          {#if userFragments.length === 0}
+            <p class="text-gray-500 text-center py-4">
+              No fragments yet. Create your first one!
+            </p>
+          {:else}
+            <ul class="space-y-3">
+              {#each userFragments as fragment}
+                <li>
+                  <button 
+                    class="w-full text-left p-3 rounded-md hover:bg-gray-50 transition-colors
+                      {activeFragment?.id === fragment.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}"
+                    on:click={() => selectFragment(fragment)}
+                  >
+                    <div class="font-medium">{fragment.name}</div>
+                    <div class="text-sm text-gray-500">
+                      {formatCurrency(fragment.settings.initialAmount)} + 
+                      {formatCurrency(fragment.settings.monthlyContribution)}/mo
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1">
+                      Created: {formatDate(fragment.created)}
+                    </div>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+            
+            {#if activeFragment}
+              <div class="mt-6 flex space-x-2">
+                <Button 
+                  size="sm" 
+                  fullWidth={true}
+                  variant="outline" 
+                  on:click={() => showEditForm(activeFragment)}
+                >
+                  Edit
+                </Button>
+                <Button 
+                  size="sm" 
+                  fullWidth={true}
+                  variant="danger" 
+                  on:click={deleteSelectedFragment}
+                >
+                  Delete
+                </Button>
+              </div>
+            {/if}
+          {/if}
         </div>
-      {/each}
+      </div>
+      
+      <!-- Main Content Area -->
+      <div class="lg:col-span-3">
+        {#if activeFragment}
+          <SimulationResults 
+            results={results} 
+            settings={activeFragment.settings}
+            fragmentName={activeFragment.name}
+          />
+        {:else if results.length}
+          <SimulationResults results={results} settings={settings} />
+        {:else}
+          <div class="bg-white p-6 rounded-lg shadow-md text-center">
+            <p class="text-gray-500">
+              Run a simulation or select a fragment to view results
+            </p>
+          </div>
+        {/if}
+      </div>
     </div>
   {/if}
 </div>

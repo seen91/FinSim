@@ -1,89 +1,101 @@
 import type { Fragment } from './fragmentCreator';
 
-const STORAGE_KEY = 'finsim_fragments';
+// Storage keys
+const FRAGMENTS_KEY = 'finsim_fragments';
+const SETTINGS_KEY = 'finsim_settings';
+
+// Check if code is running in browser environment
+const isBrowser = typeof window !== 'undefined' && typeof localStorage !== 'undefined';
 
 /**
- * Saves fragments to localStorage
- * @param fragments Array of fragments to save
- */
-export function saveFragments(fragments: Fragment[]): void {
-  try {
-    // Convert Date objects to strings before storing
-    const serializedFragments = JSON.stringify(fragments, (key, value) => {
-      if (key === 'createdAt' || key === 'updatedAt') {
-        return value.toISOString();
-      }
-      return value;
-    });
-    
-    localStorage.setItem(STORAGE_KEY, serializedFragments);
-  } catch (error) {
-    console.error('Error saving fragments to localStorage:', error);
-  }
-}
-
-/**
- * Loads fragments from localStorage
- * @returns Array of fragments or empty array if none found
- */
-export function loadFragments(): Fragment[] {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    
-    if (!data) {
-      return [];
-    }
-    
-    // Convert string dates back to Date objects
-    const fragments = JSON.parse(data, (key, value) => {
-      if (key === 'createdAt' || key === 'updatedAt') {
-        return new Date(value);
-      }
-      return value;
-    });
-    
-    return Array.isArray(fragments) ? fragments : [];
-  } catch (error) {
-    console.error('Error loading fragments from localStorage:', error);
-    return [];
-  }
-}
-
-/**
- * Saves a single fragment to localStorage
- * @param fragment Fragment to save
+ * Save a fragment to local storage
+ * @param fragment The fragment to save
  */
 export function saveFragment(fragment: Fragment): void {
-  const fragments = loadFragments();
-  const existingIndex = fragments.findIndex(f => f.id === fragment.id);
+  if (!isBrowser) return;
+
+  const fragments = getAllFragments();
   
-  if (existingIndex >= 0) {
-    // Update existing fragment
-    fragments[existingIndex] = {
-      ...fragment,
-      updatedAt: new Date()
-    };
+  // Update if exists, otherwise add
+  const index = fragments.findIndex(f => f.id === fragment.id);
+  
+  if (index >= 0) {
+    fragment.modified = new Date();
+    fragments[index] = fragment;
   } else {
-    // Add new fragment
     fragments.push(fragment);
   }
   
-  saveFragments(fragments);
+  localStorage.setItem(FRAGMENTS_KEY, JSON.stringify(fragments));
 }
 
 /**
- * Deletes a fragment from localStorage
- * @param fragmentId ID of the fragment to delete
- * @returns true if fragment was deleted, false otherwise
+ * Save multiple fragments at once
+ * @param fragments Array of fragments to save
  */
-export function deleteFragment(fragmentId: string): boolean {
-  const fragments = loadFragments();
+export function saveFragments(fragments: Fragment[]): void {
+  if (!isBrowser) return;
+
+  const existingFragments = getAllFragments();
+  
+  // Create a map for faster lookups
+  const fragmentMap = new Map<string, Fragment>();
+  existingFragments.forEach(f => fragmentMap.set(f.id, f));
+  
+  // Update existing or add new fragments
+  fragments.forEach(fragment => {
+    fragment.modified = new Date();
+    fragmentMap.set(fragment.id, fragment);
+  });
+  
+  localStorage.setItem(FRAGMENTS_KEY, JSON.stringify(Array.from(fragmentMap.values())));
+}
+
+/**
+ * Get a fragment by its ID
+ * @param id The fragment ID
+ * @returns The fragment or undefined if not found
+ */
+export function getFragment(id: string): Fragment | undefined {
+  const fragments = getAllFragments();
+  return fragments.find(f => f.id === id);
+}
+
+/**
+ * Get all fragments from local storage
+ * @returns Array of fragments
+ */
+export function getAllFragments(): Fragment[] {
+  if (!isBrowser) return [];
+
+  const data = localStorage.getItem(FRAGMENTS_KEY);
+  if (!data) return [];
+  
+  const fragments = JSON.parse(data) as Fragment[];
+  
+  // Convert date strings back to Date objects
+  return fragments.map(f => ({
+    ...f,
+    created: new Date(f.created),
+    modified: new Date(f.modified)
+  }));
+}
+
+/**
+ * Delete a fragment from local storage
+ * @param id The ID of the fragment to delete
+ * @returns true if fragment was found and deleted, false otherwise
+ */
+export function deleteFragment(id: string): boolean {
+  if (!isBrowser) return false;
+
+  const fragments = getAllFragments();
   const initialLength = fragments.length;
   
-  const updatedFragments = fragments.filter(f => f.id !== fragmentId);
+  const filteredFragments = fragments.filter(f => f.id !== id);
   
-  if (updatedFragments.length !== initialLength) {
-    saveFragments(updatedFragments);
+  if (filteredFragments.length !== initialLength) {
+    localStorage.setItem(FRAGMENTS_KEY, JSON.stringify(filteredFragments));
     return true;
   }
   
@@ -91,20 +103,18 @@ export function deleteFragment(fragmentId: string): boolean {
 }
 
 /**
- * Exports all fragments as JSON file for download
+ * Export fragments to a JSON file for backup
+ * @param fragments Fragments to export (or all if not provided)
  */
-export function exportFragmentsToFile(): void {
-  const fragments = loadFragments();
+export function exportFragments(fragments?: Fragment[]): void {
+  if (!isBrowser) return;
+
+  const dataToExport = fragments || getAllFragments();
   
-  if (fragments.length === 0) {
-    alert('No fragments to export');
-    return;
-  }
+  const dataStr = JSON.stringify(dataToExport, null, 2);
+  const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
   
-  const dataStr = JSON.stringify(fragments, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-  
-  const exportFileDefaultName = `finsim-fragments-${new Date().toISOString().slice(0, 10)}.json`;
+  const exportFileDefaultName = `finsim_fragments_${new Date().toISOString().slice(0, 10)}.json`;
   
   const linkElement = document.createElement('a');
   linkElement.setAttribute('href', dataUri);
@@ -113,65 +123,60 @@ export function exportFragmentsToFile(): void {
 }
 
 /**
- * Imports fragments from a JSON file
- * @param jsonData JSON string containing fragment data
- * @returns true if import successful, false otherwise
+ * Import fragments from a JSON file
+ * @param jsonData The JSON data containing fragments
+ * @returns Number of fragments successfully imported
  */
-export async function importFragmentsFromJson(jsonData: string): Promise<boolean> {
+export function importFragments(jsonData: string): number {
+  if (!isBrowser) return 0;
+
   try {
-    const importedData = JSON.parse(jsonData, (key, value) => {
-      if (key === 'createdAt' || key === 'updatedAt') {
-        return new Date(value);
-      }
-      return value;
-    });
+    const importedFragments = JSON.parse(jsonData) as Fragment[];
     
-    if (!Array.isArray(importedData)) {
-      console.error('Imported data is not an array');
-      return false;
+    // Validate that imported data has required fragment properties
+    const validFragments = importedFragments.filter(f => 
+      f.id && f.name && f.type && f.settings && f.created && f.modified
+    );
+    
+    if (validFragments.length > 0) {
+      saveFragments(validFragments);
     }
     
-    const validFragments = importedData.filter(isValidFragment);
-    
-    if (validFragments.length === 0) {
-      console.error('No valid fragments found in import data');
-      return false;
-    }
-    
-    // Get current fragments and add new ones
-    const currentFragments = loadFragments();
-    const mergedFragments = [...currentFragments];
-    
-    // Add only fragments with IDs that don't already exist
-    for (const fragment of validFragments) {
-      if (!currentFragments.some(f => f.id === fragment.id)) {
-        mergedFragments.push(fragment);
-      }
-    }
-    
-    saveFragments(mergedFragments);
-    return true;
+    return validFragments.length;
   } catch (error) {
-    console.error('Error importing fragments:', error);
-    return false;
+    console.error('Failed to import fragments:', error);
+    return 0;
   }
 }
 
 /**
- * Type guard to validate if an object is a valid Fragment
- * @param obj Object to check
- * @returns true if object is a valid Fragment
+ * Save application settings to local storage
+ * @param settings The settings object to save
  */
-function isValidFragment(obj: unknown): obj is Fragment {
-  return (
-    obj &&
-    typeof obj === 'object' &&
-    typeof (obj as Fragment).id === 'string' &&
-    typeof (obj as Fragment).name === 'string' &&
-    typeof (obj as Fragment).initialAmount === 'number' &&
-    typeof (obj as Fragment).periodicContribution === 'number' &&
-    typeof (obj as Fragment).expectedReturn === 'number' &&
-    typeof (obj as Fragment).years === 'number' &&
-    typeof (obj as Fragment).type === 'string'
-  );
+export function saveSettings<T>(settings: T): void {
+  if (!isBrowser) return;
+
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+/**
+ * Get application settings from local storage
+ * @returns The settings object or null if not found
+ */
+export function getSettings<T>(): T | null {
+  if (!isBrowser) return null;
+
+  const data = localStorage.getItem(SETTINGS_KEY);
+  if (!data) return null;
+  return JSON.parse(data) as T;
+}
+
+/**
+ * Clear all stored data (fragments and settings)
+ */
+export function clearAllData(): void {
+  if (!isBrowser) return;
+
+  localStorage.removeItem(FRAGMENTS_KEY);
+  localStorage.removeItem(SETTINGS_KEY);
 }
