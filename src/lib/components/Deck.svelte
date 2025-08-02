@@ -1,10 +1,12 @@
 <script lang="ts">
   import type { Deck } from '$lib/types';
   import { addDeckToHand, addCardToHand } from '$lib/stores/gameState';
+  import { createEventDispatcher } from 'svelte';
   
   export let deck: Deck;
   
   let expanded = false;
+  const dispatch = createEventDispatcher();
   
   function toggleExpanded() {
     expanded = !expanded;
@@ -18,6 +20,11 @@
   function handleAddCard(e: Event, card: any) {
     e.stopPropagation();
     addCardToHand(card);
+  }
+  
+  function handleInfoClick(e: Event, card: any) {
+    e.stopPropagation();
+    dispatch('showDetails', card);
   }
 
   function formatValue(card: any): string {
@@ -55,7 +62,17 @@
         <div class="card-item">
           <div class="card-mini">
             <div class="card-mini-header">
-              <span class="card-mini-type">{card.type}</span>
+              <div class="card-mini-header-left">
+                <span class="card-mini-type">{card.type}</span>
+                {#if card.detailedInfo}
+                  <button 
+                    class="info-btn-mini" 
+                    on:click={(e) => handleInfoClick(e, card)}
+                    title="View detailed information"
+                    aria-label="View card details"
+                  >ℹ️</button>
+                {/if}
+              </div>
               <span class="card-mini-value" 
                     class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
                     class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
@@ -174,6 +191,18 @@
     margin-bottom: 0.5rem;
   }
   
+  .card-mini-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .card-mini-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
   .card-mini-type {
     font-size: 0.65rem;
     color: #888;
@@ -197,6 +226,26 @@
   .card-mini-name {
     font-size: 0.85rem;
     font-weight: 500;
+  }
+  
+  .info-btn-mini {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .info-btn-mini:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
   }
   
   .add-btn {

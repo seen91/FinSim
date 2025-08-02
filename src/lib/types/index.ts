@@ -14,6 +14,15 @@ export interface FinancialCard {
   timeRange: [number, number]; // [startYear, endYear]
   color: string;
   description?: string;
+  detailedInfo?: {
+    strategy: string;
+    riskLevel: 'Low' | 'Medium' | 'High';
+    expectedReturn: string;
+    timeCommitment: string;
+    pros: string[];
+    cons: string[];
+    tooltip?: string;
+  };
 }
 
 export interface Deck {

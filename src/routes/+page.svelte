@@ -1,9 +1,36 @@
 <script lang="ts">
-  import { gameState } from '$lib/stores/gameState';
+  import { gameState, addCardToHand } from '$lib/stores/gameState';
   import Card from '$lib/components/Card.svelte';
   import Deck from '$lib/components/Deck.svelte';
   import Chart from '$lib/components/Chart.svelte';
+  import CardDetailModal from '$lib/components/CardDetailModal.svelte';
   import { individualCards } from '$lib/utils/sampleData';
+  import type { FinancialCard } from '$lib/types';
+
+  let selectedCard: FinancialCard | null = null;
+  let isModalOpen = false;
+  
+  function showCardDetails(event: CustomEvent<FinancialCard>) {
+    selectedCard = event.detail;
+    isModalOpen = true;
+  }
+  
+  function showCardDetailsDirectly(card: FinancialCard) {
+    selectedCard = card;
+    isModalOpen = true;
+  }
+  
+  function formatValue(card: any): string {
+    if (card.parameters.rate) {
+      return `${card.parameters.rate > 0 ? '+' : ''}${card.parameters.rate}%`;
+    }
+    if (card.parameters.monthlyAmount) {
+      const monthly = card.parameters.monthlyAmount;
+      // Show monthly for all linear cards (both positive and negative)
+      return `${monthly > 0 ? '+' : ''}${(monthly / 1000).toFixed(1)}k/mo`;
+    }
+    return '';
+  }
 </script>
 
 <div class="game-container">
@@ -12,7 +39,7 @@
     <div class="available-section">
       <h3 class="section-title">Available Decks</h3>
       {#each $gameState.availableDecks as deck}
-        <Deck {deck} />
+        <Deck {deck} on:showDetails={showCardDetails} />
       {/each}
     </div>
     
@@ -22,16 +49,28 @@
         <div class="card-item">
           <div class="card-mini">
             <div class="card-mini-header">
-              <span class="card-mini-type">{card.type}</span>
-              <span class="card-mini-value">
-                {card.parameters.rate ? `${card.parameters.rate > 0 ? '+' : ''}${card.parameters.rate}%` : ''}
+              <div class="card-mini-header-left">
+                <span class="card-mini-type">{card.type}</span>
+                {#if card.detailedInfo}
+                  <button 
+                    class="info-btn-mini" 
+                    on:click={() => showCardDetailsDirectly(card)}
+                    title="View detailed information"
+                    aria-label="View card details"
+                  >ℹ️</button>
+                {/if}
+              </div>
+              <span class="card-mini-value"
+                    class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
+                    class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
+                {formatValue(card)}
               </span>
             </div>
             <div class="card-mini-name">{card.name}</div>
           </div>
           <button 
             class="add-btn" 
-            on:click={() => $gameState.hand = [...$gameState.hand, {...card, id: `${card.id}-${Date.now()}`}]}
+            on:click={() => addCardToHand(card)}
             title="Add this card"
           >+</button>
         </div>
@@ -60,12 +99,19 @@
     <div class="hand-area">
       <div class="hand-container">
         {#each $gameState.hand as card}
-          <Card {card} isActive={$gameState.activeCardIds.has(card.id)} />
+          <Card 
+            {card} 
+            isActive={$gameState.activeCardIds.has(card.id)} 
+            on:showDetails={showCardDetails}
+          />
         {/each}
       </div>
     </div>
   </main>
 </div>
+
+<!-- Card Detail Modal -->
+<CardDetailModal bind:isOpen={isModalOpen} card={selectedCard} />
 
 <style>
   :global(body) {
@@ -225,6 +271,18 @@
     margin-bottom: 0.5rem;
   }
   
+  .card-mini-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .card-mini-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
   .card-mini-type {
     font-size: 0.65rem;
     color: #888;
@@ -235,12 +293,39 @@
   .card-mini-value {
     font-size: 0.75rem;
     font-weight: 600;
+  }
+  
+  .card-mini-value.positive {
     color: #4ade80;
+  }
+  
+  .card-mini-value.negative {
+    color: #ef4444;
   }
   
   .card-mini-name {
     font-size: 0.85rem;
     font-weight: 500;
+  }
+  
+  .info-btn-mini {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .info-btn-mini:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
   }
   
   .add-btn {

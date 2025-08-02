@@ -1,20 +1,12 @@
 <script lang="ts">
   import type { FinancialCard } from '$lib/types';
   import { toggleCard } from '$lib/stores/gameState';
-  import { createEventDispatcher } from 'svelte';
   
   export let card: FinancialCard;
   export let isActive: boolean = true;
   
-  const dispatch = createEventDispatcher();
-  
   function handleClick() {
     toggleCard(card.id);
-  }
-  
-  function handleInfoClick(event: MouseEvent) {
-    event.stopPropagation();
-    dispatch('showDetails', card);
   }
   
   function formatValue(card: FinancialCard): string {
@@ -39,23 +31,13 @@
   tabindex="0"
 >
   <div class="card-inner">
-    <div class="card-title">{card.name}</div>
-    <div class="card-type-container">
-      <span class="card-type">{card.type}</span>
-      {#if card.detailedInfo}
-        <button 
-          class="info-btn" 
-          on:click={handleInfoClick}
-          title="View detailed information"
-          aria-label="View card details"
-        >ℹ️</button>
-      {/if}
-      <div class="card-indicator" 
-           class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
-           class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
-        {formatValue(card)}
-      </div>
+    <div class="card-indicator" 
+         class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
+         class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
+      {formatValue(card)}
     </div>
+    <div class="card-title">{card.name}</div>
+    <div class="card-type">{card.type}</div>
     <div class="card-art" style="background: {card.color}20">
       <div class="card-art-icon">
         {#if card.type === 'compound'}⤴️
@@ -119,13 +101,15 @@
   }
   
   .card-indicator {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
     padding: 0.25rem 0.5rem;
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 4px;
     font-size: 0.7rem;
     font-weight: 600;
-    margin-left: auto;
   }
   
   .card-indicator.positive {
@@ -140,26 +124,6 @@
     color: #ef4444;
   }
   
-  .info-btn {
-    width: 20px;
-    height: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    font-size: 0.65rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
-  }
-  
-  .info-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.1);
-  }
-  
   .card-title {
     font-size: 0.9rem;
     font-weight: 700;
@@ -171,14 +135,7 @@
     color: #888;
     text-transform: uppercase;
     letter-spacing: 1px;
-  }
-  
-  .card-type-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     margin-bottom: 0.5rem;
-    width: 100%;
   }
   
   .card-art {
