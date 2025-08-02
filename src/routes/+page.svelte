@@ -4,6 +4,7 @@
   import Deck from '$lib/components/Deck.svelte';
   import Chart from '$lib/components/Chart.svelte';
   import CardDetailModal from '$lib/components/CardDetailModal.svelte';
+  import CircularHand from '$lib/components/CircularHand.svelte';
   import { individualCards } from '$lib/utils/sampleData';
   import type { FinancialCard } from '$lib/types';
 
@@ -97,15 +98,12 @@
     
     <!-- Hand area -->
     <div class="hand-area">
-      <div class="hand-container">
-        {#each $gameState.hand as card}
-          <Card 
-            {card} 
-            isActive={$gameState.activeCardIds.has(card.id)} 
-            on:showDetails={showCardDetails}
-          />
-        {/each}
-      </div>
+      <CircularHand 
+        cards={$gameState.hand}
+        activeCardIds={$gameState.activeCardIds}
+        maxVisibleCards={7}
+        on:showDetails={showCardDetails}
+      />
     </div>
   </main>
 </div>
@@ -235,13 +233,6 @@
     justify-content: center;
   }
   
-  .hand-container {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-end;
-    padding-bottom: 1rem;
-  }
-  
   /* Card items in sidebar */
   .card-item {
     display: flex;
@@ -269,12 +260,6 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
-  }
-  
-  .card-mini-header-right {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
   }
   
   .card-mini-header-left {

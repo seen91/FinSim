@@ -191,12 +191,6 @@
     margin-bottom: 0.5rem;
   }
   
-  .card-mini-header-right {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
   .card-mini-header-left {
     display: flex;
     align-items: center;
