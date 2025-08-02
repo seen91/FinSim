@@ -19,6 +19,18 @@
     e.stopPropagation();
     addCardToHand(card);
   }
+
+  function formatValue(card: any): string {
+    if (card.parameters.rate) {
+      return `${card.parameters.rate > 0 ? '+' : ''}${card.parameters.rate}%`;
+    }
+    if (card.parameters.monthlyAmount) {
+      const monthly = card.parameters.monthlyAmount;
+      // Show monthly for all linear cards (both positive and negative)
+      return `${monthly > 0 ? '+' : ''}${(monthly / 1000).toFixed(1)}k/mo`;
+    }
+    return '';
+  }
 </script>
 
 <div class="deck-container">
@@ -44,8 +56,10 @@
           <div class="card-mini">
             <div class="card-mini-header">
               <span class="card-mini-type">{card.type}</span>
-              <span class="card-mini-value positive">
-                {card.parameters.rate ? `+${card.parameters.rate}%` : ''}
+              <span class="card-mini-value" 
+                    class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
+                    class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
+                {formatValue(card)}
               </span>
             </div>
             <div class="card-mini-name">{card.name}</div>
@@ -170,7 +184,14 @@
   .card-mini-value {
     font-size: 0.75rem;
     font-weight: 600;
+  }
+  
+  .card-mini-value.positive {
     color: #4ade80;
+  }
+  
+  .card-mini-value.negative {
+    color: #ef4444;
   }
   
   .card-mini-name {

@@ -15,8 +15,8 @@
     }
     if (card.parameters.monthlyAmount) {
       const monthly = card.parameters.monthlyAmount;
-      const yearly = monthly * 12;
-      return `${yearly > 0 ? '+' : ''}${(yearly / 1000).toFixed(1)}k/yr`;
+      // Show monthly for all linear cards (both positive and negative)
+      return `${monthly > 0 ? '+' : ''}${(monthly / 1000).toFixed(1)}k/mo`;
     }
     return '';
   }
@@ -31,17 +31,19 @@
   tabindex="0"
 >
   <div class="card-inner">
-    <div class="card-indicator" class:positive={card.parameters.rate > 0 || card.parameters.monthlyAmount > 0}>
+    <div class="card-indicator" 
+         class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
+         class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
       {formatValue(card)}
     </div>
     <div class="card-title">{card.name}</div>
     <div class="card-type">{card.type}</div>
     <div class="card-art" style="background: {card.color}20">
       <div class="card-art-icon">
-        {#if card.type === 'compound'}📈
-        {:else if card.type === 'linear'}📊
+        {#if card.type === 'compound'}⤴️
+        {:else if card.type === 'linear'}📏
         {:else if card.type === 'exponential'}🚀
-        {:else}🎯{/if}
+        {:else}⚙️{/if}
       </div>
     </div>
     <div class="card-stats">
@@ -116,6 +118,12 @@
     color: #4ade80;
   }
   
+  .card-indicator.negative {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+  }
+  
   .card-title {
     font-size: 0.9rem;
     font-weight: 700;
@@ -144,6 +152,6 @@
     font-size: 0.75rem;
     padding-top: 0.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    color: #888;
+    color: #aaa;
   }
 </style>
