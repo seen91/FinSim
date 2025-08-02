@@ -16,12 +16,7 @@ export interface FinancialCard {
   description?: string;
   detailedInfo?: {
     strategy: string;
-    riskLevel: 'Low' | 'Medium' | 'High';
-    expectedReturn: string;
     timeCommitment: string;
-    pros: string[];
-    cons: string[];
-    tooltip?: string;
   };
 }
 

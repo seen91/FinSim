@@ -42,15 +42,6 @@
     }
     return params.join(' • ');
   }
-  
-  function getRiskColor(riskLevel: string): string {
-    switch (riskLevel) {
-      case 'Low': return '#22c55e';
-      case 'Medium': return '#f59e0b';
-      case 'High': return '#ef4444';
-      default: return '#6b7280';
-    }
-  }
 </script>
 
 <svelte:window on:keydown={handleGlobalKeydown} />
@@ -78,7 +69,7 @@
           </div>
           <div>
             <h2 class="card-title">{card.name}</h2>
-            <p class="card-type">{card.type.toUpperCase()} Strategy</p>
+            <p class="card-type">{card.type.toUpperCase()}</p>
           </div>
         </div>
         <button class="close-btn" on:click={closeModal}>✕</button>
@@ -98,16 +89,6 @@
             <h3>Key Metrics</h3>
             <div class="metrics-grid">
               <div class="metric-item">
-                <span class="metric-label">Risk Level</span>
-                <span class="risk-badge" style="background-color: {getRiskColor(card.detailedInfo.riskLevel)}20; color: {getRiskColor(card.detailedInfo.riskLevel)}">
-                  {card.detailedInfo.riskLevel}
-                </span>
-              </div>
-              <div class="metric-item">
-                <span class="metric-label">Expected Return</span>
-                <span class="metric-value">{card.detailedInfo.expectedReturn}</span>
-              </div>
-              <div class="metric-item">
                 <span class="metric-label">Time Commitment</span>
                 <span class="metric-value">{card.detailedInfo.timeCommitment}</span>
               </div>
@@ -117,36 +98,6 @@
               </div>
             </div>
           </section>
-          
-          <!-- Pros and Cons -->
-          <section class="info-section">
-            <div class="pros-cons-grid">
-              <div class="pros-section">
-                <h4 class="pros-title">✅ Advantages</h4>
-                <ul class="pros-list">
-                  {#each card.detailedInfo.pros as pro}
-                    <li>{pro}</li>
-                  {/each}
-                </ul>
-              </div>
-              <div class="cons-section">
-                <h4 class="cons-title">⚠️ Considerations</h4>
-                <ul class="cons-list">
-                  {#each card.detailedInfo.cons as con}
-                    <li>{con}</li>
-                  {/each}
-                </ul>
-              </div>
-            </div>
-          </section>
-          
-          {#if card.detailedInfo.tooltip}
-            <section class="info-section">
-              <div class="tooltip-box">
-                <strong>💡 Pro Tip:</strong> {card.detailedInfo.tooltip}
-              </div>
-            </section>
-          {/if}
         {:else}
           <p class="no-details">No detailed information available for this card.</p>
         {/if}
@@ -305,73 +256,6 @@
     font-weight: 600;
   }
   
-  .risk-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-align: center;
-  }
-  
-  .pros-cons-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-  }
-  
-  .pros-title, .cons-title {
-    margin: 0 0 1rem 0;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-  
-  .pros-title {
-    color: #22c55e;
-  }
-  
-  .cons-title {
-    color: #f59e0b;
-  }
-  
-  .pros-list, .cons-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  
-  .pros-list li, .cons-list li {
-    padding: 0.5rem 0;
-    color: #e5e5e5;
-    position: relative;
-    padding-left: 1.5rem;
-  }
-  
-  .pros-list li::before {
-    content: "•";
-    position: absolute;
-    left: 0;
-    color: #22c55e;
-    font-weight: bold;
-  }
-  
-  .cons-list li::before {
-    content: "•";
-    position: absolute;
-    left: 0;
-    color: #f59e0b;
-    font-weight: bold;
-  }
-  
-  .tooltip-box {
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    border-radius: 8px;
-    padding: 1rem;
-    color: #93c5fd;
-    line-height: 1.5;
-  }
-  
   .no-details {
     text-align: center;
     color: #888;
@@ -386,11 +270,6 @@
     
     .metrics-grid {
       grid-template-columns: 1fr;
-    }
-    
-    .pros-cons-grid {
-      grid-template-columns: 1fr;
-      gap: 1rem;
     }
   }
 </style>

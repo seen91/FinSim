@@ -15,12 +15,7 @@ export const sampleDecks: Deck[] = [
         color: '#4ade80',
         detailedInfo: {
           strategy: 'Government-backed bonds providing stable, predictable returns with minimal risk.',
-          riskLevel: 'Low',
-          expectedReturn: '3-5% annually',
-          timeCommitment: '20 years',
-          pros: ['Government-backed security', 'Predictable returns', 'Low volatility', 'Portfolio stability'],
-          cons: ['Lower returns than stocks', 'Inflation risk', 'Interest rate sensitivity'],
-          tooltip: 'Safe haven investment for conservative portfolios'
+          timeCommitment: '20 years'
         }
       },
       {
@@ -32,12 +27,7 @@ export const sampleDecks: Deck[] = [
         color: '#60a5fa',
         detailedInfo: {
           strategy: 'Diversified portfolio mixing stocks and bonds for moderate growth with reduced volatility.',
-          riskLevel: 'Medium',
-          expectedReturn: '5-7% annually',
-          timeCommitment: '20 years',
-          pros: ['Diversification', 'Professional management', 'Moderate risk', 'Steady growth'],
-          cons: ['Management fees', 'Market risk', 'Less control over allocation'],
-          tooltip: 'Ideal for investors seeking balanced growth and stability'
+          timeCommitment: '20 years'
         }
       }
     ]
@@ -56,12 +46,7 @@ export const sampleDecks: Deck[] = [
         color: '#a78bfa',
         detailedInfo: {
           strategy: 'Employer-sponsored retirement account with potential matching and tax advantages.',
-          riskLevel: 'Low',
-          expectedReturn: 'Tax savings + employer match',
-          timeCommitment: '20 years (until retirement)',
-          pros: ['Tax deductible', 'Employer matching', 'High contribution limits', 'Automatic payroll deduction'],
-          cons: ['Early withdrawal penalties', 'Required minimum distributions', 'Limited investment options'],
-          tooltip: 'Essential for retirement planning with immediate tax benefits'
+          timeCommitment: '20 years (until retirement)'
         }
       },
       {
@@ -73,12 +58,7 @@ export const sampleDecks: Deck[] = [
         color: '#fbbf24',
         detailedInfo: {
           strategy: 'After-tax retirement contributions that grow tax-free for qualified withdrawals.',
-          riskLevel: 'Low',
-          expectedReturn: 'Tax-free growth',
-          timeCommitment: '20+ years',
-          pros: ['Tax-free withdrawals', 'No required distributions', 'Flexible contribution timing', 'Estate planning benefits'],
-          cons: ['Income limits', 'Lower contribution limits', 'No immediate tax deduction'],
-          tooltip: 'Perfect for young investors in lower tax brackets'
+          timeCommitment: '20+ years'
         }
       }
     ]
@@ -97,12 +77,7 @@ export const sampleDecks: Deck[] = [
         color: '#10b981',
         detailedInfo: {
           strategy: 'Passive investment in the 500 largest US companies for long-term wealth building.',
-          riskLevel: 'Medium',
-          expectedReturn: '7-10% annually (historical)',
-          timeCommitment: '20+ years',
-          pros: ['Low fees', 'Broad diversification', 'Historical strong performance', 'Liquid'],
-          cons: ['Market volatility', 'No guaranteed returns', 'US market concentration'],
-          tooltip: 'Foundation of many FIRE (Financial Independence, Retire Early) strategies'
+          timeCommitment: '20+ years'
         }
       }
     ]
@@ -120,12 +95,7 @@ export const individualCards: FinancialCard[] = [
     description: 'Total stock market index',
     detailedInfo: {
       strategy: 'Complete US stock market exposure through a single low-cost index fund.',
-      riskLevel: 'Medium',
-      expectedReturn: '8-11% annually (historical)',
-      timeCommitment: '15+ years',
-      pros: ['Ultra-low fees', 'Complete market exposure', 'Simple diversification', 'Tax efficient'],
-      cons: ['Market risk', 'US-only exposure', 'No active management'],
-      tooltip: 'Vanguard\'s flagship total market fund, beloved by Bogleheads'
+      timeCommitment: '15+ years'
     }
   },
   {
@@ -138,12 +108,7 @@ export const individualCards: FinancialCard[] = [
     description: 'Home loan payment',
     detailedInfo: {
       strategy: 'Fixed monthly payment towards homeownership, building equity while providing housing.',
-      riskLevel: 'Low',
-      expectedReturn: 'Equity building + housing',
-      timeCommitment: '30 years',
-      pros: ['Building equity', 'Fixed housing costs', 'Tax deductions', 'Leverage'],
-      cons: ['Interest costs', 'Illiquid asset', 'Maintenance costs', 'Market risk'],
-      tooltip: 'Often the largest monthly expense but builds long-term wealth'
+      timeCommitment: '30 years'
     }
   },
   {
@@ -156,12 +121,7 @@ export const individualCards: FinancialCard[] = [
     description: 'Monthly income',
     detailedInfo: {
       strategy: 'Primary income source from employment, forming the foundation of financial planning.',
-      riskLevel: 'Medium',
-      expectedReturn: '2-5% annual raises',
-      timeCommitment: '20 years until retirement',
-      pros: ['Steady cash flow', 'Benefits package', 'Career growth potential', 'Predictable'],
-      cons: ['Job security risk', 'Limited growth', 'Taxes', 'Time commitment'],
-      tooltip: 'The engine that powers all other financial strategies'
+      timeCommitment: '20 years until retirement'
     }
   }
 ];
