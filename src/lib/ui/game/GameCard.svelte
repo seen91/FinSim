@@ -59,10 +59,28 @@
           <span class="indicator-content">
             <span class="indicator-value">{formatCardValue(card)}</span>
             <span class="indicator-time">• {card.timeRange[1] - card.timeRange[0]}y</span>
+            {#if card.parameters.principal && card.parameters.principal !== 0}
+              <span class="indicator-principal" 
+                    class:principal-positive={card.parameters.principal > 0}
+                    class:principal-negative={card.parameters.principal < 0}>• {card.parameters.principal > 0 ? '+' : ''}${(card.parameters.principal / 1000).toFixed(0)}k start</span>
+            {/if}
+            <span class="indicator-type">• {card.type}</span>
+            {#if card.description}
+              <span class="indicator-description">• {card.description}</span>
+            {/if}
           </span>
           <span class="indicator-content" aria-hidden="true">
             <span class="indicator-value">{formatCardValue(card)}</span>
             <span class="indicator-time">• {card.timeRange[1] - card.timeRange[0]}y</span>
+            {#if card.parameters.principal && card.parameters.principal !== 0}
+              <span class="indicator-principal" 
+                    class:principal-positive={card.parameters.principal > 0}
+                    class:principal-negative={card.parameters.principal < 0}>• {card.parameters.principal > 0 ? '+' : ''}${(card.parameters.principal / 1000).toFixed(0)}k start</span>
+            {/if}
+            <span class="indicator-type">• {card.type}</span>
+            {#if card.description}
+              <span class="indicator-description">• {card.description}</span>
+            {/if}
           </span>
         </div>
       </div>
@@ -213,6 +231,32 @@
   .indicator-time {
     opacity: 0.7;
     font-size: 0.6rem;
+  }
+
+  .indicator-principal {
+    opacity: 0.8;
+    font-size: 0.6rem;
+  }
+
+  .indicator-principal.principal-positive {
+    color: #4ade80;
+  }
+
+  .indicator-principal.principal-negative {
+    color: #ef4444;
+  }
+
+  .indicator-type {
+    opacity: 0.7;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .indicator-description {
+    opacity: 0.6;
+    font-size: 0.6rem;
+    font-style: italic;
   }
 
   .card-indicator.positive {
