@@ -1,6 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import * as d3 from 'd3';
+  // Import only the D3 modules we actually use to reduce bundle size
+  import { select } from 'd3-selection';
+  import { scaleLinear } from 'd3-scale';
+  import { extent, max, sum, rollup } from 'd3-array';
+  import { line, curveMonotoneX } from 'd3-shape';
+  import { axisBottom, axisLeft } from 'd3-axis';
+  import { format } from 'd3-format';
   import { projections } from '$lib/core/stores';
   
   let chartElement: HTMLElement;
@@ -11,7 +17,7 @@
   
   function drawChart(data: any[]) {
     // Clear previous chart
-    d3.select(chartElement).selectAll("*").remove();
+    select(chartElement).selectAll("*").remove();
     
     if (data.length === 0) {
       showPlaceholder();
@@ -22,7 +28,7 @@
   }
   
   function showPlaceholder() {
-    const svg = d3.select(chartElement)
+    const svg = select(chartElement)
       .append("svg")
       .attr("width", "100%")
       .attr("height", "100%")
@@ -42,7 +48,7 @@
     const width = 800 - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
     
-    const svg = d3.select(chartElement)
+    const svg = select(chartElement)
       .append("svg")
       .attr("width", "100%")
       .attr("height", "100%")
@@ -52,9 +58,9 @@
       .attr("transform", `translate(${margin.left},${margin.top})`);
     
     // Aggregate data by year
-    const aggregatedData = d3.rollup(
+    const aggregatedData = rollup(
       data,
-      v => d3.sum(v, d => d.value),
+      v => sum(v, d => d.value),
       d => d.year
     );
     
@@ -62,12 +68,12 @@
       .sort((a, b) => a.year - b.year);
     
     // Create scales
-    const xScale = d3.scaleLinear()
-      .domain(d3.extent(lineData, d => d.year) as [number, number])
+    const xScale = scaleLinear()
+      .domain(extent(lineData, d => d.year) as [number, number])
       .range([0, width]);
     
-    const yScale = d3.scaleLinear()
-      .domain([0, d3.max(lineData, d => d.value) as number])
+    const yScale = scaleLinear()
+      .domain([0, max(lineData, d => d.value) as number])
       .range([height, 0]);
     
     // Add grid lines
@@ -87,7 +93,7 @@
     g.append("g")
       .attr("class", "grid")
       .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(xScale)
+      .call(axisBottom(xScale)
         .tickSize(-height)
         .tickFormat(() => ""))
       .style("stroke-dasharray", "3,3")
@@ -95,7 +101,7 @@
     
     g.append("g")
       .attr("class", "grid")
-      .call(d3.axisLeft(yScale)
+      .call(axisLeft(yScale)
         .tickSize(-width)
         .tickFormat(() => ""))
       .style("stroke-dasharray", "3,3")
@@ -103,27 +109,27 @@
   }
   
   function addProjectionLine(g: any, lineData: any[], xScale: any, yScale: any) {
-    const line = d3.line<any>()
+    const lineGenerator = line<any>()
       .x(d => xScale(d.year))
       .y(d => yScale(d.value))
-      .curve(d3.curveMonotoneX);
+      .curve(curveMonotoneX);
     
     g.append("path")
       .datum(lineData)
       .attr("fill", "none")
       .attr("stroke", "#4ade80")
       .attr("stroke-width", 3)
-      .attr("d", line);
+      .attr("d", lineGenerator);
   }
   
   function addAxes(g: any, xScale: any, yScale: any, height: number) {
     g.append("g")
       .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(xScale).tickFormat((d: any) => d3.format("d")(d)))
+      .call(axisBottom(xScale).tickFormat((d: any) => format("d")(d)))
       .style("color", "#888");
     
     g.append("g")
-      .call(d3.axisLeft(yScale).tickFormat((d: any) => `$${((d as number) / 1000)}k`))
+      .call(axisLeft(yScale).tickFormat((d: any) => `$${((d as number) / 1000)}k`))
       .style("color", "#888");
   }
   
