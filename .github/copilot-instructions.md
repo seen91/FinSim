@@ -1,0 +1,2 @@
+- Assume a development server is already running.
+- Do not create documentation files unless explicitly requested.
