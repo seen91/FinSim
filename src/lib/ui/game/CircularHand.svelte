@@ -165,6 +165,7 @@
           class="card-position stack-card-preview left-preview" 
           style={calculateStackCardStyle(index, leftPreviewCards.length, 'left', -250)}
           on:click={scrollLeft}
+          on:keydown={(event) => handleStackKeydown(event, 'left')}
           role="button"
           tabindex="0"
           aria-label="Show previous cards"
@@ -186,6 +187,7 @@
           class="card-position stack-card-preview right-preview" 
           style={calculateStackCardStyle(index, rightPreviewCards.length, 'right', 250)}
           on:click={scrollRight}
+          on:keydown={(event) => handleStackKeydown(event, 'right')}
           role="button"
           tabindex="0"
           aria-label="Show next cards"

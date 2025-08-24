@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { Deck } from '$lib/core/types';
-  import CardMini from '../components/CardMini.svelte';
   import { createEventDispatcher } from 'svelte';
   import { formatCardValue, getCardIcon } from '$lib/services/card-formatter';
 

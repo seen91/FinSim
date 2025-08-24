@@ -143,8 +143,6 @@
       .text("Year");
     
     // Y-axis label removed to save space and reduce clutter
-    
-    const finalValue = lineData[lineData.length - 1]?.value || 0;
     // Final value display removed to save space
   }
 </script>

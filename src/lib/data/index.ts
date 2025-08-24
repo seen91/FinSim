@@ -3,7 +3,3 @@ import { conservativeDeck, taxOptDeck, fireDeck } from './decks';
 
 export const allDecks = [conservativeDeck, taxOptDeck, fireDeck];
 export const allIndividualCards = [...investmentCards, ...incomeCards, ...expenseCards];
-
-// Legacy exports for compatibility
-export const sampleDecks = allDecks;
-export const individualCards = allIndividualCards;

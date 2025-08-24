@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Deck, FinancialCard } from '$lib/core/types';
   import DeckDisplay from './DeckDisplay.svelte';
-  import CardMini from '../components/CardMini.svelte';
   import { createEventDispatcher } from 'svelte';
 
   export let decks: Deck[] = [];
