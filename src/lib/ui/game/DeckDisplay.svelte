@@ -1,8 +1,9 @@
 <script lang="ts">
-  import type { Deck } from '$lib/types';
-  import { addDeckToHand, addCardToHand } from '$lib/stores/gameState';
+  import type { Deck } from '$lib/core/types';
+  import CardMini from '../components/CardMini.svelte';
   import { createEventDispatcher } from 'svelte';
-  
+  import { formatCardValue, getCardIcon } from '$lib/services/card-formatter';
+
   export let deck: Deck;
   
   let expanded = false;
@@ -14,29 +15,17 @@
   
   function handleAddDeck(e: Event) {
     e.stopPropagation();
-    addDeckToHand(deck);
+    dispatch('addDeck', deck);
   }
   
-  function handleAddCard(e: Event, card: any) {
+  function handleCardAdd(e: Event, card: any) {
     e.stopPropagation();
-    addCardToHand(card);
+    dispatch('addCard', card);
   }
   
-  function handleInfoClick(e: Event, card: any) {
+  function handleCardInfo(e: Event, card: any) {
     e.stopPropagation();
-    dispatch('showDetails', card);
-  }
-
-  function formatValue(card: any): string {
-    if (card.parameters.rate) {
-      return `${card.parameters.rate > 0 ? '+' : ''}${card.parameters.rate}%`;
-    }
-    if (card.parameters.monthlyAmount) {
-      const monthly = card.parameters.monthlyAmount;
-      // Show monthly for all linear cards (both positive and negative)
-      return `${monthly > 0 ? '+' : ''}${(monthly / 1000).toFixed(1)}k/mo`;
-    }
-    return '';
+    dispatch('cardInfo', card);
   }
 </script>
 
@@ -63,11 +52,12 @@
           <div class="card-mini">
             <div class="card-mini-header">
               <div class="card-mini-header-left">
+                <span class="card-mini-icon">{getCardIcon(card.type)}</span>
                 <span class="card-mini-type">{card.type}</span>
                 {#if card.detailedInfo}
                   <button 
                     class="info-btn-mini" 
-                    on:click={(e) => handleInfoClick(e, card)}
+                    on:click={(e) => handleCardInfo(e, card)}
                     title="View detailed information"
                     aria-label="View card details"
                   >ℹ️</button>
@@ -76,12 +66,12 @@
               <span class="card-mini-value" 
                     class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
                     class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
-                {formatValue(card)}
+                {formatCardValue(card)}
               </span>
             </div>
             <div class="card-mini-name">{card.name}</div>
           </div>
-          <button class="add-btn" on:click={(e) => handleAddCard(e, card)} title="Add this card">+</button>
+          <button class="add-btn" on:click={(e) => handleCardAdd(e, card)} title="Add this card">+</button>
         </div>
       {/each}
     </div>
@@ -195,6 +185,10 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+  
+  .card-mini-icon {
+    font-size: 0.8rem;
   }
   
   .card-mini-type {

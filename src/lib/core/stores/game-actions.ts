@@ -1,25 +1,7 @@
-import { writable, derived } from 'svelte/store';
-import type { FinancialCard, Deck, GameState, TimeSeriesPoint } from '$lib/types';
-import { calculateProjections } from '$lib/utils/calculations';
-import { sampleDecks } from '$lib/utils/sampleData';
+import { gameState } from './game-state';
+import type { FinancialCard, Deck } from '../types';
 
-// Initialize with sample data
-const initialState: GameState = {
-  hand: [],
-  availableDecks: sampleDecks,
-  activeCardIds: new Set()
-};
-
-export const gameState = writable<GameState>(initialState);
-
-export const projections = derived(gameState, ($state) => {
-  const activeCards = $state.hand.filter(card => 
-    $state.activeCardIds.has(card.id)
-  );
-  return calculateProjections(activeCards);
-});
-
-export function addCardToHand(card: FinancialCard) {
+export function addCardToHand(card: FinancialCard): void {
   gameState.update(state => {
     const newCard = { ...card, id: `${card.id}-${Date.now()}` };
     return {
@@ -30,7 +12,7 @@ export function addCardToHand(card: FinancialCard) {
   });
 }
 
-export function addDeckToHand(deck: Deck) {
+export function addDeckToHand(deck: Deck): void {
   gameState.update(state => {
     const newCards = deck.cards.map(card => ({
       ...card,
@@ -48,7 +30,7 @@ export function addDeckToHand(deck: Deck) {
   });
 }
 
-export function toggleCard(cardId: string) {
+export function toggleCard(cardId: string): void {
   gameState.update(state => {
     const newActiveIds = new Set(state.activeCardIds);
     if (newActiveIds.has(cardId)) {
@@ -56,18 +38,20 @@ export function toggleCard(cardId: string) {
     } else {
       newActiveIds.add(cardId);
     }
-    return { ...state, activeCardIds: newActiveIds };
+    return {
+      ...state,
+      activeCardIds: newActiveIds
+    };
   });
 }
 
-export function removeCardFromHand(cardId: string) {
+export function removeCardFromHand(cardId: string): void {
   gameState.update(state => {
-    const newHand = state.hand.filter(card => card.id !== cardId);
     const newActiveIds = new Set(state.activeCardIds);
     newActiveIds.delete(cardId);
     return {
       ...state,
-      hand: newHand,
+      hand: state.hand.filter(card => card.id !== cardId),
       activeCardIds: newActiveIds
     };
   });

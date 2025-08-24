@@ -1,37 +1,8 @@
-export type CurveType = 'compound' | 'linear' | 'exponential' | 'custom';
-export type AggregationType = 'sum' | 'multiply' | 'average';
+// Re-export core functionality
+export * from './core';
+export * from './data';
+export * from './services';
 
-export interface FinancialCard {
-  id: string;
-  name: string;
-  type: CurveType;
-  parameters: {
-    principal?: number;
-    rate?: number;
-    monthlyAmount?: number;
-    customFormula?: string;
-  };
-  timeRange: [number, number]; // [startYear, endYear]
-  color: string;
-  description?: string;
-}
-
-export interface Deck {
-  id: string;
-  name: string;
-  description: string;
-  cards: FinancialCard[];
-  aggregationType?: AggregationType;
-}
-
-export interface TimeSeriesPoint {
-  year: number;
-  value: number;
-  cardId: string;
-}
-
-export interface GameState {
-  hand: FinancialCard[];
-  availableDecks: Deck[];
-  activeCardIds: Set<string>;
-}
+// Legacy exports for backward compatibility with old imports
+export { gameState, projections, addCardToHand, addDeckToHand, toggleCard, removeCardFromHand } from './core/stores';
+export { calculateProjections } from './core/calculations';

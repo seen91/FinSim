@@ -1,8 +1,9 @@
 <script lang="ts">
-  import type { FinancialCard } from '$lib/types';
+  import type { FinancialCard } from '$lib/core/types';
+  import Button from './Button.svelte';
   
   export let card: FinancialCard | null = null;
-  export let isOpen: boolean = false;
+  export let isOpen = false;
   
   function closeModal() {
     isOpen = false;
@@ -11,14 +12,6 @@
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
       closeModal();
-    }
-  }
-  
-  function handleBackdropKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      if (event.target === event.currentTarget) {
-        closeModal();
-      }
     }
   }
   
@@ -42,6 +35,15 @@
     }
     return params.join(' • ');
   }
+  
+  function getCardIcon(type: string): string {
+    switch (type) {
+      case 'compound': return '⤴️';
+      case 'linear': return '📏';
+      case 'exponential': return '🚀';
+      default: return '⚙️';
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleGlobalKeydown} />
@@ -50,7 +52,7 @@
   <div 
     class="modal-backdrop" 
     on:click={handleBackdropClick}
-    on:keydown={handleBackdropKeydown}
+    on:keydown
     role="dialog"
     aria-modal="true"
     tabindex="-1"
@@ -61,10 +63,7 @@
         <div class="card-header-info">
           <div class="card-icon" style="background: {card.color}20">
             <div class="card-icon-symbol">
-              {#if card.type === 'compound'}⤴️
-              {:else if card.type === 'linear'}📏
-              {:else if card.type === 'exponential'}🚀
-              {:else}⚙️{/if}
+              {getCardIcon(card.type)}
             </div>
           </div>
           <div>
@@ -72,7 +71,13 @@
             <p class="card-type">{card.type.toUpperCase()}</p>
           </div>
         </div>
-        <button class="close-btn" on:click={closeModal}>✕</button>
+        <Button
+          variant="secondary"
+          size="medium"
+          onClick={closeModal}
+          ariaLabel="Close modal"
+          class="close-btn"
+        >✕</Button>
       </div>
       
       <!-- Content -->
@@ -185,24 +190,11 @@
     letter-spacing: 1px;
   }
   
-  .close-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: white;
-    font-size: 1.25rem;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .close-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.1);
+  :global(.modal-header .close-btn) {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    font-size: 1.25rem !important;
   }
   
   .modal-body {
