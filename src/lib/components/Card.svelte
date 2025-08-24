@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { FinancialCard } from '$lib/types';
-  import { toggleCard } from '$lib/stores/gameState';
+  import { toggleCard, removeCardFromHand } from '$lib/stores/gameState';
   import { createEventDispatcher } from 'svelte';
   
   export let card: FinancialCard;
   export let isActive: boolean = true;
+  export let showRemoveButton: boolean = false;
   
   const dispatch = createEventDispatcher();
   
@@ -15,6 +16,11 @@
   function handleInfoClick(event: MouseEvent) {
     event.stopPropagation();
     dispatch('showDetails', card);
+  }
+
+  function handleRemoveClick(event: MouseEvent) {
+    event.stopPropagation();
+    removeCardFromHand(card.id);
   }
   
   function formatValue(card: FinancialCard): string {
@@ -38,6 +44,14 @@
   role="button"
   tabindex="0"
 >
+  {#if showRemoveButton}
+    <button 
+      class="remove-btn" 
+      on:click={handleRemoveClick}
+      title="Remove card from hand"
+      aria-label="Remove card"
+    >×</button>
+  {/if}
   <div class="card-inner">
     <div class="card-title">{card.name}</div>
     <div class="card-type-container">
@@ -158,6 +172,42 @@
   .info-btn:hover {
     background: rgba(255, 255, 255, 0.2);
     transform: scale(1.1);
+  }
+
+  .remove-btn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    background: rgba(239, 68, 68, 0.8);
+    border: 1px solid rgba(239, 68, 68, 1);
+    border-radius: 50%;
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    line-height: 1;
+    opacity: 0;
+    transform: scale(0.8);
+    pointer-events: none;
+  }
+  
+  .card:hover .remove-btn {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+  
+  .remove-btn:hover {
+    background: rgba(239, 68, 68, 1);
+    transform: scale(1.1) !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
   }
   
   .card-title {

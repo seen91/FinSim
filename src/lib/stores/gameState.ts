@@ -59,3 +59,16 @@ export function toggleCard(cardId: string) {
     return { ...state, activeCardIds: newActiveIds };
   });
 }
+
+export function removeCardFromHand(cardId: string) {
+  gameState.update(state => {
+    const newHand = state.hand.filter(card => card.id !== cardId);
+    const newActiveIds = new Set(state.activeCardIds);
+    newActiveIds.delete(cardId);
+    return {
+      ...state,
+      hand: newHand,
+      activeCardIds: newActiveIds
+    };
+  });
+}

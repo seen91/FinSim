@@ -150,6 +150,7 @@
           <Card 
             {card} 
             isActive={activeCardIds.has(card.id)} 
+            showRemoveButton={true}
             on:showDetails={handleCardDetails}
           />
         </div>
