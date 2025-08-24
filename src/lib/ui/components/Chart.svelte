@@ -10,6 +10,7 @@
   import { projections } from '$lib/core/stores';
   
   let chartElement: HTMLElement;
+  let tooltip: HTMLElement;
   
   $: if (chartElement && $projections) {
     drawChart($projections);
@@ -82,6 +83,9 @@
     // Add projection line
     addProjectionLine(g, lineData, xScale, yScale);
     
+    // Add interactive dots
+    addInteractiveDots(g, lineData, xScale, yScale);
+    
     // Add axes
     addAxes(g, xScale, yScale, height);
     
@@ -122,6 +126,74 @@
       .attr("d", lineGenerator);
   }
   
+  function addInteractiveDots(g: any, lineData: any[], xScale: any, yScale: any) {
+    g.selectAll(".dot")
+      .data(lineData)
+      .enter().append("circle")
+      .attr("class", "dot")
+      .attr("cx", (d: any) => xScale(d.year))
+      .attr("cy", (d: any) => yScale(d.value))
+      .attr("r", 4)
+      .attr("fill", "#4ade80")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 2)
+      .style("cursor", "pointer")
+      .on("mouseover", (event: any, d: any) => {
+        showTooltip(event, d);
+        select(event.target as SVGCircleElement).attr("r", 6);
+      })
+      .on("mouseout", (event: any, d: any) => {
+        hideTooltip();
+        select(event.target as SVGCircleElement).attr("r", 4);
+      });
+  }
+  
+  function showTooltip(event: any, data: any) {
+    if (!tooltip) return;
+    
+    const formattedValue = format("$,.0f")(data.value);
+    tooltip.innerHTML = `Year: ${data.year}<br/>Value: ${formattedValue}`;
+    
+    tooltip.style.display = 'block';
+    
+    // Get chart container position
+    const rect = chartElement.getBoundingClientRect();
+    
+    // Use clientX/clientY for consistent cross-browser positioning
+    const mouseX = event.clientX;
+    const mouseY = event.clientY;
+    
+    // Calculate tooltip position relative to viewport
+    let left = mouseX + 10;
+    let top = mouseY - 35;
+    
+    // Get tooltip dimensions for better boundary checking
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const tooltipWidth = tooltipRect.width || 120; // fallback width
+    const tooltipHeight = tooltipRect.height || 40; // fallback height
+    
+    // Boundary checking - keep tooltip within viewport
+    if (left + tooltipWidth > window.innerWidth) {
+      left = mouseX - tooltipWidth - 10;
+    }
+    
+    if (top < 0) {
+      top = mouseY + 10;
+    }
+    
+    if (top + tooltipHeight > window.innerHeight) {
+      top = mouseY - tooltipHeight - 10;
+    }
+    
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+  }
+  
+  function hideTooltip() {
+    if (!tooltip) return;
+    tooltip.style.display = 'none';
+  }
+  
   function addAxes(g: any, xScale: any, yScale: any, height: number) {
     g.append("g")
       .attr("transform", `translate(0,${height})`)
@@ -148,11 +220,26 @@
 </script>
 
 <div bind:this={chartElement} class="chart-container"></div>
+<div bind:this={tooltip} class="tooltip"></div>
 
 <style>
   .chart-container {
     width: 100%;
     height: 100%;
+  }
+  
+  .tooltip {
+    position: fixed;
+    display: none;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
   }
   
   :global(.chart-container svg) {
@@ -165,5 +252,9 @@
   
   :global(.grid path) {
     stroke-width: 0;
+  }
+  
+  :global(.dot) {
+    transition: r 0.2s ease;
   }
 </style>
