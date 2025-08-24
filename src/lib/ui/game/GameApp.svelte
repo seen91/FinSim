@@ -54,9 +54,17 @@
 <style>
   :global(body) {
     margin: 0;
+    padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: #0a0a0a;
     color: #fff;
+    overflow: hidden;
+  }
+  
+  :global(html) {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
   }
   
   .game-container {

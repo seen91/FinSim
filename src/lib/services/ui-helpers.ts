@@ -36,10 +36,10 @@ export function calculateCardArcStyle(
   const centerIndex = (totalVisible - 1) / 2;
   const relativeIndex = index - centerIndex;
   
-  // Classic card hand arc parameters
-  const arcRadius = 220; // Radius of the circular arc
-  const maxAngle = 45; // Maximum angle spread for the arc (in degrees)
-  const maxRotation = 20; // Maximum card rotation angle
+  // More aggressive arc parameters for better space utilization
+  const arcRadius = 180; // Reduced radius for tighter arc
+  const maxAngle = 60; // Increased angle spread for more aggressive arc
+  const maxRotation = 25; // Increased card rotation for more dramatic effect
   
   // Calculate angle for this card position
   const angleStep = totalVisible > 1 ? (maxAngle * 2) / (totalVisible - 1) : 0;
@@ -48,17 +48,17 @@ export function calculateCardArcStyle(
   
   // Calculate position on the circular arc
   const x = Math.sin(angleRad) * arcRadius;
-  // Make cards arc downward by using positive y values
-  const y = (1 - Math.cos(angleRad)) * arcRadius * 0.3; // Downward arc
+  // More pronounced downward arc
+  const y = (1 - Math.cos(angleRad)) * arcRadius * 0.4; // Increased arc depth
   
-  // Calculate card rotation to follow the arc tangent
-  const rotation = angle * 0.6; // Cards tilt to follow arc direction
+  // Calculate card rotation to follow the arc tangent more aggressively
+  const rotation = angle * 0.8; // Increased rotation factor
   
   // Calculate scale - center cards slightly larger, outer cards smaller
   const distanceFromCenter = Math.abs(relativeIndex);
   const maxDistance = Math.max(1, centerIndex);
-  const scaleFactor = 1 - (distanceFromCenter / maxDistance) * 0.1;
-  const scale = Math.max(0.8, scaleFactor);
+  const scaleFactor = 1 - (distanceFromCenter / maxDistance) * 0.15; // Slightly more scale variation
+  const scale = Math.max(0.75, scaleFactor);
   
   // Calculate z-index - center cards on top
   const zIndex = Math.round(10 - distanceFromCenter);
@@ -77,20 +77,20 @@ export function calculateStackCardStyle(
   basePosition: number
 ): string {
   // Dense stacking with heavy overlap
-  const stackSpacing = 15; // Much tighter spacing
-  const baseRotation = side === 'left' ? -25 : 25;
+  const stackSpacing = 12; // Adjusted for smaller cards
+  const baseRotation = side === 'left' ? -30 : 30; // More aggressive rotation
   const stackOffset = index * stackSpacing;
   
   // Position relative to the base position (edge of main hand)
   const x = side === 'left' 
-    ? basePosition - 60 - stackOffset 
-    : basePosition + 60 + stackOffset;
+    ? basePosition - 50 - stackOffset // Adjusted for smaller card width
+    : basePosition + 50 + stackOffset;
   
   // Slight vertical offset for depth
-  const y = index * 3;
+  const y = index * 2;
   
   // Scale down progressively for cards further back
-  const scale = 0.7 - (index * 0.05);
+  const scale = 0.6 - (index * 0.04); // Adjusted for smaller base cards
   
   // Z-index decreases with distance from main hand
   const zIndex = side === 'left' 
@@ -98,7 +98,7 @@ export function calculateStackCardStyle(
     : 5 - index;
   
   // Rotation increases with distance
-  const rotation = baseRotation + (index * (side === 'left' ? -5 : 5));
+  const rotation = baseRotation + (index * (side === 'left' ? -6 : 6));
   
   return `
     transform: translate(${x}px, ${y}px) scale(${scale}) rotate(${rotation}deg);

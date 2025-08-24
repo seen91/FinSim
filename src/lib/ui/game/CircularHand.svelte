@@ -236,7 +236,7 @@
     align-items: center;
     justify-content: center;
     overflow: visible;
-    min-height: 280px;
+    min-height: 180px;
     outline: none; /* Remove focus outline since we handle it visually */
   }
 
@@ -262,7 +262,7 @@
 
   .card-position {
     position: absolute;
-    bottom: 60px;
+    bottom: 20px;
     left: 50%;
     transform-origin: center bottom;
     pointer-events: auto;
@@ -318,11 +318,11 @@
 
   @media (max-width: 768px) {
     .circular-hand {
-      min-height: 240px;
+      min-height: 140px;
     }
 
     .card-position {
-      bottom: 40px;
+      bottom: 10px;
     }
   }
 

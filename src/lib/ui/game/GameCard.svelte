@@ -83,8 +83,8 @@
 
 <style>
   .game-card {
-    width: 180px;
-    height: 240px;
+    width: 140px;
+    height: 190px;
     background: linear-gradient(135deg, #2a2a3e, #1a1a2e);
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;

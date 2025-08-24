@@ -142,24 +142,10 @@
       .style("font-size", "14px")
       .text("Year");
     
-    svg.append("text")
-      .attr("x", 30)
-      .attr("y", 200)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#888")
-      .style("font-size", "14px")
-      .attr("transform", "rotate(-90 30 200)")
-      .text("Value ($)");
+    // Y-axis label removed to save space and reduce clutter
     
     const finalValue = lineData[lineData.length - 1]?.value || 0;
-    svg.append("text")
-      .attr("x", 400)
-      .attr("y", 30)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#4ade80")
-      .style("font-size", "28px")
-      .style("font-weight", "bold")
-      .text(`$${(finalValue / 1000).toFixed(0)}k`);
+    // Final value display removed to save space
   }
 </script>
 
