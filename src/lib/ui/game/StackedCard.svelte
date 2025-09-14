@@ -132,6 +132,11 @@
   
   <!-- Top overlay with combined information -->
   <div class="stack-overlay">
+    <!-- Prominent base card name -->
+    <div class="base-card-name">
+      {stack.baseCard.name}
+    </div>
+    
     <div class="stack-info">
       <div class="stack-indicator">
         <div 
@@ -227,6 +232,12 @@
     opacity: 0;
   }
   
+  /* Ensure base card title is visible through the overlay */
+  .base-card :global(.card-title) {
+    z-index: 15;
+    position: relative;
+  }
+  
   /* === MODIFIER OVERLAY === */
   .modifier-overlay {
     position: absolute;
@@ -234,10 +245,15 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(58, 42, 78, 0.7), rgba(42, 26, 62, 0.7));
+    background: linear-gradient(135deg, rgba(58, 42, 78, 0.5), rgba(42, 26, 62, 0.5));
     border: 2px solid rgba(200, 150, 255, 0.4);
     border-radius: 12px;
     pointer-events: none;
+    /* Leave space for base card name to show through */
+    background: linear-gradient(135deg, 
+      rgba(58, 42, 78, 0.6) 0%, 
+      rgba(42, 26, 62, 0.6) 70%, 
+      transparent 100%);
   }
   
   .stacked-card:hover .modifier-overlay {
@@ -251,13 +267,65 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 60px;
-    background: transparent;
+    height: 85px;
+    background: linear-gradient(to top, 
+      rgba(0, 0, 0, 0.1) 0%, 
+      transparent 100%);
     z-index: 20;
     display: flex;
-    align-items: flex-end;
-    padding: 0.5rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0.6rem;
     overflow: hidden;
+  }
+
+  /* Base card name - prominent display */
+  .base-card-name {
+    background: linear-gradient(135deg, rgba(20, 25, 35, 0.9), rgba(15, 20, 30, 0.95));
+    color: white;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 0.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 25;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .base-card-name::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+      rgba(100, 120, 200, 0.1) 0%, 
+      rgba(80, 100, 180, 0.05) 100%);
+    border-radius: 8px;
+    opacity: 0.8;
+  }
+
+  .stacked-card:hover .base-card-name {
+    background: linear-gradient(135deg, rgba(25, 30, 40, 0.95), rgba(20, 25, 35, 1));
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
   }
 
   .stack-info {
