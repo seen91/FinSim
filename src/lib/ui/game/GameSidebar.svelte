@@ -51,7 +51,12 @@
             <div class="card-mini-header">
               <div class="card-mini-header-left">
                 <span class="card-mini-icon">{card.type === 'compound' ? '⤴️' : card.type === 'linear' ? '📏' : '🚀'}</span>
-                <span class="card-mini-type">{card.type}</span>
+                <span class="card-role-icon" 
+                      class:base-card={card.role === 'base'}
+                      class:modifier-card={card.role === 'modifier'}
+                      title={card.role === 'base' ? 'Base card - can have other cards stacked on it' : 'Modifier card - can be stacked on base cards'}>
+                  {card.role === 'base' ? '🃏' : '⚡'}
+                </span>
                 {#if card.detailedInfo}
                   <button 
                     class="info-btn-mini" 
@@ -147,14 +152,32 @@
   .card-mini-icon {
     font-size: 0.8rem;
   }
-  
-  .card-mini-type {
-    font-size: 0.65rem;
-    color: #888;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+
+  .card-role-icon {
+    font-size: 0.8rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
-  
+
+  .card-role-icon.base-card {
+    color: #60a5fa;
+  }
+
+  .card-role-icon.modifier-card {
+    color: #fbbf24;
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse-glow {
+    0% { 
+      color: #fbbf24; 
+      filter: drop-shadow(0 0 1px rgba(251, 191, 36, 0.5));
+    }
+    100% { 
+      color: #f59e0b; 
+      filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.7));
+    }
+  }
+
   .card-mini-value {
     font-size: 0.75rem;
     font-weight: 600;
