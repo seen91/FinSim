@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FinancialCard } from '$lib/core/types';
   import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard } from '$lib/services/card-formatter';
+  import { createDragCardData, parseDragCardData, validateCardStacking } from '$lib/services/drag-drop-helpers';
   import Button from '../components/Button.svelte';
   import { createEventDispatcher } from 'svelte';
   
@@ -32,10 +33,7 @@
   function handleDragStart(event: DragEvent) {
     if (!event.dataTransfer) return;
     isDragging = true;
-    event.dataTransfer.setData('application/json', JSON.stringify({
-      type: 'card',
-      card: card
-    }));
+    event.dataTransfer.setData('application/json', JSON.stringify(createDragCardData(card)));
     event.dataTransfer.effectAllowed = 'move';
   }
   
@@ -45,20 +43,11 @@
   
   function handleDragOver(event: DragEvent) {
     event.preventDefault();
-    if (!event.dataTransfer) return;
     
-    // Check if we can accept the drop
-    const data = event.dataTransfer.getData('application/json');
-    if (data) {
-      try {
-        const draggedData = JSON.parse(data);
-        if (draggedData.type === 'card' && canAcceptCard(draggedData.card)) {
-          isDragOver = true;
-          event.dataTransfer.dropEffect = 'move';
-        }
-      } catch (e) {
-        // Invalid data
-      }
+    const draggedCard = parseDragCardData(event.dataTransfer);
+    if (draggedCard && validateCardStacking(card, draggedCard)) {
+      isDragOver = true;
+      event.dataTransfer!.dropEffect = 'move';
     }
   }
   
@@ -70,32 +59,13 @@
     event.preventDefault();
     isDragOver = false;
     
-    if (!event.dataTransfer) return;
-    
-    const data = event.dataTransfer.getData('application/json');
-    if (data) {
-      try {
-        const draggedData = JSON.parse(data);
-        if (draggedData.type === 'card' && canAcceptCard(draggedData.card)) {
-          dispatch('stackCards', {
-            baseCard: card,
-            modifierCard: draggedData.card
-          });
-        }
-      } catch (e) {
-        console.error('Error parsing dropped data:', e);
-      }
+    const draggedCard = parseDragCardData(event.dataTransfer);
+    if (draggedCard && validateCardStacking(card, draggedCard)) {
+      dispatch('stackCards', {
+        baseCard: card,
+        modifierCard: draggedCard
+      });
     }
-  }
-  
-  function canAcceptCard(draggedCard: FinancialCard): boolean {
-    // Can only stack if this card is a base card and the dragged card is a modifier
-    return card.role === 'base' && 
-           card.canBeStacked === true &&
-           draggedCard.role === 'modifier' && 
-           draggedCard.canStack === true &&
-           card.stackCategory !== undefined &&
-           draggedCard.compatibleWith?.includes(card.stackCategory) === true;
   }
 </script>
 

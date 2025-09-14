@@ -80,12 +80,19 @@ export function createCardStack(baseCardId: string, modifierCardId: string): boo
     const baseCard = state.hand.find(card => card.id === baseCardId);
     const modifierCard = state.hand.find(card => card.id === modifierCardId);
     
-    if (!baseCard || !modifierCard) {
+    if (!baseCard) {
+      console.error('Base card not found:', baseCardId);
+      return state;
+    }
+    
+    if (!modifierCard) {
+      console.error('Modifier card not found:', modifierCardId);
       return state;
     }
     
     // Validate compatibility
     if (!validateStackCompatibility(baseCard, modifierCard)) {
+      console.error('Cards are not compatible for stacking:', baseCard.name, 'and', modifierCard.name);
       return state;
     }
     
@@ -129,12 +136,19 @@ export function addToStack(stackId: string, modifierCardId: string): boolean {
     const stack = state.cardStacks.find(s => s.id === stackId);
     const modifierCard = state.hand.find(card => card.id === modifierCardId);
     
-    if (!stack || !modifierCard) {
+    if (!stack) {
+      console.error('Stack not found:', stackId);
+      return state;
+    }
+    
+    if (!modifierCard) {
+      console.error('Modifier card not found:', modifierCardId);
       return state;
     }
     
     // Validate compatibility with base card
     if (!validateStackCompatibility(stack.baseCard, modifierCard)) {
+      console.error('Card is not compatible with stack base card:', modifierCard.name, 'and', stack.baseCard.name);
       return state;
     }
     

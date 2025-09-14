@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CardStack, FinancialCard } from '$lib/core/types';
-  import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard } from '$lib/services/card-formatter';
+  import { formatCardValue, isPositiveCard, isNegativeCard } from '$lib/services/card-formatter';
+  import { parseDragCardData, validateStackAddition } from '$lib/services/drag-drop-helpers';
   import Button from '../components/Button.svelte';
   import GameCard from './GameCard.svelte';
   import { createEventDispatcher } from 'svelte';
@@ -37,20 +38,11 @@
   // Drag and drop handlers for adding more modifier cards to the stack
   function handleDragOver(event: DragEvent) {
     event.preventDefault();
-    if (!event.dataTransfer) return;
     
-    // Check if we can accept the drop
-    const data = event.dataTransfer.getData('application/json');
-    if (data) {
-      try {
-        const draggedData = JSON.parse(data);
-        if (draggedData.type === 'card' && canAcceptCard(draggedData.card)) {
-          isDragOver = true;
-          event.dataTransfer.dropEffect = 'move';
-        }
-      } catch (e) {
-        // Invalid data
-      }
+    const draggedCard = parseDragCardData(event.dataTransfer);
+    if (draggedCard && validateStackAddition(stack.baseCard, draggedCard)) {
+      isDragOver = true;
+      event.dataTransfer!.dropEffect = 'move';
     }
   }
   
@@ -62,30 +54,13 @@
     event.preventDefault();
     isDragOver = false;
     
-    if (!event.dataTransfer) return;
-    
-    const data = event.dataTransfer.getData('application/json');
-    if (data) {
-      try {
-        const draggedData = JSON.parse(data);
-        if (draggedData.type === 'card' && canAcceptCard(draggedData.card)) {
-          dispatch('addToStack', {
-            stackId: stack.id,
-            modifierCard: draggedData.card
-          });
-        }
-      } catch (e) {
-        console.error('Error parsing dropped data:', e);
-      }
+    const draggedCard = parseDragCardData(event.dataTransfer);
+    if (draggedCard && validateStackAddition(stack.baseCard, draggedCard)) {
+      dispatch('addToStack', {
+        stackId: stack.id,
+        modifierCard: draggedCard
+      });
     }
-  }
-  
-  function canAcceptCard(draggedCard: FinancialCard): boolean {
-    // Can only add modifier cards to existing stacks
-    return draggedCard.role === 'modifier' && 
-           draggedCard.canStack === true &&
-           stack.baseCard.stackCategory !== undefined &&
-           draggedCard.compatibleWith?.includes(stack.baseCard.stackCategory) === true;
   }
   
   // Get stacking effects summary
@@ -196,6 +171,7 @@
 </div>
 
 <style>
+  /* === MAIN CONTAINER === */
   .stacked-card {
     width: 140px;
     height: 190px;
@@ -228,6 +204,7 @@
     filter: drop-shadow(0 0 20px rgba(74, 222, 128, 0.4));
   }
   
+  /* === CARD LAYERS === */
   .card-layer {
     position: absolute;
     top: 0;
@@ -244,6 +221,13 @@
     z-index: 2;
   }
   
+  /* Hide titles and indicators on modifier cards to show only base card name */
+  .modifier-card :global(.card-title),
+  .modifier-card :global(.card-type-container) {
+    opacity: 0;
+  }
+  
+  /* === MODIFIER OVERLAY === */
   .modifier-overlay {
     position: absolute;
     top: 0;
@@ -256,17 +240,12 @@
     pointer-events: none;
   }
   
-  /* Hide the card title and indicator on modifier cards so only base card name shows */
-  .modifier-card :global(.card-title),
-  .modifier-card :global(.card-type-container) {
-    opacity: 0;
-  }
-  
   .stacked-card:hover .modifier-overlay {
     border-color: rgba(200, 150, 255, 0.6);
     box-shadow: 0 5px 20px rgba(200, 150, 255, 0.3);
   }
   
+  /* === STACK INFO OVERLAY === */
   .stack-overlay {
     position: absolute;
     bottom: 0;
@@ -289,6 +268,7 @@
     justify-content: center;
   }
 
+  /* === SCROLLING INDICATOR === */
   .card-indicator {
     padding: 0.35rem 0.6rem;
     background: rgba(0, 0, 0, 0.4);
@@ -317,18 +297,15 @@
   }
 
   @keyframes scroll-banner {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-100%);
-    }
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
   }
 
   .stacked-card:hover .indicator-scroll {
     animation-play-state: paused;
   }
 
+  /* === INDICATOR TEXT STYLES === */
   .indicator-value {
     font-weight: 700;
   }
@@ -363,6 +340,7 @@
     color: #ef4444;
   }
 
+  /* === ACTION BUTTONS === */
   :global(.stacked-card .remove-btn) {
     position: absolute;
     top: 8px;
