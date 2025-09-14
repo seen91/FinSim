@@ -10,6 +10,7 @@
   export let stacks: CardStack[] = [];
   export let activeCardIds: Set<string> = new Set();
   export let activeStackIds: Set<string> = new Set();
+  export let unboundModifierCards: FinancialCard[] = [];
 
   const dispatch = createEventDispatcher();
 
@@ -164,6 +165,11 @@
     return 'baseCard' in item;
   }
 
+  // Check if a card is an unbound modifier (applies globally)
+  function isUnboundModifier(card: FinancialCard): boolean {
+    return unboundModifierCards.some(modifier => modifier.id === card.id);
+  }
+
   onMount(() => {
     if (allItems.length > responsiveMaxCards) {
       currentIndex = Math.max(0, allItems.length - responsiveMaxCards);
@@ -217,6 +223,7 @@
               isActive={false}
               showRemoveButton={false}
               showInfoButton={false}
+              isUnboundModifier={isUnboundModifier(item)}
             />
           {/if}
         </div>
@@ -248,6 +255,7 @@
               isActive={false}
               showRemoveButton={false}
               showInfoButton={false}
+              isUnboundModifier={isUnboundModifier(item)}
             />
           {/if}
         </div>
@@ -282,6 +290,7 @@
               card={item}
               isActive={activeCardIds.has(item.id)} 
               showRemoveButton={true}
+              isUnboundModifier={isUnboundModifier(item)}
               on:toggle={handleCardToggle}
               on:info={handleCardInfo}
               on:remove={handleCardRemove}

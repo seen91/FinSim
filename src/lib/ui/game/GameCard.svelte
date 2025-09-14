@@ -9,6 +9,7 @@
   export let isActive = true;
   export let showRemoveButton = false;
   export let showInfoButton = true;
+  export let isUnboundModifier = false; // True if this modifier applies globally
   
   const dispatch = createEventDispatcher();
   
@@ -76,6 +77,7 @@
   class:drag-over={isDragOver}
   class:can-be-stacked={card.canBeStacked && card.role === 'base'}
   class:can-stack={card.canStack && card.role === 'modifier'}
+  class:unbound-modifier={isUnboundModifier}
   on:click={handleClick}
   on:keydown
   role="button"
@@ -246,6 +248,46 @@
     opacity: 0.95;
     pointer-events: none;
     border: 1px solid rgba(120, 119, 198, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Unbound modifier styling - applies to all cards globally */
+  .game-card.unbound-modifier {
+    border: 2px solid rgba(255, 140, 0, 0.6);
+    background: linear-gradient(135deg, rgba(255, 140, 0, 0.1), rgba(255, 140, 0, 0.05));
+    box-shadow: 0 0 20px rgba(255, 140, 0, 0.3), 0 5px 15px rgba(0, 0, 0, 0.4);
+    position: relative;
+  }
+
+  .game-card.unbound-modifier::before {
+    content: '🌍';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 1rem;
+    opacity: 0.8;
+    z-index: 10;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+    filter: drop-shadow(0 0 4px rgba(255, 140, 0, 0.6));
+  }
+
+  .game-card.unbound-modifier:hover::after {
+    content: 'Applies to ALL cards in hand';
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 140, 0, 0.95);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 9999;
+    opacity: 1;
+    pointer-events: none;
+    border: 1px solid rgba(255, 165, 0, 0.8);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   }
   

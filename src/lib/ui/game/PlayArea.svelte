@@ -4,6 +4,7 @@
   import Chart from '../components/Chart.svelte';
   import Button from '../components/Button.svelte';
   import { createEventDispatcher } from 'svelte';
+  import { unboundModifierCards } from '$lib/core/stores/game-state';
 
   export let cards: FinancialCard[] = [];
   export let stacks: CardStack[] = [];
@@ -74,6 +75,7 @@
       {stacks}
       {activeCardIds}
       {activeStackIds}
+      unboundModifierCards={$unboundModifierCards}
       on:toggle={handleCardToggle}
       on:toggleStack={handleStackToggle}
       on:info={handleCardInfo}
