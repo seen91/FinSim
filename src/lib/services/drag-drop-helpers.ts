@@ -39,9 +39,7 @@ export function validateCardStacking(baseCard: FinancialCard, modifierCard: Fina
   return baseCard.role === 'base' && 
          baseCard.canBeStacked === true &&
          modifierCard.role === 'modifier' && 
-         modifierCard.canStack === true &&
-         baseCard.stackCategory !== undefined &&
-         modifierCard.compatibleWith?.includes(baseCard.stackCategory) === true;
+         modifierCard.canStack === true;
 }
 
 /**
@@ -49,7 +47,5 @@ export function validateCardStacking(baseCard: FinancialCard, modifierCard: Fina
  */
 export function validateStackAddition(stackBaseCard: FinancialCard, modifierCard: FinancialCard): boolean {
   return modifierCard.role === 'modifier' && 
-         modifierCard.canStack === true &&
-         stackBaseCard.stackCategory !== undefined &&
-         modifierCard.compatibleWith?.includes(stackBaseCard.stackCategory) === true;
+         modifierCard.canStack === true;
 }

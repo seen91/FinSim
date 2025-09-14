@@ -1,14 +1,15 @@
-export type CurveType = 'compound' | 'linear' | 'exponential' | 'custom';
+export type CurveType = 'compound' | 'linear' | 'exponential' | 'loan' | 'custom';
 
 export interface FinancialParameters {
   principal?: number;
   rate?: number;
   monthlyAmount?: number;
   customFormula?: string;
+  loanTerm?: number; // For loan type: loan term in years
 }
 
 export type CardRole = 'base' | 'modifier';
-export type StackCategory = 'income' | 'investment' | 'expense' | 'tax' | 'bonus';
+export type StackCategory = 'income' | 'investment' | 'expense' | 'tax' | 'bonus' | 'loan';
 
 export interface StackEffect {
   type: 'multiply' | 'add' | 'subtract' | 'percentage' | 'custom';

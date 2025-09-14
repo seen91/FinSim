@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { CardStack, FinancialCard } from '$lib/core/types';
-  import { formatCardValue, isPositiveCard, isNegativeCard } from '$lib/services/card-formatter';
+    import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard, isLoanCard } from '$lib/services/card-formatter';
   import { parseDragCardData, validateStackAddition } from '$lib/services/drag-drop-helpers';
   import Button from '../components/Button.svelte';
   import GameCard from './GameCard.svelte';
@@ -143,6 +143,7 @@
           class="card-indicator" 
           class:positive={isPositiveCard(stack.baseCard)}
           class:negative={isNegativeCard(stack.baseCard)}
+          class:loan={isLoanCard(stack.baseCard)}
         >
           <div class="indicator-scroll">
             <span class="indicator-content">
@@ -406,6 +407,12 @@
     background: rgba(239, 68, 68, 0.2);
     border-color: rgba(239, 68, 68, 0.3);
     color: #ef4444;
+  }
+
+  .card-indicator.loan {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: rgba(251, 191, 36, 0.3);
+    color: #fbbf24;
   }
 
   /* === ACTION BUTTONS === */

@@ -96,7 +96,8 @@ export function calculateProjections(
   const handCardsForModifiers = allHandCards || cards;
   
   // Get unbound modifier cards that should apply to all cards
-  const unboundModifiers = getUnboundModifierCards(handCardsForModifiers, stacks);
+  // Only use ACTIVE cards for unbound modifiers (cards that are passed in, not allHandCards)
+  const unboundModifiers = getUnboundModifierCards(cards, stacks);
   
   // Calculate projections for individual cards (non-modifier cards not in stacks)
   const stackedCardIds = new Set<string>();

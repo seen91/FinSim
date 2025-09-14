@@ -68,7 +68,8 @@
               </div>
               <span class="card-mini-value" 
                     class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
-                    class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
+                    class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}
+                    class:loan={card.type === 'loan'}>
                 {card.parameters.rate ? `${card.parameters.rate > 0 ? '+' : ''}${card.parameters.rate}%` : 
                  card.parameters.monthlyAmount ? `${card.parameters.monthlyAmount > 0 ? '+' : ''}${(card.parameters.monthlyAmount / 1000).toFixed(1)}k/mo` : ''}
               </span>
@@ -189,6 +190,10 @@
   
   .card-mini-value.negative {
     color: #ef4444;
+  }
+
+  .card-mini-value.loan {
+    color: #fbbf24;
   }
   
   .card-mini-name {

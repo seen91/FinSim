@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FinancialCard } from '$lib/core/types';
-  import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard } from '$lib/services/card-formatter';
+  import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard, isLoanCard } from '$lib/services/card-formatter';
   import { createDragCardData, parseDragCardData, validateCardStacking } from '$lib/services/drag-drop-helpers';
   import Button from '../components/Button.svelte';
   import { createEventDispatcher } from 'svelte';
@@ -109,6 +109,7 @@
         class="card-indicator" 
         class:positive={isPositiveCard(card)}
         class:negative={isNegativeCard(card)}
+        class:loan={isLoanCard(card)}
       >
         <div class="indicator-scroll">
           <span class="indicator-content">
@@ -216,7 +217,8 @@
   }
   
   .game-card.can-be-stacked {
-    /* Base cards that can accept stacks - no special border styling */
+    /* Base cards that can accept stacks */
+    position: relative;
   }
   
   .game-card.can-be-stacked:not(.drag-over)::after {
@@ -459,6 +461,12 @@
     background: rgba(239, 68, 68, 0.2);
     border-color: rgba(239, 68, 68, 0.3);
     color: #ef4444;
+  }
+
+  .card-indicator.loan {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: rgba(251, 191, 36, 0.3);
+    color: #fbbf24;
   }
 
   :global(.game-card .remove-btn) {

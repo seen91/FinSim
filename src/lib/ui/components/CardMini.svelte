@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FinancialCard } from '$lib/core/types';
-  import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard } from '$lib/services/card-formatter';
+  import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard, isLoanCard } from '$lib/services/card-formatter';
   import { createEventDispatcher } from 'svelte';
 
   export let card: FinancialCard;
@@ -42,6 +42,7 @@
         class="card-mini-value"
         class:positive={isPositiveCard(card)}
         class:negative={isNegativeCard(card)}
+        class:loan={isLoanCard(card)}
       >
         {formatCardValue(card)}
       </span>
@@ -117,6 +118,10 @@
   
   .card-mini-value.negative {
     color: #ef4444;
+  }
+
+  .card-mini-value.loan {
+    color: #fbbf24;
   }
   
   .card-mini-name {

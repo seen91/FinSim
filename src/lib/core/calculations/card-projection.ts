@@ -22,6 +22,8 @@ function calculateCardValue(card: FinancialCard, t: number, year: number): numbe
       return calculateLinearValue(card, t);
     case 'exponential':
       return calculateExponentialValue(card, t);
+    case 'loan':
+      return calculateLoanValue(card, t);
     case 'custom':
       return calculateCustomValue(card, t, year);
     default:
@@ -45,6 +47,63 @@ function calculateExponentialValue(card: FinancialCard, t: number): number {
   const P0 = card.parameters.principal || 0;
   const rate = (card.parameters.rate || 0) / 100;
   return P0 * Math.exp(rate * t);
+}
+
+function calculateLoanValue(card: FinancialCard, t: number): number {
+  const principal = card.parameters.principal || 0;
+  const annualRate = (card.parameters.rate || 0) / 100;
+  const termYears = card.parameters.loanTerm || 10;
+  const monthlyAmount = card.parameters.monthlyAmount || 0;
+  
+  // Handle margin loan style (monthly borrowing with no fixed payback)
+  if (monthlyAmount < 0 && principal === 0) {
+    // This is a margin loan - borrowing monthly with accumulating interest
+    const monthlyRate = annualRate / 12;
+    const months = t * 12;
+    
+    if (months === 0) return 0;
+    
+    // Calculate accumulated debt from monthly borrowing with compound interest
+    let totalDebt = 0;
+    const monthlyBorrow = Math.abs(monthlyAmount);
+    
+    // For each month, add the monthly borrow amount and compound the interest
+    for (let month = 1; month <= months; month++) {
+      // Add this month's borrowing
+      totalDebt += monthlyBorrow;
+      // Apply monthly interest to the accumulated debt
+      totalDebt *= (1 + monthlyRate);
+    }
+    
+    return -totalDebt; // Negative because it's debt
+  }
+  
+  // Handle traditional fixed-term loans
+  if (t > termYears) {
+    // After loan is paid off, no benefit remains
+    return 0;
+  }
+  
+  // Monthly interest rate
+  const monthlyRate = annualRate / 12;
+  const totalPayments = termYears * 12;
+  
+  // Calculate monthly payment using standard amortization formula
+  let monthlyPayment = 0;
+  if (monthlyRate > 0) {
+    const numerator = monthlyRate * Math.pow(1 + monthlyRate, totalPayments);
+    const denominator = Math.pow(1 + monthlyRate, totalPayments) - 1;
+    monthlyPayment = principal * (numerator / denominator);
+  } else {
+    // If no interest, it's just principal divided by number of payments
+    monthlyPayment = principal / totalPayments;
+  }
+  
+  // Calculate net benefit: initial principal minus cumulative payments made so far
+  const annualPayment = monthlyPayment * 12;
+  const totalPaymentsMade = annualPayment * t;
+  
+  return principal - totalPaymentsMade;
 }
 
 function calculateCustomValue(card: FinancialCard, t: number, year: number): number {

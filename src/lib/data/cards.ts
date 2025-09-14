@@ -172,3 +172,45 @@ export const bonusCards: FinancialCard[] = [
     }]
   }
 ];
+
+// Loan cards for borrowing against assets or traditional loans
+export const loanCards: FinancialCard[] = [
+  {
+    id: 'personal-loan',
+    name: 'Personal Loan',
+    type: 'loan',
+    parameters: { principal: 10000, rate: 5, loanTerm: 10 },
+    timeRange: [2025, 2035],
+    color: '#ea580c',
+    description: 'Personal loan example',
+    detailedInfo: {
+      strategy: 'Example: $10k initial loan with 5% interest over 10 years. Traditional unsecured personal loan.',
+      timeCommitment: '10 years fixed term'
+    },
+    role: 'base',
+    stackCategory: 'loan',
+    canBeStacked: true,
+    canStack: false
+  },
+  {
+    id: 'margin-loan-monthly',
+    name: 'Margin Loan (Monthly)',
+    type: 'loan',
+    parameters: { principal: 0, rate: 2, monthlyAmount: -1000, loanTerm: 100 }, // Very long term to simulate no payback
+    timeRange: [2025, 2045],
+    color: '#f59e0b',
+    description: 'Margin loan with monthly draws',
+    detailedInfo: {
+      strategy: 'Example: $1k monthly borrowing with 2% interest rate. Borrowed money grows at same rate as underlying asset, creating 6.5% net spread (8.5% - 2%).',
+      timeCommitment: 'Ongoing - no fixed payback schedule'
+    },
+    role: 'modifier',
+    canStack: true,
+    compatibleWith: ['investment', 'income'],
+    stackEffects: [{
+      type: 'custom',
+      formula: 'baseValue + (12000 * t * 0.065)', // $12k borrowed per year earning 6.5% spread (8.5% investment - 2% loan cost)
+      description: '$1k monthly borrowing creating 6.5% annual spread'
+    }]
+  }
+];

@@ -31,7 +31,7 @@
         selectedModifierCard = null;
         dispatch('stackCreated');
       } else {
-        alert('These cards are not compatible for stacking!');
+        alert('Failed to create stack!');
       }
     }
   }
@@ -48,7 +48,7 @@
 
 <div class="stack-builder">
   <h3>🏗️ Stack Builder</h3>
-  <p>Select a base card and a modifier card to create a stack.</p>
+  <p>Select a base card and a modifier card to create a stack. Any modifier can be stacked on any base card.</p>
   
   <div class="selection-area">
     <div class="card-group">
@@ -61,7 +61,7 @@
             on:click={() => selectBaseCard(card)}
           >
             {card.name}
-            <small>{card.stackCategory}</small>
+            <small>Base card</small>
           </button>
         {/each}
       </div>
@@ -76,11 +76,10 @@
           <button 
             class="card-option" 
             class:selected={selectedModifierCard?.id === card.id}
-            class:compatible={selectedBaseCard && selectedBaseCard.stackCategory && card.compatibleWith?.includes(selectedBaseCard.stackCategory)}
             on:click={() => selectModifierCard(card)}
           >
             {card.name}
-            <small>Works with: {card.compatibleWith?.join(', ') || 'none'}</small>
+            <small>Modifier card</small>
           </button>
         {/each}
       </div>
@@ -167,11 +166,6 @@
   .card-option.selected {
     background: rgba(120, 119, 198, 0.3);
     border-color: rgba(120, 119, 198, 0.5);
-  }
-
-  .card-option.compatible {
-    background: rgba(74, 222, 128, 0.2);
-    border-color: rgba(74, 222, 128, 0.3);
   }
 
   .card-option small {

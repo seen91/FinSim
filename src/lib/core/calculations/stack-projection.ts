@@ -83,10 +83,6 @@ export function validateStackCompatibility(baseCard: any, modifierCard: any): bo
     return false;
   }
   
-  // Check category compatibility
-  if (modifierCard.compatibleWith && baseCard.stackCategory) {
-    return modifierCard.compatibleWith.includes(baseCard.stackCategory);
-  }
-  
+  // All modifier cards can now stack on all base cards
   return true;
 }
