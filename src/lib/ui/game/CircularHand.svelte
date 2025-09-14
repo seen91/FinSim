@@ -1,12 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { FinancialCard } from '$lib/core/types';
+  import type { FinancialCard, CardStack } from '$lib/core/types';
   import { getVisibleCards, calculateResponsiveMaxCards, calculateCardArcStyle, calculateStackCardStyle } from '$lib/services/ui-helpers';
   import GameCard from './GameCard.svelte';
+  import StackedCard from './StackedCard.svelte';
   import { createEventDispatcher } from 'svelte';
 
   export let cards: FinancialCard[] = [];
+  export let stacks: CardStack[] = [];
   export let activeCardIds: Set<string> = new Set();
+  export let activeStackIds: Set<string> = new Set();
 
   const dispatch = createEventDispatcher();
 
@@ -19,14 +22,16 @@
   let touchStartY = 0;
   let isSwiping = false;
 
+  // Combine cards and stacks into a single display list
+  $: allItems = [...cards, ...stacks];
   $: responsiveMaxCards = calculateResponsiveMaxCards(innerWidth);
-  $: visibleCards = getVisibleCards(cards, currentIndex, responsiveMaxCards);
+  $: visibleItems = getVisibleCards(allItems, currentIndex, responsiveMaxCards);
   $: canScrollLeft = currentIndex > 0;
-  $: canScrollRight = currentIndex + responsiveMaxCards < cards.length;
+  $: canScrollRight = currentIndex + responsiveMaxCards < allItems.length;
   
-  // Get preview cards for left and right stacks
-  $: leftPreviewCards = currentIndex > 0 ? cards.slice(Math.max(0, currentIndex - 2), currentIndex) : [];
-  $: rightPreviewCards = canScrollRight ? cards.slice(currentIndex + responsiveMaxCards, Math.min(cards.length, currentIndex + responsiveMaxCards + 2)) : [];
+  // Get preview items for left and right stacks
+  $: leftPreviewItems = currentIndex > 0 ? allItems.slice(Math.max(0, currentIndex - 2), currentIndex) : [];
+  $: rightPreviewItems = canScrollRight ? allItems.slice(currentIndex + responsiveMaxCards, Math.min(allItems.length, currentIndex + responsiveMaxCards + 2)) : [];
 
   function scrollLeft() {
     if (canScrollLeft) {
@@ -36,7 +41,7 @@
 
   function scrollRight() {
     if (canScrollRight) {
-      currentIndex = Math.min(cards.length - responsiveMaxCards, currentIndex + 1);
+      currentIndex = Math.min(allItems.length - responsiveMaxCards, currentIndex + 1);
     }
   }
 
@@ -44,12 +49,32 @@
     dispatch('toggle', event.detail);
   }
 
+  function handleStackToggle(event: CustomEvent<CardStack>) {
+    dispatch('toggleStack', event.detail);
+  }
+
   function handleCardInfo(event: CustomEvent<FinancialCard>) {
     dispatch('info', event.detail);
   }
 
+  function handleStackInfo(event: CustomEvent<CardStack>) {
+    dispatch('stackInfo', event.detail);
+  }
+
   function handleCardRemove(event: CustomEvent<FinancialCard>) {
     dispatch('remove', event.detail);
+  }
+
+  function handleStackRemove(event: CustomEvent<CardStack>) {
+    dispatch('removeStack', event.detail);
+  }
+
+  function handleStackUnstack(event: CustomEvent<CardStack>) {
+    dispatch('unstack', event.detail);
+  }
+  
+  function handleStackCards(event: CustomEvent<{baseCard: FinancialCard, modifierCard: FinancialCard}>) {
+    dispatch('stackCards', event.detail);
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -64,7 +89,7 @@
 
   // Mouse wheel scrolling
   function handleWheel(event: WheelEvent) {
-    if (cards.length <= responsiveMaxCards) return;
+    if (allItems.length <= responsiveMaxCards) return;
     
     event.preventDefault();
     const delta = event.deltaY || event.deltaX;
@@ -78,7 +103,7 @@
 
   // Touch/swipe handling
   function handleTouchStart(event: TouchEvent) {
-    if (cards.length <= responsiveMaxCards) return;
+    if (allItems.length <= responsiveMaxCards) return;
     
     const touch = event.touches[0];
     touchStartX = touch.clientX;
@@ -87,7 +112,7 @@
   }
 
   function handleTouchMove(event: TouchEvent) {
-    if (cards.length <= responsiveMaxCards) return;
+    if (allItems.length <= responsiveMaxCards) return;
     
     const touch = event.touches[0];
     const deltaX = touch.clientX - touchStartX;
@@ -101,7 +126,7 @@
   }
 
   function handleTouchEnd(event: TouchEvent) {
-    if (cards.length <= responsiveMaxCards || !isSwiping) return;
+    if (allItems.length <= responsiveMaxCards || !isSwiping) return;
     
     const touch = event.changedTouches[0];
     const deltaX = touch.clientX - touchStartX;
@@ -130,17 +155,22 @@
     }
   }
 
+  // Check if item is a card stack (has baseCard property)
+  function isStack(item: FinancialCard | CardStack): item is CardStack {
+    return 'baseCard' in item;
+  }
+
   onMount(() => {
-    if (cards.length > responsiveMaxCards) {
-      currentIndex = Math.max(0, cards.length - responsiveMaxCards);
+    if (allItems.length > responsiveMaxCards) {
+      currentIndex = Math.max(0, allItems.length - responsiveMaxCards);
     }
   });
 
   $: {
-    if (cards.length <= responsiveMaxCards) {
+    if (allItems.length <= responsiveMaxCards) {
       currentIndex = 0;
-    } else if (currentIndex >= cards.length - responsiveMaxCards + 1) {
-      currentIndex = Math.max(0, cards.length - responsiveMaxCards);
+    } else if (currentIndex >= allItems.length - responsiveMaxCards + 1) {
+      currentIndex = Math.max(0, allItems.length - responsiveMaxCards);
     }
   }
 </script>
@@ -157,71 +187,102 @@
   role="application"
   aria-label="Card hand - use arrow keys, mouse wheel, or swipe to navigate"
 >
-  <div class="cards-container" class:empty={visibleCards.length === 0}>
-    <!-- Left stack preview cards -->
-    {#if leftPreviewCards.length > 0}
-      {#each leftPreviewCards as card, index (card.id)}
+  <div class="cards-container" class:empty={visibleItems.length === 0}>
+    <!-- Left stack preview items -->
+    {#if leftPreviewItems.length > 0}
+      {#each leftPreviewItems as item, index (isStack(item) ? item.id : item.id)}
         <div 
           class="card-position stack-card-preview left-preview" 
-          style={calculateStackCardStyle(index, leftPreviewCards.length, 'left', -250)}
+          style={calculateStackCardStyle(index, leftPreviewItems.length, 'left', -250)}
           on:click={scrollLeft}
           on:keydown={(event) => handleStackKeydown(event, 'left')}
           role="button"
           tabindex="0"
           aria-label="Show previous cards"
         >
-          <GameCard 
-            {card}
-            isActive={false}
-            showRemoveButton={false}
-            showInfoButton={false}
-          />
+          {#if isStack(item)}
+            <StackedCard 
+              stack={item}
+              isActive={false}
+              showRemoveButton={false}
+              showInfoButton={false}
+            />
+          {:else}
+            <GameCard 
+              card={item}
+              isActive={false}
+              showRemoveButton={false}
+              showInfoButton={false}
+            />
+          {/if}
         </div>
       {/each}
     {/if}
 
-    <!-- Right stack preview cards -->
-    {#if rightPreviewCards.length > 0}
-      {#each rightPreviewCards as card, index (card.id)}
+    <!-- Right stack preview items -->
+    {#if rightPreviewItems.length > 0}
+      {#each rightPreviewItems as item, index (isStack(item) ? item.id : item.id)}
         <div 
           class="card-position stack-card-preview right-preview" 
-          style={calculateStackCardStyle(index, rightPreviewCards.length, 'right', 250)}
+          style={calculateStackCardStyle(index, rightPreviewItems.length, 'right', 250)}
           on:click={scrollRight}
           on:keydown={(event) => handleStackKeydown(event, 'right')}
           role="button"
           tabindex="0"
           aria-label="Show next cards"
         >
-          <GameCard 
-            {card}
-            isActive={false}
-            showRemoveButton={false}
-            showInfoButton={false}
-          />
+          {#if isStack(item)}
+            <StackedCard 
+              stack={item}
+              isActive={false}
+              showRemoveButton={false}
+              showInfoButton={false}
+            />
+          {:else}
+            <GameCard 
+              card={item}
+              isActive={false}
+              showRemoveButton={false}
+              showInfoButton={false}
+            />
+          {/if}
         </div>
       {/each}
     {/if}
 
-    {#if visibleCards.length === 0}
+    {#if visibleItems.length === 0}
       <div class="empty-hand">
         <div class="empty-icon">🎴</div>
         <p>Your hand is empty</p>
         <small>Add cards from the decks on the left</small>
       </div>
     {:else}
-      {#each visibleCards as card, index (card.id)}
+      {#each visibleItems as item, index (isStack(item) ? item.id : item.id)}
         <div 
           class="card-position" 
-          style={calculateCardArcStyle(index, visibleCards.length)}
+          style={calculateCardArcStyle(index, visibleItems.length)}
         >
-          <GameCard 
-            {card}
-            isActive={activeCardIds.has(card.id)} 
-            showRemoveButton={true}
-            on:toggle={handleCardToggle}
-            on:info={handleCardInfo}
-            on:remove={handleCardRemove}
-          />
+          {#if isStack(item)}
+            <StackedCard 
+              stack={item}
+              isActive={activeStackIds.has(item.id)}
+              showRemoveButton={true}
+              on:toggle={handleStackToggle}
+              on:info={handleStackInfo}
+              on:remove={handleStackRemove}
+              on:unstack={handleStackUnstack}
+            />
+          {:else}
+            <GameCard 
+              card={item}
+              isActive={activeCardIds.has(item.id)} 
+              showRemoveButton={true}
+              on:toggle={handleCardToggle}
+              on:info={handleCardInfo}
+              on:remove={handleCardRemove}
+              on:stackCards={handleStackCards}
+            />
+          {/if}
         </div>
       {/each}
     {/if}

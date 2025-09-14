@@ -1,8 +1,9 @@
 <script lang="ts">
-  import type { FinancialCard } from '$lib/core/types';
+  import type { FinancialCard, CardStack } from '$lib/core/types';
   import Button from './Button.svelte';
   
   export let card: FinancialCard | null = null;
+  export let stack: CardStack | null = null;
   export let isOpen = false;
   
   function closeModal() {
@@ -44,11 +45,19 @@
       default: return '⚙️';
     }
   }
+  
+  function getRoleIcon(role: string): string {
+    switch (role) {
+      case 'base': return '🏗️';
+      case 'modifier': return '⚡';
+      default: return '🎴';
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleGlobalKeydown} />
 
-{#if isOpen && card}
+{#if isOpen && (card || stack)}
   <div 
     class="modal-backdrop" 
     on:click={handleBackdropClick}
@@ -61,15 +70,29 @@
       <!-- Header -->
       <div class="modal-header">
         <div class="card-header-info">
-          <div class="card-icon" style="background: {card.color}20">
-            <div class="card-icon-symbol">
-              {getCardIcon(card.type)}
+          {#if card}
+            <div class="card-icon" style="background: {card.color}20">
+              <div class="card-icon-symbol">
+                {getCardIcon(card.type)}
+              </div>
             </div>
-          </div>
-          <div>
-            <h2 class="card-title">{card.name}</h2>
-            <p class="card-type">{card.type.toUpperCase()}</p>
-          </div>
+            <div>
+              <h2 class="card-title">{card.name}</h2>
+              <p class="card-type">{card.type.toUpperCase()} • {getRoleIcon(card.role)} {card.role.toUpperCase()}</p>
+            </div>
+          {:else if stack}
+            <div class="card-icon" style="background: {stack.baseCard.color}20">
+              <div class="card-icon-symbol">
+                🏗️⚡
+              </div>
+            </div>
+            <div>
+              <h2 class="card-title">Stacked: {stack.baseCard.name}</h2>
+              <p class="card-type">
+                {stack.baseCard.type.toUpperCase()} • {stack.modifierCards.length} MODIFIER{stack.modifierCards.length !== 1 ? 'S' : ''}
+              </p>
+            </div>
+          {/if}
         </div>
         <Button
           variant="secondary"
@@ -82,29 +105,94 @@
       
       <!-- Content -->
       <div class="modal-body">
-        {#if card.detailedInfo}
-          <!-- Strategy Description -->
-          <section class="info-section">
-            <h3>Strategy Overview</h3>
-            <p class="strategy-description">{card.detailedInfo.strategy}</p>
-          </section>
-          
-          <!-- Key Metrics -->
-          <section class="info-section">
-            <h3>Key Metrics</h3>
-            <div class="metrics-grid">
-              <div class="metric-item">
-                <span class="metric-label">Time Commitment</span>
-                <span class="metric-value">{card.detailedInfo.timeCommitment}</span>
+        {#if card}
+          {#if card.detailedInfo}
+            <!-- Strategy Description -->
+            <section class="info-section">
+              <h3>Strategy Overview</h3>
+              <p class="strategy-description">{card.detailedInfo.strategy}</p>
+            </section>
+            
+            <!-- Key Metrics -->
+            <section class="info-section">
+              <h3>Key Metrics</h3>
+              <div class="metrics-grid">
+                <div class="metric-item">
+                  <span class="metric-label">Time Commitment</span>
+                  <span class="metric-value">{card.detailedInfo.timeCommitment}</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Parameters</span>
+                  <span class="metric-value">{formatParameters(card)}</span>
+                </div>
+                {#if card.role === 'base' && card.stackCategory}
+                  <div class="metric-item">
+                    <span class="metric-label">Stack Category</span>
+                    <span class="metric-value">{card.stackCategory.toUpperCase()}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">Can Be Stacked</span>
+                    <span class="metric-value">{card.canBeStacked ? 'Yes' : 'No'}</span>
+                  </div>
+                {:else if card.role === 'modifier'}
+                  <div class="metric-item">
+                    <span class="metric-label">Can Stack On</span>
+                    <span class="metric-value">{card.compatibleWith ? card.compatibleWith.join(', ').toUpperCase() : 'None'}</span>
+                  </div>
+                  {#if card.stackEffects && card.stackEffects.length > 0}
+                    <div class="metric-item full-width">
+                      <span class="metric-label">Stack Effects</span>
+                      <div class="effects-list">
+                        {#each card.stackEffects as effect}
+                          <span class="effect-item">{effect.description}</span>
+                        {/each}
+                      </div>
+                    </div>
+                  {/if}
+                {/if}
               </div>
-              <div class="metric-item">
-                <span class="metric-label">Parameters</span>
-                <span class="metric-value">{formatParameters(card)}</span>
-              </div>
+            </section>
+          {:else}
+            <p class="no-details">No detailed information available for this card.</p>
+          {/if}
+        {:else if stack}
+          <!-- Stack Information -->
+          <section class="info-section">
+            <h3>Base Card: {stack.baseCard.name}</h3>
+            <p class="strategy-description">{stack.baseCard.detailedInfo?.strategy || 'Base financial instrument'}</p>
+            <div class="stack-parameters">
+              <strong>Parameters:</strong> {formatParameters(stack.baseCard)}
             </div>
           </section>
-        {:else}
-          <p class="no-details">No detailed information available for this card.</p>
+          
+          <section class="info-section">
+            <h3>Applied Modifiers</h3>
+            <div class="modifiers-list">
+              {#each stack.modifierCards as modifier, index}
+                <div class="modifier-card">
+                  <div class="modifier-header">
+                    <span class="modifier-name">{modifier.name}</span>
+                    <span class="modifier-role">{getRoleIcon(modifier.role)} {modifier.role.toUpperCase()}</span>
+                  </div>
+                  {#if modifier.stackEffects}
+                    <div class="modifier-effects">
+                      {#each modifier.stackEffects as effect}
+                        <span class="effect-tag">{effect.description}</span>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </section>
+          
+          <section class="info-section">
+            <h3>Combined Effect</h3>
+            <p class="strategy-description">
+              This stack applies {stack.modifierCards.length} modifier effect{stack.modifierCards.length !== 1 ? 's' : ''} 
+              to the base "{stack.baseCard.name}" card, modifying its financial projections according to the stacked effects.
+            </p>
+          </section>
         {/if}
       </div>
     </div>
@@ -253,6 +341,78 @@
     color: #888;
     font-style: italic;
     padding: 2rem;
+  }
+  
+  .full-width {
+    grid-column: 1 / -1;
+  }
+  
+  .effects-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .effect-item {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  
+  .stack-parameters {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    color: #e5e5e5;
+  }
+  
+  .modifiers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .modifier-card {
+    padding: 1rem;
+    background: rgba(200, 150, 255, 0.1);
+    border: 1px solid rgba(200, 150, 255, 0.2);
+    border-radius: 8px;
+  }
+  
+  .modifier-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  
+  .modifier-name {
+    font-weight: 600;
+    color: #c896ff;
+  }
+  
+  .modifier-role {
+    font-size: 0.8rem;
+    color: #888;
+  }
+  
+  .modifier-effects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .effect-tag {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
   }
   
   @media (max-width: 640px) {

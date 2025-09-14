@@ -11,6 +11,9 @@
   
   const dispatch = createEventDispatcher();
   
+  let isDragging = false;
+  let isDragOver = false;
+  
   function handleClick() {
     dispatch('toggle', card);
   }
@@ -24,15 +27,95 @@
     event.stopPropagation();
     dispatch('remove', card);
   }
+  
+  // Drag and drop handlers
+  function handleDragStart(event: DragEvent) {
+    if (!event.dataTransfer) return;
+    isDragging = true;
+    event.dataTransfer.setData('application/json', JSON.stringify({
+      type: 'card',
+      card: card
+    }));
+    event.dataTransfer.effectAllowed = 'move';
+  }
+  
+  function handleDragEnd() {
+    isDragging = false;
+  }
+  
+  function handleDragOver(event: DragEvent) {
+    event.preventDefault();
+    if (!event.dataTransfer) return;
+    
+    // Check if we can accept the drop
+    const data = event.dataTransfer.getData('application/json');
+    if (data) {
+      try {
+        const draggedData = JSON.parse(data);
+        if (draggedData.type === 'card' && canAcceptCard(draggedData.card)) {
+          isDragOver = true;
+          event.dataTransfer.dropEffect = 'move';
+        }
+      } catch (e) {
+        // Invalid data
+      }
+    }
+  }
+  
+  function handleDragLeave() {
+    isDragOver = false;
+  }
+  
+  function handleDrop(event: DragEvent) {
+    event.preventDefault();
+    isDragOver = false;
+    
+    if (!event.dataTransfer) return;
+    
+    const data = event.dataTransfer.getData('application/json');
+    if (data) {
+      try {
+        const draggedData = JSON.parse(data);
+        if (draggedData.type === 'card' && canAcceptCard(draggedData.card)) {
+          dispatch('stackCards', {
+            baseCard: card,
+            modifierCard: draggedData.card
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing dropped data:', e);
+      }
+    }
+  }
+  
+  function canAcceptCard(draggedCard: FinancialCard): boolean {
+    // Can only stack if this card is a base card and the dragged card is a modifier
+    return card.role === 'base' && 
+           card.canBeStacked === true &&
+           draggedCard.role === 'modifier' && 
+           draggedCard.canStack === true &&
+           card.stackCategory !== undefined &&
+           draggedCard.compatibleWith?.includes(card.stackCategory) === true;
+  }
 </script>
 
 <div 
   class="game-card" 
   class:inactive={!isActive}
+  class:dragging={isDragging}
+  class:drag-over={isDragOver}
+  class:can-be-stacked={card.canBeStacked && card.role === 'base'}
+  class:can-stack={card.canStack && card.role === 'modifier'}
   on:click={handleClick}
   on:keydown
   role="button"
   tabindex="0"
+  draggable={card.role === 'modifier' && card.canStack && isActive}
+  on:dragstart={handleDragStart}
+  on:dragend={handleDragEnd}
+  on:dragover={handleDragOver}
+  on:dragleave={handleDragLeave}
+  on:drop={handleDrop}
 >
   {#if showRemoveButton}
     <Button
@@ -115,6 +198,12 @@
     z-index: 5;
   }
   
+  /* Only allow overflow visible for standalone cards with stack indicators */
+  .game-card.can-stack:hover,
+  .game-card.can-be-stacked:hover {
+    overflow: visible;
+  }
+  
   .game-card:hover:not(.inactive) {
     transform: translateY(-30px) scale(1.1);
     border-color: rgba(120, 119, 198, 0.6);
@@ -132,6 +221,95 @@
   .game-card.inactive:hover {
     transform: translateY(40px) scale(1.05);
     opacity: 0.7;
+  }
+  
+  .game-card.can-stack {
+    cursor: grab;
+  }
+  
+  .game-card.can-stack:active {
+    cursor: grabbing;
+  }
+  
+  .game-card.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg) scale(0.9);
+    z-index: 100;
+  }
+  
+  .game-card.drag-over {
+    border-color: rgba(74, 222, 128, 0.8) !important;
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.4), 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    transform: translateY(-10px) scale(1.05);
+  }
+  
+  .game-card.can-be-stacked {
+    /* Base cards that can accept stacks - no special border styling */
+  }
+  
+  .game-card.can-be-stacked:not(.drag-over)::after {
+    content: '🏗️';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -20px);
+    font-size: 1.2rem;
+    opacity: 0.6;
+    z-index: 15;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    cursor: help;
+  }
+  
+  .game-card.can-be-stacked:hover:not(.drag-over)::before {
+    content: 'Drop modifier cards here to stack';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 10px);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    z-index: 9999;
+    opacity: 0.95;
+    pointer-events: none;
+    border: 1px solid rgba(120, 119, 198, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  }
+  
+  .game-card.can-stack:not(.dragging)::before {
+    content: '⚡';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -20px);
+    font-size: 1.2rem;
+    opacity: 0.8;
+    z-index: 15;
+    color: #fbbf24;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    cursor: help;
+  }
+  
+  .game-card.can-stack:hover::after {
+    content: 'Drag onto base cards to stack';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 10px);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    z-index: 9999;
+    opacity: 0.95;
+    pointer-events: none;
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   }
   
   .card-inner {
@@ -176,7 +354,7 @@
     width: 100%;
     justify-content: center;
     position: relative;
-    z-index: 3;
+    z-index: 2;
     margin-top: 3rem;
   }
 

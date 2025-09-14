@@ -1,11 +1,19 @@
-import type { FinancialCard, TimeSeriesPoint } from '../types';
+import type { FinancialCard, TimeSeriesPoint, CardStack } from '../types';
 import { calculateCardProjection } from './card-projection';
+import { calculateStackProjection } from './stack-projection';
 
-export function calculateProjections(cards: FinancialCard[]): TimeSeriesPoint[] {
+export function calculateProjections(cards: FinancialCard[], stacks: CardStack[] = []): TimeSeriesPoint[] {
   const allPoints: TimeSeriesPoint[] = [];
   
+  // Calculate projections for individual cards
   cards.forEach(card => {
     const points = calculateCardProjection(card);
+    allPoints.push(...points);
+  });
+  
+  // Calculate projections for card stacks
+  stacks.forEach(stack => {
+    const points = calculateStackProjection(stack);
     allPoints.push(...points);
   });
   

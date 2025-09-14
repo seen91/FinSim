@@ -1,12 +1,14 @@
 <script lang="ts">
-  import type { FinancialCard } from '$lib/core/types';
+  import type { FinancialCard, CardStack } from '$lib/core/types';
   import CircularHand from './CircularHand.svelte';
   import Chart from '../components/Chart.svelte';
   import Button from '../components/Button.svelte';
   import { createEventDispatcher } from 'svelte';
 
   export let cards: FinancialCard[] = [];
+  export let stacks: CardStack[] = [];
   export let activeCardIds: Set<string> = new Set();
+  export let activeStackIds: Set<string> = new Set();
   
   const dispatch = createEventDispatcher();
   
@@ -14,12 +16,32 @@
     dispatch('toggleCard', event.detail);
   }
   
+  function handleStackToggle(event: CustomEvent<CardStack>) {
+    dispatch('toggleStack', event.detail);
+  }
+  
   function handleCardInfo(event: CustomEvent<FinancialCard>) {
     dispatch('showCardInfo', event.detail);
   }
   
+  function handleStackInfo(event: CustomEvent<CardStack>) {
+    dispatch('showStackInfo', event.detail);
+  }
+  
   function handleCardRemove(event: CustomEvent<FinancialCard>) {
     dispatch('removeCard', event.detail);
+  }
+  
+  function handleStackRemove(event: CustomEvent<CardStack>) {
+    dispatch('removeStack', event.detail);
+  }
+  
+  function handleUnstack(event: CustomEvent<CardStack>) {
+    dispatch('unstack', event.detail);
+  }
+  
+  function handleStackCards(event: CustomEvent<{baseCard: FinancialCard, modifierCard: FinancialCard}>) {
+    dispatch('stackCards', event.detail);
   }
 </script>
 
@@ -45,10 +67,17 @@
   <div class="hand-area">
     <CircularHand 
       {cards}
+      {stacks}
       {activeCardIds}
+      {activeStackIds}
       on:toggle={handleCardToggle}
+      on:toggleStack={handleStackToggle}
       on:info={handleCardInfo}
+      on:stackInfo={handleStackInfo}
       on:remove={handleCardRemove}
+      on:removeStack={handleStackRemove}
+      on:unstack={handleUnstack}
+      on:stackCards={handleStackCards}
     />
   </div>
 </main>
