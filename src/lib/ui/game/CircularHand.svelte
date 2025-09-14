@@ -76,6 +76,10 @@
   function handleStackCards(event: CustomEvent<{baseCard: FinancialCard, modifierCard: FinancialCard}>) {
     dispatch('stackCards', event.detail);
   }
+  
+  function handleAddToStack(event: CustomEvent<{stackId: string, modifierCard: FinancialCard}>) {
+    dispatch('addToStack', event.detail);
+  }
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'ArrowLeft') {
@@ -271,6 +275,7 @@
               on:info={handleStackInfo}
               on:remove={handleStackRemove}
               on:unstack={handleStackUnstack}
+              on:addToStack={handleAddToStack}
             />
           {:else}
             <GameCard 

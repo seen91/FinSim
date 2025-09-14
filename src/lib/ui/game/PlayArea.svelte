@@ -43,6 +43,10 @@
   function handleStackCards(event: CustomEvent<{baseCard: FinancialCard, modifierCard: FinancialCard}>) {
     dispatch('stackCards', event.detail);
   }
+  
+  function handleAddToStack(event: CustomEvent<{stackId: string, modifierCard: FinancialCard}>) {
+    dispatch('addToStack', event.detail);
+  }
 </script>
 
 <main class="play-area">
@@ -78,6 +82,7 @@
       on:removeStack={handleStackRemove}
       on:unstack={handleUnstack}
       on:stackCards={handleStackCards}
+      on:addToStack={handleAddToStack}
     />
   </div>
 </main>

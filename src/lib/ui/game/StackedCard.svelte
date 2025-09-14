@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CardStack } from '$lib/core/types';
+  import type { CardStack, FinancialCard } from '$lib/core/types';
   import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard } from '$lib/services/card-formatter';
   import Button from '../components/Button.svelte';
   import GameCard from './GameCard.svelte';
@@ -31,6 +31,63 @@
     dispatch('unstack', stack);
   }
   
+  // Drag and drop state
+  let isDragOver = false;
+  
+  // Drag and drop handlers for adding more modifier cards to the stack
+  function handleDragOver(event: DragEvent) {
+    event.preventDefault();
+    if (!event.dataTransfer) return;
+    
+    // Check if we can accept the drop
+    const data = event.dataTransfer.getData('application/json');
+    if (data) {
+      try {
+        const draggedData = JSON.parse(data);
+        if (draggedData.type === 'card' && canAcceptCard(draggedData.card)) {
+          isDragOver = true;
+          event.dataTransfer.dropEffect = 'move';
+        }
+      } catch (e) {
+        // Invalid data
+      }
+    }
+  }
+  
+  function handleDragLeave() {
+    isDragOver = false;
+  }
+  
+  function handleDrop(event: DragEvent) {
+    event.preventDefault();
+    isDragOver = false;
+    
+    if (!event.dataTransfer) return;
+    
+    const data = event.dataTransfer.getData('application/json');
+    if (data) {
+      try {
+        const draggedData = JSON.parse(data);
+        if (draggedData.type === 'card' && canAcceptCard(draggedData.card)) {
+          dispatch('addToStack', {
+            stackId: stack.id,
+            modifierCard: draggedData.card
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing dropped data:', e);
+      }
+    }
+  }
+  
+  function canAcceptCard(draggedCard: FinancialCard): boolean {
+    // Can only add modifier cards to existing stacks
+    return draggedCard.role === 'modifier' && 
+           draggedCard.canStack === true &&
+           stack.baseCard.stackCategory !== undefined &&
+           draggedCard.compatibleWith?.includes(stack.baseCard.stackCategory) === true;
+  }
+  
   // Get stacking effects summary
   function getStackEffectsSummary(): string {
     const effects = stack.modifierCards.flatMap(card => card.stackEffects || []);
@@ -41,8 +98,12 @@
 <div 
   class="stacked-card" 
   class:inactive={!isActive}
+  class:drag-over={isDragOver}
   on:click={handleClick}
   on:keydown
+  on:dragover={handleDragOver}
+  on:dragleave={handleDragLeave}
+  on:drop={handleDrop}
   role="button"
   tabindex="0"
 >
@@ -162,6 +223,11 @@
     opacity: 0.7;
   }
   
+  .stacked-card.drag-over {
+    transform: translateY(-10px) scale(1.05);
+    filter: drop-shadow(0 0 20px rgba(74, 222, 128, 0.4));
+  }
+  
   .card-layer {
     position: absolute;
     top: 0;
@@ -190,6 +256,12 @@
     pointer-events: none;
   }
   
+  /* Hide the card title and indicator on modifier cards so only base card name shows */
+  .modifier-card :global(.card-title),
+  .modifier-card :global(.card-type-container) {
+    opacity: 0;
+  }
+  
   .stacked-card:hover .modifier-overlay {
     border-color: rgba(200, 150, 255, 0.6);
     box-shadow: 0 5px 20px rgba(200, 150, 255, 0.3);
@@ -201,7 +273,7 @@
     left: 0;
     right: 0;
     height: 60px;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
+    background: transparent;
     z-index: 20;
     display: flex;
     align-items: flex-end;
@@ -219,16 +291,16 @@
 
   .card-indicator {
     padding: 0.35rem 0.6rem;
-    background: rgba(0, 0, 0, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 6px;
     font-size: 0.7rem;
     font-weight: 600;
     overflow: hidden;
     position: relative;
     white-space: nowrap;
-    backdrop-filter: blur(4px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
 
   .indicator-scroll {

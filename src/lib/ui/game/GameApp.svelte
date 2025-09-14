@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { FinancialCard, Deck, CardStack } from '$lib/core/types';
   import { gameState } from '$lib/core/stores';
-  import { addCardToHand, addDeckToHand, toggleCard, toggleStack, removeCardFromHand, removeStack, unstackCards, createCardStack } from '$lib/core/stores/game-actions';
+  import { addCardToHand, addDeckToHand, toggleCard, toggleStack, removeCardFromHand, removeStack, unstackCards, createCardStack, addToStack } from '$lib/core/stores/game-actions';
   import { allIndividualCards } from '$lib/data';
   import GameSidebar from './GameSidebar.svelte';
   import PlayArea from './PlayArea.svelte';
@@ -57,6 +57,13 @@
       console.error('Failed to create stack - cards may not be compatible');
     }
   }
+  
+  function handleAddToStack(event: CustomEvent<{stackId: string, modifierCard: FinancialCard}>) {
+    const success = addToStack(event.detail.stackId, event.detail.modifierCard.id);
+    if (!success) {
+      console.error('Failed to add card to stack - card may not be compatible');
+    }
+  }
 </script>
 
 <div class="game-container">
@@ -81,6 +88,7 @@
     on:showCardInfo={handleShowCardInfo}
     on:showStackInfo={handleShowStackInfo}
     on:stackCards={handleStackCards}
+    on:addToStack={handleAddToStack}
   />
 </div>
 
