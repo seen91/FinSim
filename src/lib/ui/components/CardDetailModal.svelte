@@ -4,7 +4,7 @@
   import StackDisplay from './StackDisplay.svelte';
   import Chart from './Chart.svelte';
   import CardMiniDisplay from './CardMiniDisplay.svelte';
-  import { formatCardValue, getCardIcon, generateStackName } from '$lib/services';
+  import { formatCardTechnical, getCardParameters, getCardIcon, generateStackName } from '$lib/services';
   import { calculateStackProjection } from '$lib/core/calculations/stack-projection';
   import { writable, derived } from 'svelte/store';
   import { createEventDispatcher } from 'svelte';
@@ -14,6 +14,25 @@
   export let isOpen = false;
   
   const dispatch = createEventDispatcher();
+  
+  // Working copy of card for live editing
+  let editableCard: FinancialCard | null = null;
+  
+  // Initialize editable card when card changes
+  $: if (card) {
+    editableCard = JSON.parse(JSON.stringify(card)); // Deep clone
+    
+    // Ensure formula field is populated with current mathematical representation
+    if (editableCard && editableCard.curve && !editableCard.curve.parameters.formula) {
+      editableCard.curve.parameters.formula = formatCardTechnical(card);
+    }
+  }
+  
+  // Auto-save changes when parameters are modified
+  $: if (editableCard && card) {
+    // Dispatch update event when card parameters change
+    dispatch('update', editableCard);
+  }
   
   // State for collapsible Stack Contents section
   let stackContentsExpanded = false;
@@ -154,26 +173,113 @@
               <p class="strategy-description">{card.detailedInfo.strategy}</p>
             </section>
             
-            <!-- Key Metrics -->
+            <!-- Mathematical Function -->
             <section class="info-section">
-              <h3>Key Metrics</h3>
+              <h3>Function Definition</h3>
               <div class="metrics-grid">
-                <div class="metric-item">
-                  <span class="metric-label">Time Commitment</span>
-                  <span class="metric-value">{card.detailedInfo.timeCommitment}</span>
+                <div class="metric-item full-width">
+                  <span class="metric-label">Mathematical Form</span>
+                  {#if editableCard && editableCard.curve}
+                    <textarea 
+                      bind:value={editableCard.curve.parameters.formula}
+                      class="function-input"
+                      placeholder="Enter mathematical formula (e.g., A * (1 + r)^t + b)"
+                      rows="2"
+                    ></textarea>
+                  {:else}
+                    <span class="metric-value function-display">{formatCardTechnical(card)}</span>
+                  {/if}
                 </div>
-                <div class="metric-item">
-                  <span class="metric-label">Parameters</span>
-                  <span class="metric-value">{formatParameters(card)}</span>
-                </div>
-                {#if card.stackEffects && card.stackEffects.length > 0}
+                {#if (editableCard || card).curve}
+                  <div class="metric-item">
+                    <span class="metric-label">Function Type</span>
+                    {#if editableCard}
+                      <select bind:value={editableCard.curve.type} class="param-input">
+                        <option value="linear">Linear</option>
+                        <option value="compound">Compound</option>
+                        <option value="exponential">Exponential</option>
+                        <option value="sinusoidal">Sinusoidal</option>
+                        <option value="logarithmic">Logarithmic</option>
+                        <option value="power">Power</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    {/if}
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">Domain Start</span>
+                    {#if editableCard}
+                      <input 
+                        type="number" 
+                        bind:value={editableCard.curve.domain[0]} 
+                        class="param-input"
+                        min="2020" 
+                        max="2100"
+                      />
+                    {/if}
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-label">Domain End</span>
+                    {#if editableCard}
+                      <input 
+                        type="number" 
+                        bind:value={editableCard.curve.domain[1]} 
+                        class="param-input"
+                        min="2020" 
+                        max="2100"
+                      />
+                    {/if}
+                  </div>
                   <div class="metric-item full-width">
-                    <span class="metric-label">Stack Effects</span>
-                    <div class="effects-list">
-                      {#each card.stackEffects as effect}
-                        <span class="effect-item">{effect.description}</span>
-                      {/each}
-                    </div>
+                    <span class="metric-label">Parameters</span>
+                    {#if editableCard}
+                      <div class="parameters-edit-grid">
+                        <label>
+                          Rate: 
+                          <input 
+                            type="number" 
+                            bind:value={editableCard.curve.parameters.rate} 
+                            step="0.001"
+                            class="param-input"
+                          />
+                        </label>
+                        <label>
+                          Amplitude: 
+                          <input 
+                            type="number" 
+                            bind:value={editableCard.curve.parameters.amplitude} 
+                            step="1000"
+                            class="param-input"
+                          />
+                        </label>
+                        <label>
+                          Frequency: 
+                          <input 
+                            type="number" 
+                            bind:value={editableCard.curve.parameters.frequency} 
+                            step="0.1"
+                            class="param-input"
+                          />
+                        </label>
+                        <label>
+                          Phase: 
+                          <input 
+                            type="number" 
+                            bind:value={editableCard.curve.parameters.phase} 
+                            step="0.1"
+                            class="param-input"
+                          />
+                        </label>
+                        <label>
+                          Offset: 
+                          <input 
+                            type="number" 
+                            bind:value={editableCard.curve.parameters.offset} 
+                            step="1000"
+                            class="param-input"
+                          />
+                        </label>
+                      </div>
+                    {/if}
                   </div>
                 {/if}
               </div>
@@ -224,7 +330,6 @@
                     <div class="individual-card">
                       <CardMiniDisplay 
                         {card} 
-                        showAddButton={false}
                         showInfoButton={true}
                         on:info={handleCardInfo}
                       />
@@ -437,20 +542,73 @@
   .full-width {
     grid-column: 1 / -1;
   }
-  
-  .effects-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+
+  .parameters-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
   }
-  
-  .effect-item {
-    background: rgba(74, 222, 128, 0.2);
-    color: #4ade80;
-    padding: 0.25rem 0.5rem;
+
+  .parameters-edit-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+    color: #d1d5db;
+  }
+
+  .param-input {
+    background: rgba(30, 30, 40, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 500;
+    padding: 0.5rem;
+    color: white;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+  }
+
+  .param-input:focus {
+    outline: none;
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
+  }
+
+  .function-display {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+    color: #a78bfa;
+    font-weight: 600;
+    background: rgba(167, 139, 250, 0.1);
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(167, 139, 250, 0.2);
+  }
+
+  .function-input {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+    color: #a78bfa;
+    font-weight: 600;
+    background: rgba(167, 139, 250, 0.1);
+    border: 1px solid rgba(167, 139, 250, 0.3);
+    border-radius: 4px;
+    padding: 0.5rem;
+    width: 100%;
+    resize: vertical;
+    min-height: 60px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .function-input:focus {
+    outline: none;
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
+  }
+
+  .function-input::placeholder {
+    color: rgba(167, 139, 250, 0.5);
+    font-style: italic;
   }
   
   .stack-chart-container {

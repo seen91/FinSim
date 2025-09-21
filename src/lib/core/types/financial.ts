@@ -36,7 +36,7 @@ export interface StackEffect {
 
 export interface CardDetailInfo {
   strategy: string;
-  timeCommitment: string;
+  timeCommitment?: string; // Optional since it's considered fluff
 }
 
 export interface TimeSeriesPoint {

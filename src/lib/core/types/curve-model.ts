@@ -59,7 +59,7 @@ export interface UnifiedCard {
   // Display and metadata
   detailedInfo?: {
     strategy: string;
-    timeCommitment: string;
+    timeCommitment?: string; // Optional since it's considered fluff
     mathematicalForm?: string; // Human-readable math description like "f(t) = 39000 * t"
   };
   

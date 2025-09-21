@@ -1,12 +1,12 @@
-# FinSim - Unified Application Architecture
+# FinSim - Financial Card Game Architecture
 
-## 🎯 Single Application Overview
+## 🎯 Overview
 
-FinSim is **a single, unified financial card game** that serves as a complete mathematical experimentation platform. All financial instruments are mathematical functions f(t), treating finance like physics - decomposing complex signals into simple mathematical components. The main game provides full experimentation capabilities with interactive curve visualization and mathematical exploration.
+FinSim is a mathematical financial card game where all financial instruments are represented as mathematical functions f(t). Users can create unlimited cards and decks to model complete household financial situations.
 
-## 📐 Core Mathematical Philosophy
+## 📐 Core Philosophy
 
-**"All finance is curves f(x)"** - Like Fourier transforms:
+**"All finance is curves f(x)"** - Like Fourier transforms, complex financial situations can be decomposed into simple mathematical components:
 - **Tax** = negative compound interest curves
 - **Salary** = linear growth functions  
 - **Investments** = positive compound growth curves
@@ -14,116 +14,40 @@ FinSim is **a single, unified financial card game** that serves as a complete ma
 - **Bonuses** = sinusoidal periodic functions
 - **Assets** = depreciating curves with stacking mechanics
 
-## 🏗️ Application Structure
+## � Card Game Mechanics
 
-### Routes
-- **`/`** (Main Game) - Primary unified curve-based card game with full mathematical experimentation
-- **`/workshop`** - Future card creation interface (placeholder)
+### Card Creation
+- Users can create unlimited custom cards representing any financial instrument
+- Each card is a mathematical function with editable parameters
+- Cards display simplified values (green for income, red for expenses)
 
-### Core Components
+### Deck Building  
+- Cards can be combined into decks representing complete financial scenarios
+- Supports household-level complexity (multiple income streams, investments, debts, assets)
 
-#### 🎮 Main Game (`GameApp.svelte`)
-- **Purpose**: Primary interactive financial card game with complete mathematical experimentation
-- **Cards**: 8 unified curve-based cards showcasing different mathematical functions
-- **Features**: Card stacking, projections, mathematical formula display, curve visualization
-- **Data Source**: `allIndividualCards` (unified curve format)
-- **Experimentation**: Full mathematical curve exploration and testing capabilities
+### Card Stacking
+- Cards can be stacked for mathematical composition
+- Example: Salary card → Tax card → Net income result
+- Enables complex financial relationships and dependencies
 
-## 🔬 Mathematical Card Types
+## 🔬 Mathematical Curve Types
 
-The main game includes 8 different mathematical curve types:
+Cards can represent various mathematical functions:
 
-### Income Curves (Positive Linear)
-- **Monthly Salary**: `f(t) = 468,000 * t` (linear growth)
+- **Linear**: `f(t) = A + r*t` (salary, fixed expenses)
+- **Compound**: `f(t) = A * (1 + r)^t` (investments, loans)  
+- **Exponential**: `f(t) = A * e^(r*t)` (rapid growth/decay)
+- **Sinusoidal**: `f(t) = A * sin(2π*f*t + φ) + b` (periodic bonuses)
+- **Custom**: Any mathematical formula for complex scenarios
 
-### Expense Curves (Negative Linear)  
-- **Living Expenses**: `f(t) = -180,000 * t` (negative linear)
-
-### Investment Curves (Positive Compound)
-- **ISK Account**: `f(t) = principal * (1 + 0.07)^t` (compound growth)
-
-### Tax Curves (Negative Compound)
-- **Income Tax**: `f(t) = -0.30 * base_income(t)` (negative compound on income)
-
-### Effect Curves (Various Functions)
-- **Swedish Inflation**: `f(t) = (0.98)^t` (universal value erosion)
-- **Annual Bonus**: `f(t) = 30000 * sin(2π * t) + 30000` (sinusoidal)
-
-### Asset Curves (Complex Multi-component)
-- **Car Asset**: Constant baseline value with depreciation stacking
-- **Car Depreciation**: Negative exponential reducing asset value
-
-## 💻 Technical Architecture
+## 💻 Technical Foundation
 
 ### Data Layer
-- **`unified-cards.ts`**: Mathematical curve definitions (primary)
-- **`cards.ts`**: Legacy format (backward compatibility only)
-- **`index.ts`**: Exports unified cards as `allIndividualCards`
-
-### Calculation Engine
-- **`unified-projection.ts`**: Single curve evaluation engine
+- **`unified-cards.ts`**: Mathematical curve definitions
 - **`curve-model.ts`**: Core mathematical functions
-- **Removed**: `card-projection.ts` (eliminated duplication)
+- **Extensible**: Easy to add new curve types and cards
 
-### UI Components
-- **Dual Format Support**: All components handle both unified and legacy cards
-- **Mathematical Display**: Cards show curve types, parameters, and formulas
-- **Enhanced Visualization**: `f(t) = linear`, rate parameters, frequency display
-
-### Game Mechanics
-- **Card Stacking**: Mathematical curve composition
-- **Projections**: Time-series curve evaluation
-- **Modal System**: Layered information display
-- **Mathematical Formula Display**: Real mathematical notation
-
-## 🎨 Visual Features
-
-### Card Display Enhancements
-- **Curve Type**: `f(t) = linear`, `f(t) = compound`
-- **Parameters**: `r=7.0%`, `ω=1` (frequency)
-- **Mathematical Formulas**: Real equations shown on cards
-- **Color Coding**: Positive (green), negative (red), neutral (blue)
-
-### Mathematical Notation
-- **Monospace Font**: Mathematical expressions in Courier New
-- **Purple Color**: `#a78bfa` for curve types
-- **Amber Color**: `#fbbf24` for parameters
-- **Italic Style**: Mathematical formulas in italics
-
-## 🚀 Ready for Iteration
-
-### Current Status
-✅ **Single Unified Application**: No conflicting implementations  
-✅ **Mathematical Foundation**: All cards are mathematical curves  
-✅ **Game Mechanics**: Stacking, projections, modal system working  
-✅ **UI Consistency**: Dual format support everywhere  
-✅ **Build Success**: Compiles and runs without errors  
-✅ **Committed**: All changes saved in git  
-
-### Future Iteration Opportunities
-1. **Enhanced Curve Visualization**: Real-time curve plotting
-2. **More Mathematical Functions**: Logarithmic, power, exponential curves
-3. **Advanced Stacking**: Tree structures where cards feed others
-4. **Workshop Interface**: Visual curve creation tools
-5. **Performance Analytics**: Mathematical optimization insights
-
-## 🔄 Development Workflow
-
-### To Continue Development:
-```bash
-npm run dev           # Start development server
-npm run build         # Build for production  
-npm run preview       # Preview production build
-```
-
-### Key Files for Future Changes:
-- **`src/lib/data/unified-cards.ts`** - Add new mathematical cards
-- **`src/lib/core/types/index.ts`** - Extend curve types
-- **`src/lib/core/curve-model.ts`** - Add new mathematical functions
-- **`src/lib/ui/game/GameApp.svelte`** - Main game interface
-
-## 📊 Architecture Summary
-
-**FinSim is now a single, cohesive financial card game** built on mathematical curve theory. The unified architecture eliminates redundancy while providing a solid foundation for continued iteration. All financial concepts are mathematical functions, creating an educational and interactive experience that demonstrates the mathematical nature of finance.
-
-The application successfully merges the original card game concept with advanced mathematical modeling, creating a unique tool for financial education and exploration.
+### Game Interface
+- **Card Display**: Shows simplified financial values with color coding
+- **Detail Modal**: Full mathematical formula editing and parameter control
+- **Projections**: Time-series visualization of financial scenarios

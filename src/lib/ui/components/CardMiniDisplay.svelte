@@ -1,16 +1,24 @@
 <script lang="ts">
   import type { FinancialCard } from '$lib/core/types';
-  import { formatCardValue, getCardIcon } from '$lib/services/card-formatter';
+  import { formatCardSimple, getCardIcon } from '$lib/services/card-formatter';
   import { createEventDispatcher } from 'svelte';
 
   export let card: FinancialCard;
-  export let showAddButton = true;
   export let showInfoButton = true;
 
   const dispatch = createEventDispatcher();
 
   function handleAdd(e: Event) {
     e.stopPropagation();
+    dispatch('add', card);
+  }
+
+  function handleCardClick(e: Event) {
+    e.stopPropagation();
+    // Don't add card if clicking on info button
+    if ((e.target as HTMLElement).classList.contains('info-btn-mini')) {
+      return;
+    }
     dispatch('add', card);
   }
 
@@ -67,7 +75,7 @@
 </script>
 
 <div class="card-item">
-  <div class="card-mini">
+  <div class="card-mini" on:click={handleCardClick} role="button" tabindex="0" on:keydown={(e) => e.key === 'Enter' && handleCardClick(e)}>
     <div class="card-mini-header">
       <div class="card-mini-header-left">
         <span class="card-mini-icon">{getCardIcon(getCardType(card))}</span>
@@ -80,32 +88,14 @@
           >ℹ️</button>
         {/if}
       </div>
-      <span class="card-mini-value" 
-            class:positive={isPositiveCard(card)}
-            class:negative={isNegativeCard(card)}
-            class:loan={isLoanCard(card)}>
-        {formatCardValue(card)}
-      </span>
     </div>
     <div class="card-mini-name">{card.name}</div>
-    
-    {#if card.curve}
-      <!-- Mathematical curve information for unified cards -->
-      <div class="card-mini-math">
-        <span class="curve-type">f(t) = {card.curve.type}</span>
-        {#if card.curve.parameters.rate !== 0}
-          <span class="curve-param">r={((card.curve.parameters.rate || 0) * 100).toFixed(1)}%</span>
-        {/if}
-        {#if card.curve.parameters.frequency && card.curve.parameters.frequency > 0}
-          <span class="curve-param">ω={card.curve.parameters.frequency}</span>
-        {/if}
-      </div>
-    {/if}
+    <div class="card-mini-value" 
+         class:positive={isPositiveCard(card)} 
+         class:negative={isNegativeCard(card)}>
+      {formatCardSimple(card)}
+    </div>
   </div>
-  
-  {#if showAddButton}
-    <button class="add-btn" on:click={handleAdd} title="Add this card">+</button>
-  {/if}
 </div>
 
 <style>
@@ -124,11 +114,20 @@
     transition: all 0.2s ease;
     color: white;
     pointer-events: auto;
+    cursor: pointer;
+    outline: none;
   }
 
-  .card-item:hover .card-mini {
+  .card-mini:hover {
     background: rgba(50, 50, 60, 0.6);
     border-color: rgba(120, 119, 198, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-mini:active {
+    transform: translateY(0);
+    background: rgba(120, 119, 198, 0.2);
   }
 
   .card-mini-header {
@@ -155,47 +154,19 @@
     margin-bottom: 0.25rem;
   }
 
-  .card-mini-math {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    margin-top: 0.25rem;
-    font-size: 0.7rem;
-    color: #888;
-    font-family: 'Courier New', monospace;
-  }
-
-  .curve-type {
-    color: #a78bfa;
-    font-style: italic;
-  }
-
-  .curve-param {
-    color: #fbbf24;
-    font-weight: 500;
-  }
-
   .card-mini-value {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.1);
+    margin-top: 0.25rem;
+    color: #888;
   }
 
   .card-mini-value.positive {
     color: #4ade80;
-    background: rgba(74, 222, 128, 0.2);
   }
 
   .card-mini-value.negative {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.2);
-  }
-
-  .card-mini-value.loan {
-    color: #fbbf24;
-    background: rgba(251, 191, 36, 0.2);
+    color: #f87171;
   }
 
   .info-btn-mini {
@@ -218,28 +189,5 @@
   .info-btn-mini:hover {
     background: rgba(255, 255, 255, 0.2);
     transform: scale(1.1);
-  }
-
-  .add-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(120, 119, 198, 0.2);
-    border: 1px solid rgba(120, 119, 198, 0.4);
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 10;
-  }
-
-  .add-btn:hover {
-    background: rgba(120, 119, 198, 0.4);
-    transform: scale(1.1);
-    box-shadow: 0 0 20px rgba(120, 119, 198, 0.4);
   }
 </style>

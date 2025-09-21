@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FinancialCard } from '$lib/core/types';
-  import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard, isLoanCard } from '$lib/services/card-formatter';
+  import { formatCardSimple, getCardIcon, isPositiveCard, isNegativeCard, isLoanCard } from '$lib/services/card-formatter';
   import { createDragCardData, parseDragCardData, validateCardStacking } from '$lib/services/drag-drop-helpers';
   import Button from '../components/Button.svelte';
   import { createEventDispatcher } from 'svelte';
@@ -35,6 +35,19 @@
     // For legacy cards
     return card.parameters?.principal || 0;
   }
+
+  function getCardTimeRange(card: any): string {
+    // For unified cards
+    if (card.curve && card.curve.domain) {
+      return `${card.curve.domain[1] - card.curve.domain[0]}y`;
+    }
+    // For legacy cards
+    if (card.timeRange) {
+      return `${card.timeRange[1] - card.timeRange[0]}y`;
+    }
+    // Default fallback
+    return '20y';
+  }
   
   function handleClick() {
     dispatch('toggle', card);
@@ -48,11 +61,6 @@
   function handleRemoveClick(event: MouseEvent) {
     event.stopPropagation();
     dispatch('remove', card);
-  }
-  
-  function handleEditClick(event: MouseEvent) {
-    event.stopPropagation();
-    dispatch('edit', card);
   }
   
   // Drag and drop handlers
@@ -123,16 +131,6 @@
     >×</Button>
   {/if}
   
-  <!-- Edit Mode Button -->
-  <Button
-    variant="secondary"
-    size="small"
-    onClick={handleEditClick}
-    title="Edit card values"
-    ariaLabel="Edit"
-    class="edit-btn"
-  >✏️</Button>
-  
   <div class="card-inner">
     <div class="card-background-icon">{getCardIcon(getCardType(card))}</div>
     <div class="card-title">{card.name}</div>
@@ -147,36 +145,10 @@
       >
         <div class="indicator-scroll">
           <span class="indicator-content">
-            <span class="indicator-value">{formatCardValue(card)}</span>
-            <span class="indicator-time">• {card.timeRange[1] - card.timeRange[0]}y</span>
-            {#if getCardPrincipal(card) !== 0}
-              <span class="indicator-principal" 
-                    class:principal-positive={getCardPrincipal(card) > 0}
-                    class:principal-negative={getCardPrincipal(card) < 0}>• {getCardPrincipal(card) > 0 ? '+' : ''}${(getCardPrincipal(card) / 1000).toFixed(0)}k start</span>
-            {/if}
-            <span class="indicator-type">• {getCardType(card)}</span>
-            {#if card.curve && card.detailedInfo?.mathematicalForm}
-              <span class="indicator-math">• {card.detailedInfo.mathematicalForm}</span>
-            {/if}
-            {#if card.description}
-              <span class="indicator-description">• {card.description}</span>
-            {/if}
+            <span class="indicator-value">{formatCardSimple(card)}</span>
           </span>
           <span class="indicator-content" aria-hidden="true">
-            <span class="indicator-value">{formatCardValue(card)}</span>
-            <span class="indicator-time">• {card.timeRange[1] - card.timeRange[0]}y</span>
-            {#if getCardPrincipal(card) !== 0}
-              <span class="indicator-principal" 
-                    class:principal-positive={getCardPrincipal(card) > 0}
-                    class:principal-negative={getCardPrincipal(card) < 0}>• {getCardPrincipal(card) > 0 ? '+' : ''}${(getCardPrincipal(card) / 1000).toFixed(0)}k start</span>
-            {/if}
-            <span class="indicator-type">• {getCardType(card)}</span>
-            {#if card.curve && card.detailedInfo?.mathematicalForm}
-              <span class="indicator-math">• {card.detailedInfo.mathematicalForm}</span>
-            {/if}
-            {#if card.description}
-              <span class="indicator-description">• {card.description}</span>
-            {/if}
+            <span class="indicator-value">{formatCardSimple(card)}</span>
           </span>
         </div>
       </div>
@@ -400,47 +372,20 @@
     animation-play-state: paused;
   }
 
+
+
   .indicator-value {
-    font-weight: 700;
+    color: #a78bfa;
+    font-weight: 600;
+    font-size: 1rem;
   }
 
-  .indicator-time {
-    opacity: 0.7;
-    font-size: 0.6rem;
-  }
-
-  .indicator-principal {
-    opacity: 0.8;
-    font-size: 0.6rem;
-  }
-
-  .indicator-principal.principal-positive {
+  .card-indicator.positive .indicator-value {
     color: #4ade80;
   }
 
-  .indicator-principal.principal-negative {
-    color: #ef4444;
-  }
-
-  .indicator-type {
-    opacity: 0.7;
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .indicator-description {
-    opacity: 0.6;
-    font-size: 0.6rem;
-    font-style: italic;
-  }
-
-  .indicator-math {
-    opacity: 0.8;
-    font-size: 0.6rem;
-    font-family: 'Courier New', monospace;
-    color: #a78bfa;
-    font-style: italic;
+  .card-indicator.negative .indicator-value {
+    color: #f87171;
   }
 
   .card-indicator.positive {
@@ -497,29 +442,6 @@
   }
 
   .game-card:hover :global(.info-btn) {
-    opacity: 1;
-    transform: scale(1);
-    pointer-events: auto;
-  }
-
-  :global(.game-card .edit-btn) {
-    position: absolute;
-    top: 8px;
-    right: 32px;
-    width: 20px !important;
-    height: 20px !important;
-    border-radius: 50% !important;
-    font-size: 0.7rem !important;
-    z-index: 20;
-    opacity: 0;
-    transform: scale(0.8);
-    pointer-events: none;
-    transition: all 0.3s ease !important;
-    background: rgba(255, 165, 0, 0.2) !important;
-    border-color: rgba(255, 165, 0, 0.4) !important;
-  }
-
-  .game-card:hover :global(.edit-btn) {
     opacity: 1;
     transform: scale(1);
     pointer-events: auto;
