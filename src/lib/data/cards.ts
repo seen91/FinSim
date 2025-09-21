@@ -4,14 +4,14 @@ import type { FinancialCard } from '../core/types';
 export const incomeCards: FinancialCard[] = [
   {
     id: 'monthly-salary',
-    name: 'Monthly Salary',
+    name: 'Salary',
     type: 'linear',
-    parameters: { principal: 0, monthlyAmount: 35000 },
+    parameters: { principal: 0, monthlyAmount: 39000 },
     timeRange: [2025, 2045],
     color: '#22c55e',
-    description: 'Monthly gross salary income',
+    description: '39k monthly salary',
     detailedInfo: {
-      strategy: 'Monthly gross salary of 35,000 SEK, forming the foundation of personal income in Sweden.',
+      strategy: 'Monthly gross salary of 39,000, forming the foundation of personal income.',
       timeCommitment: 'Full-time employment'
     }
   }
@@ -23,12 +23,12 @@ export const expenseCards: FinancialCard[] = [
     id: 'living-expenses',
     name: 'Basic Living Expenses',
     type: 'linear',
-    parameters: { principal: 0, monthlyAmount: -18000 },
+    parameters: { principal: 0, monthlyAmount: -15000 },
     timeRange: [2025, 2045],
     color: '#ef4444',
     description: 'Monthly living costs',
     detailedInfo: {
-      strategy: 'Basic monthly living expenses including food, utilities, rent, and necessities totaling 18,000 SEK.',
+      strategy: 'Basic monthly living expenses including food, utilities, rent, and necessities totaling 15,000.',
       timeCommitment: 'Ongoing living costs'
     }
   }
@@ -44,12 +44,12 @@ export const investmentCards: FinancialCard[] = [
     id: 'isk-account',
     name: 'ISK Investment Account',
     type: 'compound',
-    parameters: { principal: 10000, rate: 7 },
+    parameters: { principal: 0, rate: 7 },
     timeRange: [2025, 2045],
     color: '#06b6d4',
-    description: 'Swedish ISK account with 1% annual tax',
+    description: '7% yearly interest but with no initial amount since we will want to stack this on top of something to get the amount',
     detailedInfo: {
-      strategy: 'Investeringssparkonto (ISK) - Swedish tax-advantaged investment account with 1% annual standard tax.',
+      strategy: 'Investeringssparkonto (ISK) - Swedish tax-advantaged investment account with 7% yearly interest. Designed to be stacked on top of other cards (like monthly savings) to get the principal amount.',
       timeCommitment: '15+ years for compound growth'
     }
   }
@@ -66,7 +66,7 @@ export const carCards: FinancialCard[] = [
     color: '#3b82f6',
     description: 'Car as depreciating asset',
     detailedInfo: {
-      strategy: 'Car as a depreciating asset worth 120,000 SEK initially, subject to depreciation effects.',
+      strategy: 'Car as a depreciating asset worth 120,000 initially, subject to depreciation effects.',
       timeCommitment: 'Asset subject to market forces'
     }
   },
@@ -101,7 +101,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#f59e0b',
     description: 'Monthly car insurance premium',
     detailedInfo: {
-      strategy: 'Comprehensive car insurance coverage (1,920 SEK annually)',
+      strategy: 'Comprehensive car insurance coverage (1,920 annually)',
       timeCommitment: 'Required for legal driving'
     }
   },
@@ -114,7 +114,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#f97316',
     description: 'Annual vehicle registration tax',
     detailedInfo: {
-      strategy: 'Annual vehicle registration tax (360 SEK annually)',
+      strategy: 'Annual vehicle registration tax (360 annually)',
       timeCommitment: 'Required for legal ownership'
     }
   },
@@ -127,7 +127,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#ea580c',
     description: 'Monthly gasoline costs',
     detailedInfo: {
-      strategy: 'Gasoline or diesel fuel costs based on usage (1,560 SEK annually)',
+      strategy: 'Gasoline or diesel fuel costs based on usage (1,560 annually)',
       timeCommitment: 'Ongoing based on driving distance'
     }
   },
@@ -140,7 +140,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#d97706',
     description: 'Monthly service and repair costs',
     detailedInfo: {
-      strategy: 'Regular service, repairs, and maintenance costs (5,040 SEK annually)',
+      strategy: 'Regular service, repairs, and maintenance costs (5,040 annually)',
       timeCommitment: 'Ongoing maintenance required'
     }
   },
@@ -153,7 +153,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#0ea5e9',
     description: 'Winter tire costs',
     detailedInfo: {
-      strategy: 'Winter tire purchase and replacement costs (3,600 SEK annually)',
+      strategy: 'Winter tire purchase and replacement costs (3,600 annually)',
       timeCommitment: 'Required for winter driving safety'
     }
   },
@@ -166,7 +166,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#6b7280',
     description: 'Monthly parking fees',
     detailedInfo: {
-      strategy: 'Monthly parking fees, garage rental, or parking permits (9,600 SEK annually)',
+      strategy: 'Monthly parking fees, garage rental, or parking permits (9,600 annually)',
       timeCommitment: 'Required for secure parking'
     }
   },
@@ -179,7 +179,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#8b5cf6',
     description: 'Investment opportunity cost',
     detailedInfo: {
-      strategy: 'Opportunity cost of capital tied up in car instead of investments (6,000 SEK annually)',
+      strategy: 'Opportunity cost of capital tied up in car instead of investments (6,000 annually)',
       timeCommitment: 'Ongoing while owning car'
     }
   },
@@ -192,7 +192,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#06b6d4',
     description: 'Tire changing service costs',
     detailedInfo: {
-      strategy: 'Seasonal tire changes and mounting costs (540 SEK annually)',
+      strategy: 'Seasonal tire changes and mounting costs (540 annually)',
       timeCommitment: 'Twice yearly service'
     }
   },
@@ -205,7 +205,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#84cc16',
     description: 'Small car-related expenses',
     detailedInfo: {
-      strategy: 'Various small costs like car wash, accessories, minor repairs (3,000 SEK annually)',
+      strategy: 'Various small costs like car wash, accessories, minor repairs (3,000 annually)',
       timeCommitment: 'Ongoing small expenses'
     }
   },
@@ -218,7 +218,7 @@ export const carExpenseCards: FinancialCard[] = [
     color: '#f43f5e',
     description: 'Car loan interest costs',
     detailedInfo: {
-      strategy: 'Interest payments on car financing or loan (1,788 SEK annually)',
+      strategy: 'Interest payments on car financing or loan (1,788 annually)',
       timeCommitment: 'While loan is active'
     }
   }
@@ -235,13 +235,13 @@ export const effectCards: FinancialCard[] = [
     color: '#059669',
     description: 'Performance-based bonus',
     detailedInfo: {
-      strategy: 'Annual bonus of 30,000 SEK based on performance, averaged monthly for planning purposes.',
+      strategy: 'Annual bonus of 30,000 based on performance, averaged monthly for planning purposes.',
       timeCommitment: 'While employed with good performance'
     },
     stackEffects: [{
       type: 'add',
       value: 30000,
-      description: '+30,000 SEK annual bonus'
+      description: '+30,000 annual bonus'
     }]
   },
   {
