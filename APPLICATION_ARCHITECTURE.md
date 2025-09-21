@@ -2,7 +2,7 @@
 
 ## 🎯 Single Application Overview
 
-FinSim is now **a single, unified financial card game** based on mathematical curve theory. All financial instruments are mathematical functions f(t), treating finance like physics - decomposing complex signals into simple mathematical components.
+FinSim is **a single, unified financial card game** that serves as a complete mathematical experimentation platform. All financial instruments are mathematical functions f(t), treating finance like physics - decomposing complex signals into simple mathematical components. The main game provides full experimentation capabilities with interactive curve visualization and mathematical exploration.
 
 ## 📐 Core Mathematical Philosophy
 
@@ -17,23 +17,17 @@ FinSim is now **a single, unified financial card game** based on mathematical cu
 ## 🏗️ Application Structure
 
 ### Routes
-- **`/`** (Main Game) - Primary unified curve-based card game
-- **`/demo`** - Mathematical curve exploration and testing
+- **`/`** (Main Game) - Primary unified curve-based card game with full mathematical experimentation
 - **`/workshop`** - Future card creation interface (placeholder)
 
 ### Core Components
 
 #### 🎮 Main Game (`GameApp.svelte`)
-- **Purpose**: Primary interactive financial card game
+- **Purpose**: Primary interactive financial card game with complete mathematical experimentation
 - **Cards**: 8 unified curve-based cards showcasing different mathematical functions
-- **Features**: Card stacking, projections, mathematical formula display
+- **Features**: Card stacking, projections, mathematical formula display, curve visualization
 - **Data Source**: `allIndividualCards` (unified curve format)
-
-#### 📊 Demo Route (`/demo`)
-- **Purpose**: Mathematical curve exploration and validation
-- **Component**: `UnifiedModelDemo.svelte`
-- **Usage**: Testing mathematical functions, curve visualization
-- **Status**: Complementary tool for curve validation
+- **Experimentation**: Full mathematical curve exploration and testing capabilities
 
 ## 🔬 Mathematical Card Types
 
