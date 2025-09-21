@@ -1,5 +1,6 @@
 import { carTcoDeck } from './decks';
 import { incomeCards, expenseCards, investmentCards, effectCards } from './cards';
+import { allUnifiedCards } from './unified-cards';
 
 export const allDecks = [carTcoDeck];
 
@@ -14,3 +15,6 @@ export const allIndividualCards = [
   // ISK tax effect
   effectCards.find(card => card.id === 'isk-tax')!
 ];
+
+// Export unified cards for the new mathematical model
+export { allUnifiedCards };

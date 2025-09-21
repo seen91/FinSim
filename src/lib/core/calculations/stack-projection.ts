@@ -1,28 +1,28 @@
 import type { CardStack, TimeSeriesPoint, StackEffect } from '../types';
-import { calculateCardProjection } from './card-projection';
+import { calculateLegacyCardProjection } from './unified-projection';
 import { evaluate } from 'mathjs';
 
 export function calculateStackProjection(stack: CardStack): TimeSeriesPoint[] {
   // If only one card in stack, return its projection
   if (stack.cards.length === 1) {
-    return calculateCardProjection(stack.cards[0]);
+    return calculateLegacyCardProjection(stack.cards[0]);
   }
   
   // Process cards sequentially in the order they were stacked
   // Start with the first card's projection
-  let currentPoints = calculateCardProjection(stack.cards[0]);
+  let currentPoints = calculateLegacyCardProjection(stack.cards[0]);
   
   // Process each subsequent card in order
   for (let i = 1; i < stack.cards.length; i++) {
     const card = stack.cards[i];
-    const cardPoints = calculateCardProjection(card);
+    const cardPoints = calculateLegacyCardProjection(card);
     
     // Combine the current running total with this card's values
     currentPoints = combineCardProjections(currentPoints, cardPoints, card);
   }
   
   // Update the cardId to reflect that this is a stack
-  return currentPoints.map(point => ({
+  return currentPoints.map((point: TimeSeriesPoint) => ({
     ...point,
     cardId: stack.id
   }));

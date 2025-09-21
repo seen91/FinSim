@@ -2,3 +2,4 @@
 export * from './financial';
 export * from './deck';
 export * from './game';
+export * from './curve-model';

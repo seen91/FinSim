@@ -1,3 +1,9 @@
+import type { UnifiedCard } from './curve-model';
+
+// Main financial card type - now uses the unified curve model
+export type FinancialCard = UnifiedCard;
+
+// Legacy types for backward compatibility during transition
 export type CurveType = 'compound' | 'linear' | 'exponential' | 'loan' | 'custom';
 
 export interface FinancialParameters {
@@ -5,27 +11,27 @@ export interface FinancialParameters {
   rate?: number;
   monthlyAmount?: number;
   customFormula?: string;
-  loanTerm?: number; // For loan type: loan term in years
+  loanTerm?: number;
 }
 
-export interface StackEffect {
-  type: 'multiply' | 'add' | 'subtract' | 'percentage' | 'custom';
-  value?: number;
-  formula?: string; // For custom effects
-  description: string;
-}
-
-export interface FinancialCard {
+export interface LegacyFinancialCard {
   id: string;
   name: string;
   type: CurveType;
   parameters: FinancialParameters;
-  timeRange: [number, number]; // [startYear, endYear]
+  timeRange: [number, number];
   color: string;
   description?: string;
   detailedInfo?: CardDetailInfo;
-  // Stacking properties
-  stackEffects?: StackEffect[]; // Effects this card applies when stacked
+  stackEffects?: StackEffect[];
+}
+
+// Supporting types
+export interface StackEffect {
+  type: 'multiply' | 'add' | 'subtract' | 'percentage' | 'custom';
+  value?: number;
+  formula?: string;
+  description: string;
 }
 
 export interface CardDetailInfo {
@@ -41,17 +47,50 @@ export interface TimeSeriesPoint {
 
 export interface CardStack {
   id: string;
-  name?: string; // Optional custom name for the stack (e.g., deck name)
-  cards: FinancialCard[]; // All cards in the stack, first is bottom/primary, rest are stacked on top
-  position?: { x: number; y: number }; // For UI positioning
-}
-
-// For future nested stacking support - can contain both cards and other stacks  
-export interface NestedStack {
-  id: string;
-  items: (FinancialCard | CardStack)[]; // Multi-dimensional stacking support
+  name?: string;
+  cards: FinancialCard[];
   position?: { x: number; y: number };
 }
 
-// Utility type for working with stackable items
+export interface NestedStack {
+  id: string;
+  items: (FinancialCard | CardStack)[];
+  position?: { x: number; y: number };
+}
+
 export type StackableItem = FinancialCard | CardStack;
+
+/**
+ * Convert legacy card format to unified model
+ */
+export function legacyToUnified(legacyCard: LegacyFinancialCard): UnifiedCard {
+  const [startYear, endYear] = legacyCard.timeRange;
+  
+  // Map legacy type to curve type and parameters
+  const curveType = legacyCard.type === 'loan' ? 'compound' : legacyCard.type;
+  
+  return {
+    id: legacyCard.id,
+    name: legacyCard.name,
+    description: legacyCard.description,
+    color: legacyCard.color,
+    curve: {
+      type: curveType as any,
+      parameters: {
+        amplitude: legacyCard.parameters.principal || 0,
+        rate: (legacyCard.parameters.rate || 0) / 100,
+        frequency: legacyCard.parameters.monthlyAmount ? 12 : 0,
+        phase: 0,
+        offset: legacyCard.parameters.monthlyAmount || 0,
+        formula: legacyCard.parameters.customFormula
+      },
+      isPositive: (legacyCard.parameters.principal || 0) >= 0 && (legacyCard.parameters.monthlyAmount || 0) >= 0,
+      isDifferentiable: legacyCard.type !== 'custom',
+      domain: [startYear, endYear]
+    },
+    detailedInfo: legacyCard.detailedInfo,
+    canBeStacked: true,
+    canStackOnto: [],
+    stackingMultiplier: 1
+  };
+}

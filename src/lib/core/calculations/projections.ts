@@ -1,5 +1,5 @@
 import type { FinancialCard, TimeSeriesPoint, CardStack, StackEffect } from '../types';
-import { calculateCardProjection } from './card-projection';
+import { calculateLegacyCardProjection } from './unified-projection';
 import { calculateStackProjection } from './stack-projection';
 import { evaluate } from 'mathjs';
 
@@ -110,11 +110,11 @@ export function calculateProjections(
       return;
     }
     
-    let points = calculateCardProjection(card);
+    let points = calculateLegacyCardProjection(card);
     
     // Apply unbound effect card effects to each point
     if (unboundEffects.length > 0) {
-      points = points.map(point => ({
+      points = points.map((point: TimeSeriesPoint) => ({
         ...point,
         value: applyUnboundEffectCardEffects(point.value, unboundEffects, point)
       }));
@@ -129,7 +129,7 @@ export function calculateProjections(
     
     // Apply unbound effect card effects to stack results as well
     if (unboundEffects.length > 0) {
-      points = points.map(point => ({
+      points = points.map((point: TimeSeriesPoint) => ({
         ...point,
         value: applyUnboundEffectCardEffects(point.value, unboundEffects, point)
       }));
