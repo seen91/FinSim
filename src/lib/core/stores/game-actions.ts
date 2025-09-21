@@ -73,45 +73,44 @@ export function removeCardFromHand(cardId: string): void {
   });
 }
 
-export function createCardStack(baseCardId: string, modifierCardId: string): boolean {
+export function createCardStack(card1Id: string, card2Id: string): boolean {
   let success = false;
   
   gameState.update(state => {
-    const baseCard = state.hand.find(card => card.id === baseCardId);
-    const modifierCard = state.hand.find(card => card.id === modifierCardId);
+    const card1 = state.hand.find(card => card.id === card1Id);
+    const card2 = state.hand.find(card => card.id === card2Id);
     
-    if (!baseCard) {
-      console.error('Base card not found:', baseCardId);
+    if (!card1) {
+      console.error('First card not found:', card1Id);
       return state;
     }
     
-    if (!modifierCard) {
-      console.error('Modifier card not found:', modifierCardId);
+    if (!card2) {
+      console.error('Second card not found:', card2Id);
       return state;
     }
     
-    // Validate compatibility
-    if (!validateStackCompatibility(baseCard, modifierCard)) {
-      console.error('Cards are not compatible for stacking:', baseCard.name, 'and', modifierCard.name);
+    // Validate compatibility (always true now)
+    if (!validateStackCompatibility(card1, card2)) {
+      console.error('Cards are not compatible for stacking:', card1.name, 'and', card2.name);
       return state;
     }
     
     // Create new stack
     const newStack: CardStack = {
       id: `stack-${Date.now()}`,
-      baseCard,
-      modifierCards: [modifierCard]
+      cards: [card1, card2] // First card is primary, second is stacked on top
     };
     
     // Remove cards from hand and add stack
     const newHand = state.hand.filter(card => 
-      card.id !== baseCardId && card.id !== modifierCardId
+      card.id !== card1Id && card.id !== card2Id
     );
     
     // Remove from active cards
     const newActiveIds = new Set(state.activeCardIds);
-    newActiveIds.delete(baseCardId);
-    newActiveIds.delete(modifierCardId);
+    newActiveIds.delete(card1Id);
+    newActiveIds.delete(card2Id);
     
     // Activate the new stack
     const newActiveStackIds = new Set([...state.activeStackIds, newStack.id]);
@@ -129,42 +128,43 @@ export function createCardStack(baseCardId: string, modifierCardId: string): boo
   return success;
 }
 
-export function addToStack(stackId: string, modifierCardId: string): boolean {
+export function addToStack(stackId: string, newCardId: string): boolean {
   let success = false;
   
   gameState.update(state => {
     const stack = state.cardStacks.find(s => s.id === stackId);
-    const modifierCard = state.hand.find(card => card.id === modifierCardId);
+    const newCard = state.hand.find(card => card.id === newCardId);
     
     if (!stack) {
       console.error('Stack not found:', stackId);
       return state;
     }
     
-    if (!modifierCard) {
-      console.error('Modifier card not found:', modifierCardId);
+    if (!newCard) {
+      console.error('Card not found:', newCardId);
       return state;
     }
     
-    // Validate compatibility with base card
-    if (!validateStackCompatibility(stack.baseCard, modifierCard)) {
-      console.error('Card is not compatible with stack base card:', modifierCard.name, 'and', stack.baseCard.name);
+    // Validate compatibility with primary card (always true now)
+    const primaryCard = stack.cards[0];
+    if (!validateStackCompatibility(primaryCard, newCard)) {
+      console.error('Card is not compatible with stack primary card:', newCard.name, 'and', primaryCard.name);
       return state;
     }
     
-    // Update stack with new modifier
+    // Update stack with new card
     const updatedStacks = state.cardStacks.map(s => 
       s.id === stackId 
-        ? { ...s, modifierCards: [...s.modifierCards, modifierCard] }
+        ? { ...s, cards: [...s.cards, newCard] }
         : s
     );
     
     // Remove card from hand
-    const newHand = state.hand.filter(card => card.id !== modifierCardId);
+    const newHand = state.hand.filter(card => card.id !== newCardId);
     
     // Remove from active cards
     const newActiveIds = new Set(state.activeCardIds);
-    newActiveIds.delete(modifierCardId);
+    newActiveIds.delete(newCardId);
     
     success = true;
     return {
@@ -187,7 +187,7 @@ export function unstackCards(stackId: string): void {
     const wasStackActive = state.activeStackIds.has(stackId);
     
     // Return all cards to hand
-    const cardsToReturn = [stack.baseCard, ...stack.modifierCards];
+    const cardsToReturn = stack.cards;
     
     // Remove stack
     const newStacks = state.cardStacks.filter(s => s.id !== stackId);

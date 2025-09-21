@@ -8,9 +8,6 @@ export interface FinancialParameters {
   loanTerm?: number; // For loan type: loan term in years
 }
 
-export type CardRole = 'base' | 'modifier';
-export type StackCategory = 'income' | 'investment' | 'expense' | 'tax' | 'bonus' | 'loan';
-
 export interface StackEffect {
   type: 'multiply' | 'add' | 'subtract' | 'percentage' | 'custom';
   value?: number;
@@ -28,12 +25,7 @@ export interface FinancialCard {
   description?: string;
   detailedInfo?: CardDetailInfo;
   // Stacking properties
-  role: CardRole;
-  stackCategory?: StackCategory;
-  canBeStacked?: boolean; // Can other cards be stacked on this one
-  canStack?: boolean; // Can this card be stacked on others
   stackEffects?: StackEffect[]; // Effects this card applies when stacked
-  compatibleWith?: StackCategory[]; // What categories this card can stack on
 }
 
 export interface CardDetailInfo {
@@ -49,7 +41,6 @@ export interface TimeSeriesPoint {
 
 export interface CardStack {
   id: string;
-  baseCard: FinancialCard;
-  modifierCards: FinancialCard[];
+  cards: FinancialCard[]; // All cards in the stack, first is bottom/primary, rest are stacked on top
   position?: { x: number; y: number }; // For UI positioning
 }

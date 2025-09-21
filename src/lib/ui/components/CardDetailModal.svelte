@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FinancialCard, CardStack } from '$lib/core/types';
   import Button from './Button.svelte';
+  import { formatCardValue, getCardIcon } from '$lib/services';
   
   export let card: FinancialCard | null = null;
   export let stack: CardStack | null = null;
@@ -36,23 +37,6 @@
     }
     return params.join(' • ');
   }
-  
-  function getCardIcon(type: string): string {
-    switch (type) {
-      case 'compound': return '⤴️';
-      case 'linear': return '📏';
-      case 'exponential': return '🚀';
-      default: return '⚙️';
-    }
-  }
-  
-  function getRoleIcon(role: string): string {
-    switch (role) {
-      case 'base': return '🏗️';
-      case 'modifier': return '⚡';
-      default: return '🎴';
-    }
-  }
 </script>
 
 <svelte:window on:keydown={handleGlobalKeydown} />
@@ -78,18 +62,18 @@
             </div>
             <div>
               <h2 class="card-title">{card.name}</h2>
-              <p class="card-type">{card.type.toUpperCase()} • {getRoleIcon(card.role)} {card.role.toUpperCase()}</p>
+              <p class="card-type">{card.type.toUpperCase()} • STACKABLE CARD</p>
             </div>
           {:else if stack}
-            <div class="card-icon" style="background: {stack.baseCard.color}20">
+            <div class="card-icon" style="background: {stack.cards[0].color}20">
               <div class="card-icon-symbol">
-                🏗️⚡
+                📚⚡
               </div>
             </div>
             <div>
-              <h2 class="card-title">Stacked: {stack.baseCard.name}</h2>
+              <h2 class="card-title">Sequential Stack</h2>
               <p class="card-type">
-                {stack.baseCard.type.toUpperCase()} • {stack.modifierCards.length} MODIFIER{stack.modifierCards.length !== 1 ? 'S' : ''}
+                {stack.cards.length} CARDS • SEQUENTIAL CALCULATION
               </p>
             </div>
           {/if}
@@ -125,30 +109,15 @@
                   <span class="metric-label">Parameters</span>
                   <span class="metric-value">{formatParameters(card)}</span>
                 </div>
-                {#if card.role === 'base' && card.stackCategory}
-                  <div class="metric-item">
-                    <span class="metric-label">Stack Category</span>
-                    <span class="metric-value">{card.stackCategory.toUpperCase()}</span>
-                  </div>
-                  <div class="metric-item">
-                    <span class="metric-label">Can Be Stacked</span>
-                    <span class="metric-value">{card.canBeStacked ? 'Yes' : 'No'}</span>
-                  </div>
-                {:else if card.role === 'modifier'}
-                  <div class="metric-item">
-                    <span class="metric-label">Can Stack On</span>
-                    <span class="metric-value">{card.compatibleWith ? card.compatibleWith.join(', ').toUpperCase() : 'None'}</span>
-                  </div>
-                  {#if card.stackEffects && card.stackEffects.length > 0}
-                    <div class="metric-item full-width">
-                      <span class="metric-label">Stack Effects</span>
-                      <div class="effects-list">
-                        {#each card.stackEffects as effect}
-                          <span class="effect-item">{effect.description}</span>
-                        {/each}
-                      </div>
+                {#if card.stackEffects && card.stackEffects.length > 0}
+                  <div class="metric-item full-width">
+                    <span class="metric-label">Stack Effects</span>
+                    <div class="effects-list">
+                      {#each card.stackEffects as effect}
+                        <span class="effect-item">{effect.description}</span>
+                      {/each}
                     </div>
-                  {/if}
+                  </div>
                 {/if}
               </div>
             </section>
@@ -156,30 +125,40 @@
             <p class="no-details">No detailed information available for this card.</p>
           {/if}
         {:else if stack}
-          <!-- Stack Information -->
+          <!-- Sequential Stack Information -->
           <section class="info-section">
-            <h3>Base Card: {stack.baseCard.name}</h3>
-            <p class="strategy-description">{stack.baseCard.detailedInfo?.strategy || 'Base financial instrument'}</p>
-            <div class="stack-parameters">
-              <strong>Parameters:</strong> {formatParameters(stack.baseCard)}
-            </div>
+            <h3>Sequential Processing</h3>
+            <p class="strategy-description">
+              These cards are processed sequentially in the order they were stacked, with each card's effects 
+              applied to the result of the previous calculations.
+            </p>
           </section>
           
           <section class="info-section">
-            <h3>Applied Modifiers</h3>
-            <div class="modifiers-list">
-              {#each stack.modifierCards as modifier, index}
-                <div class="modifier-card">
-                  <div class="modifier-header">
-                    <span class="modifier-name">{modifier.name}</span>
-                    <span class="modifier-role">{getRoleIcon(modifier.role)} {modifier.role.toUpperCase()}</span>
-                  </div>
-                  {#if modifier.stackEffects}
-                    <div class="modifier-effects">
-                      {#each modifier.stackEffects as effect}
-                        <span class="effect-tag">{effect.description}</span>
-                      {/each}
+            <h3>Processing Order</h3>
+            <div class="sequential-flow">
+              {#each stack.cards as stackCard, index}
+                <div class="flow-step">
+                  <div class="step-number">Step {index + 1}</div>
+                  <div class="stack-card-detail" style="background: {stackCard.color}20; border-left: 4px solid {stackCard.color}">
+                    <div class="card-detail-header">
+                      <span class="card-detail-icon" style="color: {stackCard.color}">{getCardIcon(stackCard.type)}</span>
+                      <span class="card-detail-name">{stackCard.name}</span>
                     </div>
+                    <div class="card-detail-info">
+                      <span class="card-detail-type">{stackCard.type}</span>
+                      <span class="card-detail-value">{formatCardValue(stackCard)}</span>
+                    </div>
+                    {#if stackCard.stackEffects && stackCard.stackEffects.length > 0}
+                      <div class="card-detail-effects">
+                        {#each stackCard.stackEffects as effect}
+                          <span class="effect-tag">{effect.description}</span>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                  {#if index < stack.cards.length - 1}
+                    <div class="flow-arrow-down">↓</div>
                   {/if}
                 </div>
               {/each}
@@ -187,10 +166,10 @@
           </section>
           
           <section class="info-section">
-            <h3>Combined Effect</h3>
+            <h3>Combined Result</h3>
             <p class="strategy-description">
-              This stack applies {stack.modifierCards.length} modifier effect{stack.modifierCards.length !== 1 ? 's' : ''} 
-              to the base "{stack.baseCard.name}" card, modifying its financial projections according to the stacked effects.
+              The final result is calculated by processing all {stack.cards.length} cards sequentially,
+              applying each card's financial impact and effects in the order shown above.
             </p>
           </section>
         {/if}
@@ -362,50 +341,6 @@
     font-weight: 500;
   }
   
-  .stack-parameters {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    color: #e5e5e5;
-  }
-  
-  .modifiers-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .modifier-card {
-    padding: 1rem;
-    background: rgba(200, 150, 255, 0.1);
-    border: 1px solid rgba(200, 150, 255, 0.2);
-    border-radius: 8px;
-  }
-  
-  .modifier-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-  
-  .modifier-name {
-    font-weight: 600;
-    color: #c896ff;
-  }
-  
-  .modifier-role {
-    font-size: 0.8rem;
-    color: #888;
-  }
-  
-  .modifier-effects {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  
   .effect-tag {
     background: rgba(239, 68, 68, 0.2);
     color: #ef4444;
@@ -413,6 +348,84 @@
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 500;
+  }
+  
+  /* Sequential Flow Styles */
+  .sequential-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .flow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .step-number {
+    background: rgba(96, 165, 250, 0.2);
+    color: #60a5fa;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  
+  .stack-card-detail {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+  }
+  
+  .card-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .card-detail-icon {
+    font-size: 1.2rem;
+  }
+  
+  .card-detail-name {
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  
+  .card-detail-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .card-detail-type {
+    color: #888;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+  }
+  
+  .card-detail-value {
+    font-weight: 500;
+  }
+  
+  .card-detail-effects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+  }
+  
+  .flow-arrow-down {
+    color: #60a5fa;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0.5rem 0;
   }
   
   @media (max-width: 640px) {

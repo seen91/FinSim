@@ -35,12 +35,12 @@
   // Drag and drop state
   let isDragOver = false;
   
-  // Drag and drop handlers for adding more modifier cards to the stack
+  // Drag and drop handlers for adding more cards to the stack
   function handleDragOver(event: DragEvent) {
     event.preventDefault();
     
     const draggedCard = parseDragCardData(event.dataTransfer);
-    if (draggedCard && validateStackAddition(stack.baseCard, draggedCard)) {
+    if (draggedCard && validateStackAddition(stack.cards[0], draggedCard)) {
       isDragOver = true;
       event.dataTransfer!.dropEffect = 'move';
     }
@@ -55,18 +55,18 @@
     isDragOver = false;
     
     const draggedCard = parseDragCardData(event.dataTransfer);
-    if (draggedCard && validateStackAddition(stack.baseCard, draggedCard)) {
+    if (draggedCard && validateStackAddition(stack.cards[0], draggedCard)) {
       dispatch('addToStack', {
         stackId: stack.id,
-        modifierCard: draggedCard
+        card: draggedCard
       });
     }
   }
   
-  // Get stacking effects summary
+  // Get stacking effects summary showing sequential order
   function getStackEffectsSummary(): string {
-    const effects = stack.modifierCards.flatMap(card => card.stackEffects || []);
-    return effects.map(effect => effect.description).join(', ');
+    const cardNames = stack.cards.map(card => card.name);
+    return `${cardNames.join(' → ')}`;
   }
 </script>
 
@@ -103,59 +103,59 @@
     class="unstack-btn"
   >⊟</Button>
   
-  <!-- Base card (bottom layer, using GameCard) -->
-  <div class="card-layer base-card">
+  <!-- Primary card (bottom layer, using GameCard) -->
+  <div class="card-layer primary-card">
     <GameCard 
-      card={stack.baseCard}
+      card={stack.cards[0]}
       isActive={false}
       showRemoveButton={false}
       showInfoButton={false}
     />
   </div>
   
-  <!-- Modifier cards (stacked on top, using GameCard) -->
-  {#each stack.modifierCards as modifier, index (modifier.id)}
+  <!-- Effect cards (stacked on top, using GameCard) -->
+  {#each stack.cards.slice(1) as effectCard, index (effectCard.id)}
     <div 
-      class="card-layer modifier-card"
+      class="card-layer effect-card"
       style="transform: translateY(-{5 + (index * 3)}px) translateX({index * 2}px); z-index: {10 + index};"
     >
       <GameCard 
-        card={modifier}
+        card={effectCard}
         isActive={false}
         showRemoveButton={false}
         showInfoButton={false}
       />
-      <!-- Modifier card overlay to change appearance -->
-      <div class="modifier-overlay"></div>
+      <!-- Effect card overlay to change appearance -->
+      <div class="effect-overlay"></div>
     </div>
   {/each}
   
   <!-- Top overlay with combined information -->
   <div class="stack-overlay">
-    <!-- Prominent base card name -->
-    <div class="base-card-name">
-      {stack.baseCard.name}
+    <!-- Sequential stack title -->
+    <div class="stack-title">
+      Stack ({stack.cards.length} cards)
     </div>
     
     <div class="stack-info">
       <div class="stack-indicator">
         <div 
           class="card-indicator" 
-          class:positive={isPositiveCard(stack.baseCard)}
-          class:negative={isNegativeCard(stack.baseCard)}
-          class:loan={isLoanCard(stack.baseCard)}
+          class:positive={isPositiveCard(stack.cards[0])}
+          class:negative={isNegativeCard(stack.cards[0])}
+          class:loan={isLoanCard(stack.cards[0])}
         >
           <div class="indicator-scroll">
             <span class="indicator-content">
-              <span class="indicator-value">{formatCardValue(stack.baseCard)}</span>
-              <span class="indicator-modifiers">+ {stack.modifierCards.length} effects</span>
-              <span class="indicator-time">• {stack.baseCard.timeRange[1] - stack.baseCard.timeRange[0]}y</span>
+              <span class="indicator-value">Sequential Calc</span>
+              <span class="indicator-cards">{stack.cards.length} cards</span>
+              <span class="indicator-time">• Combined projection</span>
               <span class="indicator-effects">• {getStackEffectsSummary()}</span>
             </span>
             <span class="indicator-content" aria-hidden="true">
-              <span class="indicator-value">{formatCardValue(stack.baseCard)}</span>
-              <span class="indicator-modifiers">+ {stack.modifierCards.length} effects</span>
-              <span class="indicator-time">• {stack.baseCard.timeRange[1] - stack.baseCard.timeRange[0]}y</span>
+              <span class="indicator-value">Sequential Calc</span>
+              <span class="indicator-cards">{stack.cards.length} cards</span>
+              <span class="indicator-time">• Combined projection</span>
               <span class="indicator-effects">• {getStackEffectsSummary()}</span>
             </span>
           </div>
@@ -219,28 +219,28 @@
     height: 100%;
   }
   
-  .base-card {
+  .primary-card {
     z-index: 1;
   }
   
-  .modifier-card {
+  .effect-card {
     z-index: 2;
   }
   
-  /* Hide titles and indicators on modifier cards to show only base card name */
-  .modifier-card :global(.card-title),
-  .modifier-card :global(.card-type-container) {
+  /* Hide titles and indicators on effect cards to show only primary card name */
+  .effect-card :global(.card-title),
+  .effect-card :global(.card-type-container) {
     opacity: 0;
   }
   
-  /* Ensure base card title is visible through the overlay */
-  .base-card :global(.card-title) {
+  /* Ensure primary card title is visible through the overlay */
+  .primary-card :global(.card-title) {
     z-index: 15;
     position: relative;
   }
   
-  /* === MODIFIER OVERLAY === */
-  .modifier-overlay {
+  /* === EFFECT OVERLAY === */
+  .effect-overlay {
     position: absolute;
     top: 0;
     left: 0;
@@ -250,14 +250,14 @@
     border: 2px solid rgba(200, 150, 255, 0.4);
     border-radius: 12px;
     pointer-events: none;
-    /* Leave space for base card name to show through */
+    /* Leave space for primary card name to show through */
     background: linear-gradient(135deg, 
       rgba(58, 42, 78, 0.6) 0%, 
       rgba(42, 26, 62, 0.6) 70%, 
       transparent 100%);
   }
   
-  .stacked-card:hover .modifier-overlay {
+  .stacked-card:hover .effect-overlay {
     border-color: rgba(200, 150, 255, 0.6);
     box-shadow: 0 5px 20px rgba(200, 150, 255, 0.3);
   }
@@ -281,8 +281,8 @@
     overflow: hidden;
   }
 
-  /* Base card name - prominent display */
-  .base-card-name {
+  /* Stack title - prominent display */
+  .stack-title {
     background: linear-gradient(135deg, rgba(20, 25, 35, 0.9), rgba(15, 20, 30, 0.95));
     color: white;
     padding: 0.3rem 0.6rem;
@@ -306,7 +306,7 @@
     position: relative;
   }
 
-  .base-card-name::before {
+  .stack-title::before {
     content: '';
     position: absolute;
     top: 0;
@@ -320,7 +320,7 @@
     opacity: 0.8;
   }
 
-  .stacked-card:hover .base-card-name {
+  .stacked-card:hover .stack-title {
     background: linear-gradient(135deg, rgba(25, 30, 40, 0.95), rgba(20, 25, 35, 1));
     border-color: rgba(255, 255, 255, 0.3);
     box-shadow: 
@@ -379,7 +379,7 @@
     font-weight: 700;
   }
   
-  .indicator-modifiers {
+  .indicator-cards {
     color: #c896ff;
     font-weight: 600;
     font-size: 0.6rem;

@@ -4,7 +4,7 @@
   import Chart from '../components/Chart.svelte';
   import Button from '../components/Button.svelte';
   import { createEventDispatcher } from 'svelte';
-  import { unboundModifierCards } from '$lib/core/stores/game-state';
+  import { unboundEffectCards } from '$lib/core/stores/game-state';
 
   export let cards: FinancialCard[] = [];
   export let stacks: CardStack[] = [];
@@ -41,11 +41,11 @@
     dispatch('unstack', event.detail);
   }
   
-  function handleStackCards(event: CustomEvent<{baseCard: FinancialCard, modifierCard: FinancialCard}>) {
+  function handleStackCards(event: CustomEvent<{primaryCard: FinancialCard, effectCard: FinancialCard}>) {
     dispatch('stackCards', event.detail);
   }
   
-  function handleAddToStack(event: CustomEvent<{stackId: string, modifierCard: FinancialCard}>) {
+  function handleAddToStack(event: CustomEvent<{stackId: string, effectCard: FinancialCard}>) {
     dispatch('addToStack', event.detail);
   }
 </script>
@@ -75,7 +75,7 @@
       {stacks}
       {activeCardIds}
       {activeStackIds}
-      unboundModifierCards={$unboundModifierCards}
+      unboundEffectCards={$unboundEffectCards}
       on:toggle={handleCardToggle}
       on:toggleStack={handleStackToggle}
       on:info={handleCardInfo}

@@ -9,7 +9,7 @@
   export let isActive = true;
   export let showRemoveButton = false;
   export let showInfoButton = true;
-  export let isUnboundModifier = false; // True if this modifier applies globally
+  export let isUnboundEffect = false; // True if this card has effects that apply globally
   
   const dispatch = createEventDispatcher();
   
@@ -63,8 +63,8 @@
     const draggedCard = parseDragCardData(event.dataTransfer);
     if (draggedCard && validateCardStacking(card, draggedCard)) {
       dispatch('stackCards', {
-        baseCard: card,
-        modifierCard: draggedCard
+        card1: card,
+        card2: draggedCard
       });
     }
   }
@@ -75,14 +75,13 @@
   class:inactive={!isActive}
   class:dragging={isDragging}
   class:drag-over={isDragOver}
-  class:can-be-stacked={card.canBeStacked && card.role === 'base'}
-  class:can-stack={card.canStack && card.role === 'modifier'}
-  class:unbound-modifier={isUnboundModifier}
+  class:can-stack={card.stackEffects && card.stackEffects.length > 0}
+  class:unbound-effect={isUnboundEffect}
   on:click={handleClick}
   on:keydown
   role="button"
   tabindex="0"
-  draggable={card.role === 'modifier' && card.canStack && isActive}
+  draggable={isActive}
   on:dragstart={handleDragStart}
   on:dragend={handleDragEnd}
   on:dragover={handleDragOver}
@@ -172,8 +171,7 @@
   }
   
   /* Only allow overflow visible for standalone cards with stack indicators */
-  .game-card.can-stack:hover,
-  .game-card.can-be-stacked:hover {
+  .game-card.can-stack:hover {
     overflow: visible;
   }
   
@@ -216,52 +214,15 @@
     transform: translateY(-10px) scale(1.05);
   }
   
-  .game-card.can-be-stacked {
-    /* Base cards that can accept stacks */
-    position: relative;
-  }
-  
-  .game-card.can-be-stacked:not(.drag-over)::after {
-    content: '🏗️';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -20px);
-    font-size: 1.2rem;
-    opacity: 0.6;
-    z-index: 15;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    cursor: help;
-  }
-  
-  .game-card.can-be-stacked:hover:not(.drag-over)::before {
-    content: 'Drop modifier cards here to stack';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, 10px);
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    z-index: 9999;
-    opacity: 0.95;
-    pointer-events: none;
-    border: 1px solid rgba(120, 119, 198, 0.5);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  }
-
-  /* Unbound modifier styling - applies to all cards globally */
-  .game-card.unbound-modifier {
+  /* Unbound effect styling - applies to all cards globally */
+  .game-card.unbound-effect {
     border: 2px solid rgba(255, 140, 0, 0.6);
     background: linear-gradient(135deg, rgba(255, 140, 0, 0.1), rgba(255, 140, 0, 0.05));
     box-shadow: 0 0 20px rgba(255, 140, 0, 0.3), 0 5px 15px rgba(0, 0, 0, 0.4);
     position: relative;
   }
 
-  .game-card.unbound-modifier::before {
+  .game-card.unbound-effect::before {
     content: '🌍';
     position: absolute;
     top: 8px;
@@ -273,7 +234,7 @@
     filter: drop-shadow(0 0 4px rgba(255, 140, 0, 0.6));
   }
 
-  .game-card.unbound-modifier:hover::after {
+  .game-card.unbound-effect:hover::after {
     content: 'Applies to ALL cards in hand';
     position: absolute;
     top: -40px;
@@ -308,7 +269,7 @@
   }
   
   .game-card.can-stack:hover::after {
-    content: 'Drag onto base cards to stack';
+    content: 'Drag onto other cards to stack';
     position: absolute;
     top: 50%;
     left: 50%;

@@ -33,19 +33,17 @@ export function createDragCardData(card: FinancialCard): DragCardData {
 }
 
 /**
- * Validates if a modifier card can be stacked on a base card
+ * Validates if any card can be stacked on any other card
  */
-export function validateCardStacking(baseCard: FinancialCard, modifierCard: FinancialCard): boolean {
-  return baseCard.role === 'base' && 
-         baseCard.canBeStacked === true &&
-         modifierCard.role === 'modifier' && 
-         modifierCard.canStack === true;
+export function validateCardStacking(card1: FinancialCard, card2: FinancialCard): boolean {
+  // Any card can be stacked with any other card
+  return true;
 }
 
 /**
- * Validates if a modifier card can be added to an existing stack
+ * Validates if a card can be added to an existing stack
  */
-export function validateStackAddition(stackBaseCard: FinancialCard, modifierCard: FinancialCard): boolean {
-  return modifierCard.role === 'modifier' && 
-         modifierCard.canStack === true;
+export function validateStackAddition(stackPrimaryCard: FinancialCard, newCard: FinancialCard): boolean {
+  // Any card can be added to any stack
+  return true;
 }

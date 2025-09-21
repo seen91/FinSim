@@ -3,35 +3,64 @@ import { calculateCardProjection } from './card-projection';
 import { evaluate } from 'mathjs';
 
 export function calculateStackProjection(stack: CardStack): TimeSeriesPoint[] {
-  // First calculate the base card projection
-  const basePoints = calculateCardProjection(stack.baseCard);
-  
-  // If no modifier cards, return base projection
-  if (stack.modifierCards.length === 0) {
-    return basePoints;
+  // If only one card in stack, return its projection
+  if (stack.cards.length === 1) {
+    return calculateCardProjection(stack.cards[0]);
   }
   
-  // Apply modifier effects to each time point
-  const modifiedPoints: TimeSeriesPoint[] = basePoints.map(point => {
-    let modifiedValue = point.value;
+  // Process cards sequentially in the order they were stacked
+  // Start with the first card's projection
+  let currentPoints = calculateCardProjection(stack.cards[0]);
+  
+  // Process each subsequent card in order
+  for (let i = 1; i < stack.cards.length; i++) {
+    const card = stack.cards[i];
+    const cardPoints = calculateCardProjection(card);
     
-    // Apply each modifier card's effects
-    for (const modifier of stack.modifierCards) {
-      if (modifier.stackEffects) {
-        for (const effect of modifier.stackEffects) {
-          modifiedValue = applyStackEffect(modifiedValue, effect, point);
-        }
+    // Combine the current running total with this card's values
+    currentPoints = combineCardProjections(currentPoints, cardPoints, card);
+  }
+  
+  // Update the cardId to reflect that this is a stack
+  return currentPoints.map(point => ({
+    ...point,
+    cardId: stack.id
+  }));
+}
+
+/**
+ * Combine two card projections, applying the second card's effects to the first
+ */
+function combineCardProjections(
+  basePoints: TimeSeriesPoint[], 
+  newCardPoints: TimeSeriesPoint[], 
+  newCard: any
+): TimeSeriesPoint[] {
+  // Create a map of years to values for the new card
+  const newCardValuesByYear = new Map<number, number>();
+  newCardPoints.forEach(point => {
+    newCardValuesByYear.set(point.year, point.value);
+  });
+  
+  return basePoints.map(basePoint => {
+    const newCardValue = newCardValuesByYear.get(basePoint.year) || 0;
+    let combinedValue = basePoint.value;
+    
+    // If the new card has stack effects, apply them to the current total
+    if (newCard.stackEffects && newCard.stackEffects.length > 0) {
+      for (const effect of newCard.stackEffects) {
+        combinedValue = applyStackEffect(combinedValue, effect, basePoint);
       }
+    } else {
+      // If no stack effects, simply add the card's value to the running total
+      combinedValue += newCardValue;
     }
     
     return {
-      ...point,
-      value: modifiedValue,
-      cardId: stack.id // Use stack id instead of individual card id
+      ...basePoint,
+      value: combinedValue
     };
   });
-  
-  return modifiedPoints;
 }
 
 function applyStackEffect(baseValue: number, effect: StackEffect, point: TimeSeriesPoint): number {
@@ -72,17 +101,7 @@ function applyStackEffect(baseValue: number, effect: StackEffect, point: TimeSer
   }
 }
 
-export function validateStackCompatibility(baseCard: any, modifierCard: any): boolean {
-  // Check if the modifier card can be stacked
-  if (!modifierCard.canStack) {
-    return false;
-  }
-  
-  // Check if the base card can be stacked upon
-  if (!baseCard.canBeStacked) {
-    return false;
-  }
-  
-  // All modifier cards can now stack on all base cards
+export function validateStackCompatibility(card1: any, card2: any): boolean {
+  // Any card can be stacked with any other card
   return true;
 }

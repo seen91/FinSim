@@ -10,7 +10,7 @@
   export let stacks: CardStack[] = [];
   export let activeCardIds: Set<string> = new Set();
   export let activeStackIds: Set<string> = new Set();
-  export let unboundModifierCards: FinancialCard[] = [];
+  export let unboundEffectCards: FinancialCard[] = [];
 
   const dispatch = createEventDispatcher();
 
@@ -74,11 +74,11 @@
     dispatch('unstack', event.detail);
   }
   
-  function handleStackCards(event: CustomEvent<{baseCard: FinancialCard, modifierCard: FinancialCard}>) {
+  function handleStackCards(event: CustomEvent<{primaryCard: FinancialCard, effectCard: FinancialCard}>) {
     dispatch('stackCards', event.detail);
   }
   
-  function handleAddToStack(event: CustomEvent<{stackId: string, modifierCard: FinancialCard}>) {
+  function handleAddToStack(event: CustomEvent<{stackId: string, effectCard: FinancialCard}>) {
     dispatch('addToStack', event.detail);
   }
 
@@ -160,14 +160,14 @@
     }
   }
 
-  // Check if item is a card stack (has baseCard property)
+  // Check if item is a card stack (has cards array property)
   function isStack(item: FinancialCard | CardStack): item is CardStack {
-    return 'baseCard' in item;
+    return 'cards' in item;
   }
 
   // Check if a card is an unbound modifier (applies globally)
-  function isUnboundModifier(card: FinancialCard): boolean {
-    return unboundModifierCards.some(modifier => modifier.id === card.id);
+  function isUnboundEffect(card: FinancialCard): boolean {
+    return unboundEffectCards.some(effectCard => effectCard.id === card.id);
   }
 
   onMount(() => {
@@ -223,7 +223,7 @@
               isActive={false}
               showRemoveButton={false}
               showInfoButton={false}
-              isUnboundModifier={isUnboundModifier(item)}
+              isUnboundEffect={isUnboundEffect(item)}
             />
           {/if}
         </div>
@@ -255,7 +255,7 @@
               isActive={false}
               showRemoveButton={false}
               showInfoButton={false}
-              isUnboundModifier={isUnboundModifier(item)}
+              isUnboundEffect={isUnboundEffect(item)}
             />
           {/if}
         </div>
@@ -290,7 +290,7 @@
               card={item}
               isActive={activeCardIds.has(item.id)} 
               showRemoveButton={true}
-              isUnboundModifier={isUnboundModifier(item)}
+              isUnboundEffect={isUnboundEffect(item)}
               on:toggle={handleCardToggle}
               on:info={handleCardInfo}
               on:remove={handleCardRemove}

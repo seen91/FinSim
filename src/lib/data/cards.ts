@@ -1,6 +1,6 @@
 import type { FinancialCard } from '../core/types';
 
-// Base Income Cards for Swedish Financial Context
+// Income Cards for Swedish Financial Context
 export const incomeCards: FinancialCard[] = [
   {
     id: 'monthly-salary',
@@ -13,15 +13,11 @@ export const incomeCards: FinancialCard[] = [
     detailedInfo: {
       strategy: 'Monthly gross salary of 35,000 SEK, forming the foundation of personal income in Sweden.',
       timeCommitment: 'Full-time employment'
-    },
-    role: 'base',
-    stackCategory: 'income',
-    canBeStacked: true,
-    canStack: false
+    }
   }
 ];
 
-// Base Expense Cards for Swedish Living Costs
+// Expense Cards for Swedish Living Costs
 export const expenseCards: FinancialCard[] = [
   {
     id: 'living-expenses',
@@ -34,11 +30,7 @@ export const expenseCards: FinancialCard[] = [
     detailedInfo: {
       strategy: 'Basic monthly living expenses including food, utilities, rent, and necessities totaling 18,000 SEK.',
       timeCommitment: 'Ongoing living costs'
-    },
-    role: 'base',
-    stackCategory: 'expense',
-    canBeStacked: true,
-    canStack: false
+    }
   }
 ];
 
@@ -59,11 +51,7 @@ export const investmentCards: FinancialCard[] = [
     detailedInfo: {
       strategy: 'Investeringssparkonto (ISK) - Swedish tax-advantaged investment account with 1% annual standard tax.',
       timeCommitment: '15+ years for compound growth'
-    },
-    role: 'base',
-    stackCategory: 'investment',
-    canBeStacked: true,
-    canStack: false
+    }
   }
 ];
 
@@ -80,11 +68,7 @@ export const carCards: FinancialCard[] = [
     detailedInfo: {
       strategy: 'Car as a depreciating asset worth 120,000 SEK initially, subject to depreciation effects.',
       timeCommitment: 'Asset subject to market forces'
-    },
-    role: 'base',
-    stackCategory: 'investment',
-    canBeStacked: true,
-    canStack: false
+    }
   },
   {
     id: 'car-depreciation',
@@ -98,9 +82,6 @@ export const carCards: FinancialCard[] = [
       strategy: 'Annual 14% depreciation that compounds yearly, significantly reducing car value over time.',
       timeCommitment: 'Ongoing depreciation effect'
     },
-    role: 'modifier',
-    canStack: true,
-    compatibleWith: ['investment'],
     stackEffects: [{
       type: 'percentage',
       value: 14,
@@ -118,7 +99,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -160 },
     timeRange: [2025, 2045],
     color: '#f59e0b',
-    role: 'base',
     description: 'Monthly car insurance premium',
     detailedInfo: {
       strategy: 'Comprehensive car insurance coverage (1,920 SEK annually)',
@@ -132,7 +112,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -30 },
     timeRange: [2025, 2045],
     color: '#f97316',
-    role: 'base',
     description: 'Annual vehicle registration tax',
     detailedInfo: {
       strategy: 'Annual vehicle registration tax (360 SEK annually)',
@@ -146,7 +125,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -130 },
     timeRange: [2025, 2045],
     color: '#ea580c',
-    role: 'base',
     description: 'Monthly gasoline costs',
     detailedInfo: {
       strategy: 'Gasoline or diesel fuel costs based on usage (1,560 SEK annually)',
@@ -160,7 +138,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -420 },
     timeRange: [2025, 2045],
     color: '#d97706',
-    role: 'base',
     description: 'Monthly service and repair costs',
     detailedInfo: {
       strategy: 'Regular service, repairs, and maintenance costs (5,040 SEK annually)',
@@ -174,7 +151,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -300 },
     timeRange: [2025, 2045],
     color: '#0ea5e9',
-    role: 'base',
     description: 'Winter tire costs',
     detailedInfo: {
       strategy: 'Winter tire purchase and replacement costs (3,600 SEK annually)',
@@ -188,7 +164,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -800 },
     timeRange: [2025, 2045],
     color: '#6b7280',
-    role: 'base',
     description: 'Monthly parking fees',
     detailedInfo: {
       strategy: 'Monthly parking fees, garage rental, or parking permits (9,600 SEK annually)',
@@ -202,7 +177,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -500 },
     timeRange: [2025, 2045],
     color: '#8b5cf6',
-    role: 'base',
     description: 'Investment opportunity cost',
     detailedInfo: {
       strategy: 'Opportunity cost of capital tied up in car instead of investments (6,000 SEK annually)',
@@ -216,7 +190,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -45 },
     timeRange: [2025, 2045],
     color: '#06b6d4',
-    role: 'base',
     description: 'Tire changing service costs',
     detailedInfo: {
       strategy: 'Seasonal tire changes and mounting costs (540 SEK annually)',
@@ -230,7 +203,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -250 },
     timeRange: [2025, 2045],
     color: '#84cc16',
-    role: 'base',
     description: 'Small car-related expenses',
     detailedInfo: {
       strategy: 'Various small costs like car wash, accessories, minor repairs (3,000 SEK annually)',
@@ -244,7 +216,6 @@ export const carExpenseCards: FinancialCard[] = [
     parameters: { principal: 0, monthlyAmount: -149 },
     timeRange: [2025, 2045],
     color: '#f43f5e',
-    role: 'base',
     description: 'Car loan interest costs',
     detailedInfo: {
       strategy: 'Interest payments on car financing or loan (1,788 SEK annually)',
@@ -253,8 +224,8 @@ export const carExpenseCards: FinancialCard[] = [
   }
 ];
 
-// Swedish Financial Modifier Cards
-export const bonusCards: FinancialCard[] = [
+// Financial Effect Cards (previously modifiers)
+export const effectCards: FinancialCard[] = [
   {
     id: 'annual-bonus',
     name: 'Annual Performance Bonus',
@@ -267,9 +238,6 @@ export const bonusCards: FinancialCard[] = [
       strategy: 'Annual bonus of 30,000 SEK based on performance, averaged monthly for planning purposes.',
       timeCommitment: 'While employed with good performance'
     },
-    role: 'modifier',
-    canStack: true,
-    compatibleWith: ['income'],
     stackEffects: [{
       type: 'add',
       value: 30000,
@@ -288,9 +256,6 @@ export const bonusCards: FinancialCard[] = [
       strategy: 'Regular cost-of-living and performance raises compound over time, typical in Sweden.',
       timeCommitment: 'While employed'
     },
-    role: 'modifier',
-    canStack: true,
-    compatibleWith: ['income'],
     stackEffects: [{
       type: 'percentage',
       value: -2.5,
@@ -309,9 +274,6 @@ export const bonusCards: FinancialCard[] = [
       strategy: 'Inflation reduces the purchasing power of fixed income over time, Swedish target is 2%.',
       timeCommitment: 'Ongoing economic effect'
     },
-    role: 'modifier',
-    canStack: true,
-    compatibleWith: ['income', 'expense'],
     stackEffects: [{
       type: 'percentage',
       value: 2,
@@ -330,9 +292,6 @@ export const bonusCards: FinancialCard[] = [
       strategy: 'Swedish ISK accounts have 1% annual standard tax on the account value regardless of performance.',
       timeCommitment: 'While invested in ISK account'
     },
-    role: 'modifier',
-    canStack: true,
-    compatibleWith: ['investment'],
     stackEffects: [{
       type: 'percentage',
       value: 1,
@@ -351,9 +310,6 @@ export const bonusCards: FinancialCard[] = [
       strategy: 'Living expenses typically grow slightly faster than general inflation due to lifestyle improvements.',
       timeCommitment: 'Ongoing for most living expenses'
     },
-    role: 'modifier',
-    canStack: true,
-    compatibleWith: ['expense'],
     stackEffects: [{
       type: 'percentage',
       value: -2.5,
@@ -370,5 +326,5 @@ export const allCards: FinancialCard[] = [
   ...investmentCards,
   ...carCards,
   ...carExpenseCards,
-  ...bonusCards
+  ...effectCards
 ];

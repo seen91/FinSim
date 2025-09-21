@@ -12,6 +12,7 @@
   let isModalOpen = false;
   
   function handleAddCard(event: CustomEvent<FinancialCard>) {
+    console.log('GameApp: Adding card to hand:', event.detail.name);
     addCardToHand(event.detail);
   }
   
@@ -40,6 +41,7 @@
   }
   
   function handleShowCardInfo(event: CustomEvent<FinancialCard>) {
+    console.log('GameApp: Showing card info for:', event.detail.name);
     selectedCard = event.detail;
     selectedStack = null;
     isModalOpen = true;
@@ -51,17 +53,17 @@
     isModalOpen = true;
   }
   
-  function handleStackCards(event: CustomEvent<{baseCard: FinancialCard, modifierCard: FinancialCard}>) {
-    const success = createCardStack(event.detail.baseCard.id, event.detail.modifierCard.id);
+  function handleStackCards(event: CustomEvent<{card1: FinancialCard, card2: FinancialCard}>) {
+    const success = createCardStack(event.detail.card1.id, event.detail.card2.id);
     if (!success) {
-      console.error('Failed to create stack - cards may not be compatible');
+      console.error('Failed to create stack - unexpected error');
     }
   }
   
-  function handleAddToStack(event: CustomEvent<{stackId: string, modifierCard: FinancialCard}>) {
-    const success = addToStack(event.detail.stackId, event.detail.modifierCard.id);
+  function handleAddToStack(event: CustomEvent<{stackId: string, card: FinancialCard}>) {
+    const success = addToStack(event.detail.stackId, event.detail.card.id);
     if (!success) {
-      console.error('Failed to add card to stack - card may not be compatible');
+      console.error('Failed to add card to stack - unexpected error');
     }
   }
 </script>

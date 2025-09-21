@@ -4,38 +4,37 @@ import { calculateStackProjection } from './stack-projection';
 import { evaluate } from 'mathjs';
 
 /**
- * Get modifier cards that are in the hand but not stacked on any base card.
- * These "unbound" modifier cards should apply to all cards in the hand.
+ * Get cards with stack effects that are in the hand but not part of any stack.
+ * These "unbound" effect cards should apply to all cards in the hand.
  */
-function getUnboundModifierCards(allHandCards: FinancialCard[], stacks: CardStack[]): FinancialCard[] {
-  // Get all card IDs that are part of stacks (both base and modifier cards)
+function getUnboundEffectCards(allHandCards: FinancialCard[], stacks: CardStack[]): FinancialCard[] {
+  // Get all card IDs that are part of stacks
   const stackedCardIds = new Set<string>();
   stacks.forEach(stack => {
-    stackedCardIds.add(stack.baseCard.id);
-    stack.modifierCards.forEach(modifier => stackedCardIds.add(modifier.id));
+    stack.cards.forEach(card => stackedCardIds.add(card.id));
   });
   
-  // Find modifier cards that are in hand but not in any stack
+  // Find cards with stack effects that are in hand but not in any stack
   return allHandCards.filter(card => 
-    card.role === 'modifier' && 
-    card.canStack === true &&
+    card.stackEffects && 
+    card.stackEffects.length > 0 &&
     !stackedCardIds.has(card.id)
   );
 }
 
 /**
- * Apply stack effects from unbound modifier cards to a given value
+ * Apply stack effects from unbound effect cards to a given value
  */
-function applyUnboundModifierEffects(
+function applyUnboundEffectCardEffects(
   baseValue: number, 
-  modifierCards: FinancialCard[],
+  effectCards: FinancialCard[],
   point: TimeSeriesPoint
 ): number {
   let modifiedValue = baseValue;
   
-  for (const modifier of modifierCards) {
-    if (modifier.stackEffects) {
-      for (const effect of modifier.stackEffects) {
+  for (const card of effectCards) {
+    if (card.stackEffects) {
+      for (const effect of card.stackEffects) {
         modifiedValue = applyStackEffect(modifiedValue, effect, point);
       }
     }
@@ -93,47 +92,46 @@ export function calculateProjections(
   const allPoints: TimeSeriesPoint[] = [];
   
   // Use allHandCards if provided, otherwise fall back to cards for backward compatibility
-  const handCardsForModifiers = allHandCards || cards;
+  const handCardsForEffects = allHandCards || cards;
   
-  // Get unbound modifier cards that should apply to all cards
-  // Only use ACTIVE cards for unbound modifiers (cards that are passed in, not allHandCards)
-  const unboundModifiers = getUnboundModifierCards(cards, stacks);
+  // Get unbound effect cards that should apply to all cards
+  // Only use ACTIVE cards for unbound effects (cards that are passed in, not allHandCards)
+  const unboundEffects = getUnboundEffectCards(cards, stacks);
   
-  // Calculate projections for individual cards (non-modifier cards not in stacks)
+  // Calculate projections for individual cards (cards not in stacks)
   const stackedCardIds = new Set<string>();
   stacks.forEach(stack => {
-    stackedCardIds.add(stack.baseCard.id);
-    stack.modifierCards.forEach(modifier => stackedCardIds.add(modifier.id));
+    stack.cards.forEach(card => stackedCardIds.add(card.id));
   });
   
   cards.forEach(card => {
-    // Skip cards that are part of stacks or are unbound modifier cards
-    if (stackedCardIds.has(card.id) || (card.role === 'modifier' && card.canStack)) {
+    // Skip cards that are part of stacks or are unbound effect cards
+    if (stackedCardIds.has(card.id) || (card.stackEffects && card.stackEffects.length > 0 && unboundEffects.includes(card))) {
       return;
     }
     
     let points = calculateCardProjection(card);
     
-    // Apply unbound modifier effects to each point
-    if (unboundModifiers.length > 0) {
+    // Apply unbound effect card effects to each point
+    if (unboundEffects.length > 0) {
       points = points.map(point => ({
         ...point,
-        value: applyUnboundModifierEffects(point.value, unboundModifiers, point)
+        value: applyUnboundEffectCardEffects(point.value, unboundEffects, point)
       }));
     }
     
     allPoints.push(...points);
   });
   
-  // Calculate projections for card stacks (which already have their modifiers applied)
+  // Calculate projections for card stacks (which already have their effects applied)
   stacks.forEach(stack => {
     let points = calculateStackProjection(stack);
     
-    // Apply unbound modifier effects to stack results as well
-    if (unboundModifiers.length > 0) {
+    // Apply unbound effect card effects to stack results as well
+    if (unboundEffects.length > 0) {
       points = points.map(point => ({
         ...point,
-        value: applyUnboundModifierEffects(point.value, unboundModifiers, point)
+        value: applyUnboundEffectCardEffects(point.value, unboundEffects, point)
       }));
     }
     

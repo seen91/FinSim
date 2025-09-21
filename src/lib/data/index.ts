@@ -1,5 +1,5 @@
 import { carTcoDeck } from './decks';
-import { incomeCards, expenseCards, investmentCards, bonusCards } from './cards';
+import { incomeCards, expenseCards, investmentCards, effectCards } from './cards';
 
 export const allDecks = [carTcoDeck];
 
@@ -11,6 +11,6 @@ export const allIndividualCards = [
   expenseCards.find(card => card.id === 'living-expenses')!,
   // Investment account
   investmentCards.find(card => card.id === 'isk-account')!,
-  // ISK tax modifier
-  bonusCards.find(card => card.id === 'isk-tax')!
+  // ISK tax effect
+  effectCards.find(card => card.id === 'isk-tax')!
 ];
