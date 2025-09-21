@@ -2,12 +2,16 @@
   import type { CardStack } from '$lib/core/types';
   import { createEventDispatcher } from 'svelte';
   import CardMiniDisplay from '../components/CardMiniDisplay.svelte';
+  import { generateStackName } from '$lib/services';
 
   export let stack: CardStack;
-  export let title: string = 'Stacked Cards';
+  export let title: string = ''; // Default to empty, will use generated name if not provided
   export let readonly: boolean = false;
   let expanded = false;
   const dispatch = createEventDispatcher();
+
+  // Use generated name if title not explicitly provided
+  $: displayTitle = title || generateStackName(stack);
 
   function toggleExpanded() {
     expanded = !expanded;
@@ -33,7 +37,7 @@
 </script><div class="stack-container">
   <div class="stack-item" on:click={toggleExpanded} on:keydown role="button" tabindex="0">
     <div class="stack-details">
-      <div class="stack-name">📚 {title}</div>
+      <div class="stack-name">📚 {displayTitle}</div>
       <div class="stack-info">{stack.cards.length} cards • Calculated in order of appearance</div>
     </div>
     <div class="stack-controls">

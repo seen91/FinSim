@@ -41,7 +41,6 @@
         {#if deck.stacks && deck.stacks.length > 0}
           • {deck.stacks.length} pre-stacked group{deck.stacks.length > 1 ? 's' : ''}
         {/if}
-        • {deck.description}
       </div>
     </div>
     <button class="add-btn" on:click={handleAddDeck} title="Add entire deck">+</button>
@@ -54,7 +53,7 @@
         {#each deck.stacks as stack, index}
           <StackDisplay 
             {stack}
-            title={stack.cards.length > 0 ? `${stack.cards[0].name} Stack` : 'Card Stack'}
+            title={deck.name}
             on:addStack={handleStackAdd}
             on:addCard={handleCardAdd}
             on:cardInfo={handleCardInfo}

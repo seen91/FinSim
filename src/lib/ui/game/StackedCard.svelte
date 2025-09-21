@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { CardStack, FinancialCard } from '$lib/core/types';
-    import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard, isLoanCard } from '$lib/services/card-formatter';
+  import { formatCardValue, getCardIcon, isPositiveCard, isNegativeCard, isLoanCard, generateStackName, getShortStackName } from '$lib/services';
   import { parseDragCardData, validateStackAddition } from '$lib/services/drag-drop-helpers';
   import Button from '../components/Button.svelte';
   import GameCard from './GameCard.svelte';
@@ -134,7 +134,7 @@
   <div class="stack-overlay">
     <!-- Sequential stack title -->
     <div class="stack-title">
-      Stack ({stack.cards.length} cards)
+      {getShortStackName(stack)}
     </div>
     
     <div class="stack-info">
@@ -147,15 +147,15 @@
         >
           <div class="indicator-scroll">
             <span class="indicator-content">
-              <span class="indicator-value">Sequential Calc</span>
+              <span class="indicator-value">{generateStackName(stack)}</span>
               <span class="indicator-cards">{stack.cards.length} cards</span>
-              <span class="indicator-time">• Combined projection</span>
+              <span class="indicator-time">• Sequential calculation</span>
               <span class="indicator-effects">• {getStackEffectsSummary()}</span>
             </span>
             <span class="indicator-content" aria-hidden="true">
-              <span class="indicator-value">Sequential Calc</span>
+              <span class="indicator-value">{generateStackName(stack)}</span>
               <span class="indicator-cards">{stack.cards.length} cards</span>
-              <span class="indicator-time">• Combined projection</span>
+              <span class="indicator-time">• Sequential calculation</span>
               <span class="indicator-effects">• {getStackEffectsSummary()}</span>
             </span>
           </div>

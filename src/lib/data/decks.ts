@@ -13,7 +13,7 @@ const carAssetWithDepreciation: CardStack = {
 
 export const carTcoDeck: Deck = {
   id: 'car-tco',
-  name: 'Cheap Car TCO',
+  name: 'Cheap Car',
   description: 'Total Cost of Ownership for a 120,000 SEK car with depreciation and operating costs',
   cards: [
     // Individual operating expense cards

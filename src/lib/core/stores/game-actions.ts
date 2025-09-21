@@ -54,6 +54,7 @@ export function addDeckToHand(deck: Deck): void {
       // Multiple cards - create one comprehensive stack for the entire deck
       const newStack: CardStack = {
         id: `deck-${deck.id}-${Date.now()}-${Math.random()}`,
+        name: deck.name, // Use deck name as stack name
         cards: newCards
       };
       

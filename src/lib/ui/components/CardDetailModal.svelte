@@ -4,7 +4,7 @@
   import StackDisplay from './StackDisplay.svelte';
   import Chart from './Chart.svelte';
   import CardMiniDisplay from './CardMiniDisplay.svelte';
-  import { formatCardValue, getCardIcon } from '$lib/services';
+  import { formatCardValue, getCardIcon, generateStackName } from '$lib/services';
   import { calculateStackProjection } from '$lib/core/calculations/stack-projection';
   import { writable, derived } from 'svelte/store';
   import { createEventDispatcher } from 'svelte';
@@ -101,7 +101,7 @@
               </div>
             </div>
             <div>
-              <h2 class="card-title">Card Stack</h2>
+              <h2 class="card-title">{generateStackName(stack)}</h2>
               <p class="card-type">
                 {stack.cards.length} CARDS • STACKED COMBINATION
               </p>

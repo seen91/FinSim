@@ -41,6 +41,7 @@ export interface TimeSeriesPoint {
 
 export interface CardStack {
   id: string;
+  name?: string; // Optional custom name for the stack (e.g., deck name)
   cards: FinancialCard[]; // All cards in the stack, first is bottom/primary, rest are stacked on top
   position?: { x: number; y: number }; // For UI positioning
 }
