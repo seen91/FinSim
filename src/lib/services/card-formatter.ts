@@ -22,13 +22,24 @@ export function formatCardValue(card: FinancialCard): string {
     const annualPayment = monthlyPayment * 12;
     return `$${(principal / 1000).toFixed(0)}k → -$${(annualPayment / 1000).toFixed(1)}k/y`;
   }
-  if (card.parameters.rate) {
+  
+  // Show rate if it exists and is non-zero
+  if (card.parameters.rate && card.parameters.rate !== 0) {
     return `${card.parameters.rate > 0 ? '+' : ''}${card.parameters.rate}%`;
   }
-  if (card.parameters.monthlyAmount) {
+  
+  // Show monthly amount if it exists and is non-zero
+  if (card.parameters.monthlyAmount && card.parameters.monthlyAmount !== 0) {
     const monthly = card.parameters.monthlyAmount;
     return `${monthly > 0 ? '+' : ''}${(monthly / 1000).toFixed(1)}k/mo`;
   }
+  
+  // Show principal value if it exists and is non-zero (for cards with only initial value)
+  if (card.parameters.principal && card.parameters.principal !== 0) {
+    const principal = card.parameters.principal;
+    return `${principal > 0 ? '+' : ''}${(Math.abs(principal) / 1000).toFixed(0)}k`;
+  }
+  
   return '';
 }
 

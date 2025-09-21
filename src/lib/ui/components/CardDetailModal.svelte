@@ -1,14 +1,44 @@
 <script lang="ts">
-  import type { FinancialCard, CardStack } from '$lib/core/types';
+  import type { FinancialCard, CardStack, TimeSeriesPoint } from '$lib/core/types';
   import Button from './Button.svelte';
+  import StackDisplay from './StackDisplay.svelte';
+  import Chart from './Chart.svelte';
+  import CardMiniDisplay from './CardMiniDisplay.svelte';
   import { formatCardValue, getCardIcon } from '$lib/services';
+  import { calculateStackProjection } from '$lib/core/calculations/stack-projection';
+  import { writable, derived } from 'svelte/store';
+  import { createEventDispatcher } from 'svelte';
   
   export let card: FinancialCard | null = null;
   export let stack: CardStack | null = null;
   export let isOpen = false;
   
+  const dispatch = createEventDispatcher();
+  
+  // State for collapsible Stack Contents section
+  let stackContentsExpanded = false;
+  
+  // Create a writable store for the current stack projections
+  const stackProjectionsStore = writable<TimeSeriesPoint[]>([]);
+  
+  // Update the store when stack changes
+  $: if (stack) {
+    stackProjectionsStore.set(calculateStackProjection(stack));
+  } else {
+    stackProjectionsStore.set([]);
+  }
+  
   function closeModal() {
-    isOpen = false;
+    dispatch('close');
+  }
+  
+  function toggleStackContents() {
+    stackContentsExpanded = !stackContentsExpanded;
+  }
+  
+  function handleCardInfo(event: CustomEvent) {
+    // Dispatch event to parent to show the card info (will be handled by modal stack)
+    dispatch('showCardInfo', event.detail);
   }
   
   function handleBackdropClick(event: MouseEvent) {
@@ -71,9 +101,9 @@
               </div>
             </div>
             <div>
-              <h2 class="card-title">Sequential Stack</h2>
+              <h2 class="card-title">Card Stack</h2>
               <p class="card-type">
-                {stack.cards.length} CARDS • SEQUENTIAL CALCULATION
+                {stack.cards.length} CARDS • STACKED COMBINATION
               </p>
             </div>
           {/if}
@@ -125,51 +155,72 @@
             <p class="no-details">No detailed information available for this card.</p>
           {/if}
         {:else if stack}
-          <!-- Sequential Stack Information -->
+          <!-- Stack Information -->
           <section class="info-section">
-            <h3>Sequential Processing</h3>
+            <h3>Stack Overview</h3>
             <p class="strategy-description">
-              These cards are processed sequentially in the order they were stacked, with each card's effects 
-              applied to the result of the previous calculations.
+              This stack combines multiple cards that work together to create a comprehensive 
+              financial calculation. Cards are processed mathematically in the order they appear, 
+              with each card's effects applied to the running total.
             </p>
+            
+            <!-- Mini Chart for Stack Projection -->
+            <div class="stack-chart-container">
+              <Chart data={$stackProjectionsStore} />
+            </div>
           </section>
           
           <section class="info-section">
-            <h3>Processing Order</h3>
-            <div class="sequential-flow">
-              {#each stack.cards as stackCard, index}
-                <div class="flow-step">
-                  <div class="step-number">Step {index + 1}</div>
-                  <div class="stack-card-detail" style="background: {stackCard.color}20; border-left: 4px solid {stackCard.color}">
-                    <div class="card-detail-header">
-                      <span class="card-detail-icon" style="color: {stackCard.color}">{getCardIcon(stackCard.type)}</span>
-                      <span class="card-detail-name">{stackCard.name}</span>
-                    </div>
-                    <div class="card-detail-info">
-                      <span class="card-detail-type">{stackCard.type}</span>
-                      <span class="card-detail-value">{formatCardValue(stackCard)}</span>
-                    </div>
-                    {#if stackCard.stackEffects && stackCard.stackEffects.length > 0}
-                      <div class="card-detail-effects">
-                        {#each stackCard.stackEffects as effect}
-                          <span class="effect-tag">{effect.description}</span>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-                  {#if index < stack.cards.length - 1}
-                    <div class="flow-arrow-down">↓</div>
-                  {/if}
-                </div>
-              {/each}
+            <div class="section-header" on:click={toggleStackContents} on:keydown role="button" tabindex="0">
+              <h3>Stack Contents</h3>
+              <button class="expand-btn" title={stackContentsExpanded ? "Collapse stack contents" : "Expand stack contents"}>
+                <span class="expand-icon">{stackContentsExpanded ? '▼' : '▶'}</span>
+              </button>
             </div>
+            
+            {#if stackContentsExpanded}
+              <!-- Show first two cards as Car Asset Value Stack (matching the deck structure) -->
+              {#if stack.cards.length >= 2}
+                <div class="deck-like-structure">
+                  <StackDisplay 
+                    stack={{
+                      id: 'car-asset-stack',
+                      cards: stack.cards.slice(0, 2)
+                    }}
+                    title="Car Asset Value Stack"
+                    readonly={true}
+                    on:cardInfo={handleCardInfo}
+                  />
+                  
+                  <!-- Show remaining cards as individual cards -->
+                  {#each stack.cards.slice(2) as card}
+                    <div class="individual-card">
+                      <CardMiniDisplay 
+                        {card} 
+                        showAddButton={false}
+                        showInfoButton={true}
+                        on:info={handleCardInfo}
+                      />
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <!-- Fallback for small stacks -->
+                <StackDisplay 
+                  {stack}
+                  title="Stack Details"
+                  readonly={true}
+                  on:cardInfo={handleCardInfo}
+                />
+              {/if}
+            {/if}
           </section>
           
           <section class="info-section">
             <h3>Combined Result</h3>
             <p class="strategy-description">
-              The final result is calculated by processing all {stack.cards.length} cards sequentially,
-              applying each card's financial impact and effects in the order shown above.
+              The final calculation processes all {stack.cards.length} cards in order of appearance,
+              applying each card's financial impact and effects to the running total from top to bottom.
             </p>
           </section>
         {/if}
@@ -280,6 +331,40 @@
     font-weight: 600;
   }
   
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+  }
+  
+  .section-header:hover h3 {
+    color: #e5e5e5;
+  }
+  
+  .expand-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-size: 1rem;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, color 0.2s ease;
+  }
+  
+  .expand-btn:hover {
+    color: #e5e5e5;
+    transform: scale(1.1);
+  }
+  
+  .expand-icon {
+    transition: transform 0.2s ease;
+  }
+  
   .strategy-description {
     color: #e5e5e5;
     line-height: 1.6;
@@ -341,91 +426,25 @@
     font-weight: 500;
   }
   
-  .effect-tag {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-  
-  /* Sequential Flow Styles */
-  .sequential-flow {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .flow-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .step-number {
-    background: rgba(96, 165, 250, 0.2);
-    color: #60a5fa;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-align: center;
-  }
-  
-  .stack-card-detail {
-    width: 100%;
-    padding: 1rem;
+  .stack-chart-container {
+    margin-top: 1rem;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.03);
     border-radius: 8px;
-    margin: 0.5rem 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
   }
   
-  .card-detail-header {
+  .deck-like-structure {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 0.5rem;
-    margin-bottom: 0.5rem;
   }
   
-  .card-detail-icon {
-    font-size: 1.2rem;
-  }
-  
-  .card-detail-name {
-    font-weight: 600;
-    font-size: 1rem;
-  }
-  
-  .card-detail-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-  }
-  
-  .card-detail-type {
-    color: #888;
-    text-transform: uppercase;
-    font-size: 0.8rem;
-  }
-  
-  .card-detail-value {
-    font-weight: 500;
-  }
-  
-  .card-detail-effects {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    margin-top: 0.5rem;
-  }
-  
-  .flow-arrow-down {
-    color: #60a5fa;
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin: 0.5rem 0;
+  .individual-card {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
   
   @media (max-width: 640px) {

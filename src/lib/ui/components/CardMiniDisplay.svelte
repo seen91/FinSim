@@ -11,13 +11,11 @@
 
   function handleAdd(e: Event) {
     e.stopPropagation();
-    console.log('CardMiniDisplay: Add button clicked for', card.name);
     dispatch('add', card);
   }
 
   function handleInfo(e: Event) {
     e.stopPropagation();
-    console.log('CardMiniDisplay: Info button clicked for', card.name);
     dispatch('info', card);
   }
 </script>

@@ -7,12 +7,31 @@
   import PlayArea from './PlayArea.svelte';
   import CardDetailModal from '../components/CardDetailModal.svelte';
 
-  let selectedCard: FinancialCard | null = null;
-  let selectedStack: CardStack | null = null;
-  let isModalOpen = false;
+  // Modal stack for layered modal support
+  interface ModalState {
+    card: FinancialCard | null;
+    stack: CardStack | null;
+  }
+  
+  let modalStack: ModalState[] = [];
+  $: currentModal = modalStack[modalStack.length - 1] || { card: null, stack: null };
+  $: isModalOpen = modalStack.length > 0;
+  
+  function pushModal(card: FinancialCard | null, stack: CardStack | null) {
+    modalStack = [...modalStack, { card, stack }];
+  }
+  
+  function popModal() {
+    if (modalStack.length > 0) {
+      modalStack = modalStack.slice(0, -1);
+    }
+  }
+  
+  function clearModals() {
+    modalStack = [];
+  }
   
   function handleAddCard(event: CustomEvent<FinancialCard>) {
-    console.log('GameApp: Adding card to hand:', event.detail.name);
     addCardToHand(event.detail);
   }
   
@@ -41,16 +60,11 @@
   }
   
   function handleShowCardInfo(event: CustomEvent<FinancialCard>) {
-    console.log('GameApp: Showing card info for:', event.detail.name);
-    selectedCard = event.detail;
-    selectedStack = null;
-    isModalOpen = true;
+    pushModal(event.detail, null);
   }
   
   function handleShowStackInfo(event: CustomEvent<CardStack>) {
-    selectedStack = event.detail;
-    selectedCard = null;
-    isModalOpen = true;
+    pushModal(null, event.detail);
   }
   
   function handleStackCards(event: CustomEvent<{card1: FinancialCard, card2: FinancialCard}>) {
@@ -94,7 +108,14 @@
   />
 </div>
 
-<CardDetailModal bind:isOpen={isModalOpen} card={selectedCard} stack={selectedStack} />
+<CardDetailModal 
+  bind:isOpen={isModalOpen} 
+  card={currentModal.card} 
+  stack={currentModal.stack} 
+  on:showCardInfo={handleShowCardInfo}
+  on:showStackInfo={handleShowStackInfo}
+  on:close={popModal}
+/>
 
 <style>
   :global(body) {

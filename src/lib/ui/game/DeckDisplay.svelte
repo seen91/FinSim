@@ -2,6 +2,7 @@
   import type { Deck } from '$lib/core/types';
   import { createEventDispatcher } from 'svelte';
   import CardMiniDisplay from '../components/CardMiniDisplay.svelte';
+  import StackDisplay from '../components/StackDisplay.svelte';
 
   export let deck: Deck;
   let expanded = false;
@@ -23,19 +24,45 @@
   function handleCardInfo(event: CustomEvent) {
     dispatch('cardInfo', event.detail);
   }
+
+  function handleStackAdd(event: CustomEvent) {
+    // When a stack is added from within a deck, we dispatch it as adding the whole deck
+    // The deck addition logic will handle creating the proper stacks
+    dispatch('addDeck', deck);
+  }
 </script>
 
 <div class="deck-container">
   <div class="deck-item" on:click={toggleExpanded} on:keydown role="button" tabindex="0">
     <div class="deck-details">
       <div class="deck-name">{deck.name}</div>
-      <div class="deck-info">{deck.cards.length} cards • {deck.description}</div>
+      <div class="deck-info">
+        {deck.cards.length} individual cards
+        {#if deck.stacks && deck.stacks.length > 0}
+          • {deck.stacks.length} pre-stacked group{deck.stacks.length > 1 ? 's' : ''}
+        {/if}
+        • {deck.description}
+      </div>
     </div>
     <button class="add-btn" on:click={handleAddDeck} title="Add entire deck">+</button>
   </div>
   
   {#if expanded}
     <div class="deck-contents">
+      <!-- Show pre-defined stacks using StackDisplay component -->
+      {#if deck.stacks}
+        {#each deck.stacks as stack, index}
+          <StackDisplay 
+            {stack}
+            title={stack.cards.length > 0 ? `${stack.cards[0].name} Stack` : 'Card Stack'}
+            on:addStack={handleStackAdd}
+            on:addCard={handleCardAdd}
+            on:cardInfo={handleCardInfo}
+          />
+        {/each}
+      {/if}
+      
+      <!-- Show individual cards -->
       {#each deck.cards as card}
         <CardMiniDisplay 
           {card} 
@@ -77,16 +104,15 @@
     font-size: 0.9rem; 
   }
   
-  .deck-contents { 
-    margin-top: 1rem; 
-    padding-left: 1rem; 
-    border-left: 2px solid rgba(255, 255, 255, 0.1);
+  .deck-contents {
+    padding: 0.75rem;
+    border-top: 1px solid #e5e7eb;
+    max-height: 200px;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-  }
-  
-  .add-btn { 
+  }  .add-btn { 
     width: 30px; 
     height: 30px; 
     border-radius: 50%; 

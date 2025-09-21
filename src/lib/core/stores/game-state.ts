@@ -8,7 +8,9 @@ const initialState: GameState = {
   availableDecks: allDecks,
   activeCardIds: new Set(),
   cardStacks: [],
-  activeStackIds: new Set()
+  activeStackIds: new Set(),
+  nestedStacks: [],
+  activeNestedStackIds: new Set()
 };
 
 export const gameState = writable<GameState>(initialState);

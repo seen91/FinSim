@@ -44,3 +44,13 @@ export interface CardStack {
   cards: FinancialCard[]; // All cards in the stack, first is bottom/primary, rest are stacked on top
   position?: { x: number; y: number }; // For UI positioning
 }
+
+// For future nested stacking support - can contain both cards and other stacks  
+export interface NestedStack {
+  id: string;
+  items: (FinancialCard | CardStack)[]; // Multi-dimensional stacking support
+  position?: { x: number; y: number };
+}
+
+// Utility type for working with stackable items
+export type StackableItem = FinancialCard | CardStack;

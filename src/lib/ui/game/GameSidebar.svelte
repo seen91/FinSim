@@ -14,12 +14,10 @@
   }
   
   function handleCardAdd(event: CustomEvent<FinancialCard>) {
-    console.log('GameSidebar: Received add event for', event.detail.name);
     dispatch('addCard', event.detail);
   }
   
   function handleCardInfo(event: CustomEvent<FinancialCard>) {
-    console.log('GameSidebar: Received info event for', event.detail.name);
     dispatch('showCardInfo', event.detail);
   }
 </script>

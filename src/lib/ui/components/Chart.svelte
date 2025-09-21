@@ -8,12 +8,18 @@
   import { axisBottom, axisLeft } from 'd3-axis';
   import { format } from 'd3-format';
   import { projections } from '$lib/core/stores';
+  import type { TimeSeriesPoint } from '$lib/core/types';
+  
+  // Optional data prop - if provided, use it instead of the global projections store
+  export let data: TimeSeriesPoint[] | null = null;
   
   let chartElement: HTMLElement;
   let tooltip: HTMLElement;
   
-  $: if (chartElement && $projections) {
-    drawChart($projections);
+  // Use provided data or fall back to global projections store
+  $: chartData = data || $projections;
+  $: if (chartElement && chartData) {
+    drawChart(chartData);
   }
   
   function drawChart(data: any[]) {

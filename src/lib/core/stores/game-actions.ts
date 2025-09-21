@@ -1,6 +1,7 @@
 import { gameState } from './game-state';
-import type { FinancialCard, Deck, CardStack } from '../types';
+import type { FinancialCard, Deck, CardStack, NestedStack } from '../types';
 import { validateStackCompatibility } from '../calculations/stack-projection';
+import { createNestedStack } from '../utils/stack-utils';
 
 export function addCardToHand(card: FinancialCard): void {
   gameState.update(state => {
@@ -15,18 +16,57 @@ export function addCardToHand(card: FinancialCard): void {
 
 export function addDeckToHand(deck: Deck): void {
   gameState.update(state => {
-    const newCards = deck.cards.map(card => ({
+    let newHand = [...state.hand];
+    let newCardStacks = [...state.cardStacks];
+    let newActiveCardIds = new Set(state.activeCardIds);
+    let newActiveStackIds = new Set(state.activeStackIds);
+    
+    // Collect all cards from the deck (both from stacks and individual cards)
+    let allCards: FinancialCard[] = [];
+    
+    // Add cards from pre-defined stacks
+    if (deck.stacks && deck.stacks.length > 0) {
+      for (const stack of deck.stacks) {
+        allCards.push(...stack.cards);
+      }
+    }
+    
+    // Add individual cards from the deck
+    if (deck.cards.length > 0) {
+      allCards.push(...deck.cards);
+    }
+    
+    // Create unique IDs for all cards
+    const newCards = allCards.map(card => ({
       ...card,
-      id: `${card.id}-${Date.now()}`
+      id: `${card.id}-${Date.now()}-${Math.random()}`
     }));
-    const newActiveIds = new Set([
-      ...state.activeCardIds,
-      ...newCards.map(c => c.id)
-    ]);
+    
+    if (newCards.length === 0) {
+      // Empty deck - do nothing
+      return state;
+    } else if (newCards.length === 1) {
+      // Single card - add as individual
+      const newCard = newCards[0];
+      newHand.push(newCard);
+      newActiveCardIds.add(newCard.id);
+    } else {
+      // Multiple cards - create one comprehensive stack for the entire deck
+      const newStack: CardStack = {
+        id: `deck-${deck.id}-${Date.now()}-${Math.random()}`,
+        cards: newCards
+      };
+      
+      newCardStacks.push(newStack);
+      newActiveStackIds.add(newStack.id);
+    }
+    
     return {
       ...state,
-      hand: [...state.hand, ...newCards],
-      activeCardIds: newActiveIds
+      hand: newHand,
+      cardStacks: newCardStacks,
+      activeCardIds: newActiveCardIds,
+      activeStackIds: newActiveStackIds
     };
   });
 }
@@ -226,4 +266,101 @@ export function removeStack(stackId: string): void {
       activeStackIds: newActiveStackIds
     };
   });
+}
+
+export function createNestedStackFromStacks(stack1Id: string, stack2Id: string): boolean {
+  let success = false;
+  
+  gameState.update(state => {
+    const stack1 = state.cardStacks.find(s => s.id === stack1Id);
+    const stack2 = state.cardStacks.find(s => s.id === stack2Id);
+    
+    if (!stack1) {
+      console.error('First stack not found:', stack1Id);
+      return state;
+    }
+    
+    if (!stack2) {
+      console.error('Second stack not found:', stack2Id);
+      return state;
+    }
+    
+    // Create new nested stack containing both CardStacks
+    const newNestedStack: NestedStack = createNestedStack(stack1, stack2, `nested-${Date.now()}`);
+    
+    // Remove original stacks from cardStacks
+    const newCardStacks = state.cardStacks.filter(s => 
+      s.id !== stack1Id && s.id !== stack2Id
+    );
+    
+    // Remove from active stack IDs
+    const newActiveStackIds = new Set(state.activeStackIds);
+    newActiveStackIds.delete(stack1Id);
+    newActiveStackIds.delete(stack2Id);
+    
+    // Add to nested stacks and activate it
+    const newActiveNestedStackIds = new Set([...state.activeNestedStackIds, newNestedStack.id]);
+    
+    success = true;
+    return {
+      ...state,
+      cardStacks: newCardStacks,
+      nestedStacks: [...state.nestedStacks, newNestedStack],
+      activeStackIds: newActiveStackIds,
+      activeNestedStackIds: newActiveNestedStackIds
+    };
+  });
+  
+  return success;
+}
+
+export function addToNestedStack(nestedStackId: string, item: FinancialCard | CardStack): boolean {
+  let success = false;
+  
+  gameState.update(state => {
+    const nestedStack = state.nestedStacks.find(s => s.id === nestedStackId);
+    
+    if (!nestedStack) {
+      console.error('Nested stack not found:', nestedStackId);
+      return state;
+    }
+    
+    // Update nested stack with new item
+    const updatedNestedStacks = state.nestedStacks.map(s =>
+      s.id === nestedStackId
+        ? { ...s, items: [...s.items, item] }
+        : s
+    );
+    
+    // Remove item from its current location
+    let newHand = state.hand;
+    let newCardStacks = state.cardStacks;
+    let newActiveCardIds = new Set(state.activeCardIds);
+    let newActiveStackIds = new Set(state.activeStackIds);
+    
+    // Check if it's a card in hand
+    if ('type' in item && 'parameters' in item) {
+      const card = item as FinancialCard;
+      newHand = state.hand.filter(c => c.id !== card.id);
+      newActiveCardIds.delete(card.id);
+    }
+    // Check if it's a CardStack
+    else if ('cards' in item) {
+      const stack = item as CardStack;
+      newCardStacks = state.cardStacks.filter(s => s.id !== stack.id);
+      newActiveStackIds.delete(stack.id);
+    }
+    
+    success = true;
+    return {
+      ...state,
+      hand: newHand,
+      cardStacks: newCardStacks,
+      nestedStacks: updatedNestedStacks,
+      activeCardIds: newActiveCardIds,
+      activeStackIds: newActiveStackIds
+    };
+  });
+  
+  return success;
 }
