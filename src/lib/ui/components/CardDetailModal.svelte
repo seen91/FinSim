@@ -92,12 +92,12 @@
             </div>
             <div>
               <h2 class="card-title">{card.name}</h2>
-              <p class="card-type">{card.type.toUpperCase()} • STACKABLE CARD</p>
+              <p class="card-type">{card.type.toUpperCase()}</p>
             </div>
           {:else if stack}
             <div class="card-icon" style="background: {stack.cards[0].color}20">
               <div class="card-icon-symbol">
-                📚⚡
+                📚
               </div>
             </div>
             <div>

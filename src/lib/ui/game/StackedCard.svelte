@@ -109,7 +109,9 @@
       card={stack.cards[0]}
       isActive={false}
       showRemoveButton={false}
-      showInfoButton={false}
+      showInfoButton={true}
+      on:edit
+      on:info
     />
   </div>
   
@@ -123,7 +125,9 @@
         card={effectCard}
         isActive={false}
         showRemoveButton={false}
-        showInfoButton={false}
+        showInfoButton={true}
+        on:edit
+        on:info
       />
       <!-- Effect card overlay to change appearance -->
       <div class="effect-overlay"></div>

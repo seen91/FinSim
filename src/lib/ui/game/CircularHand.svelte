@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { FinancialCard, CardStack } from '$lib/core/types';
   import { getVisibleCards, calculateResponsiveMaxCards, calculateCardArcStyle, calculateStackCardStyle } from '$lib/services/ui-helpers';
+  import { CardEditModal } from '$lib/ui';
   import GameCard from './GameCard.svelte';
   import StackedCard from './StackedCard.svelte';
   import { createEventDispatcher } from 'svelte';
@@ -17,6 +18,10 @@
   let currentIndex = 0;
   let innerWidth = 0;
   let handContainer: HTMLElement;
+  
+  // Modal state
+  let isEditModalOpen = false;
+  let editingCard: FinancialCard | null = null;
   
   // Touch/swipe handling
   let touchStartX = 0;
@@ -49,12 +54,31 @@
   function handleCardToggle(event: CustomEvent<FinancialCard>) {
     dispatch('toggle', event.detail);
   }
-
-  function handleStackToggle(event: CustomEvent<CardStack>) {
-    dispatch('toggleStack', event.detail);
+  
+  function handleCardUpdated(event: CustomEvent<FinancialCard>) {
+    dispatch('cardUpdated', event.detail);
   }
 
-  function handleCardInfo(event: CustomEvent<FinancialCard>) {
+  function handleCardEdit(event: CustomEvent<FinancialCard>) {
+    editingCard = event.detail;
+    isEditModalOpen = true;
+  }
+
+  function handleModalSave(event: CustomEvent<FinancialCard>) {
+    if (editingCard) {
+      dispatch('cardUpdated', event.detail);
+      handleModalClose();
+    }
+  }
+
+  function handleModalClose() {
+    isEditModalOpen = false;
+    editingCard = null;
+  }
+  
+  function handleStackToggle(event: CustomEvent<CardStack>) {
+    dispatch('toggleStack', event.detail);
+  }  function handleCardInfo(event: CustomEvent<FinancialCard>) {
     dispatch('info', event.detail);
   }
 
@@ -292,6 +316,8 @@
               showRemoveButton={true}
               isUnboundEffect={isUnboundEffect(item)}
               on:toggle={handleCardToggle}
+              on:cardUpdated={handleCardUpdated}
+              on:edit={handleCardEdit}
               on:info={handleCardInfo}
               on:remove={handleCardRemove}
               on:stackCards={handleStackCards}
@@ -302,6 +328,16 @@
     {/if}
   </div>
 </div>
+
+<!-- Card Edit Modal -->
+{#if editingCard}
+  <CardEditModal
+    card={editingCard}
+    isOpen={isEditModalOpen}
+    on:save={handleModalSave}
+    on:close={handleModalClose}
+  />
+{/if}
 
 <style>
   .circular-hand {

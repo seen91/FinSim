@@ -17,6 +17,10 @@
     dispatch('toggleCard', event.detail);
   }
   
+  function handleCardUpdated(event: CustomEvent<FinancialCard>) {
+    dispatch('cardUpdated', event.detail);
+  }
+  
   function handleStackToggle(event: CustomEvent<CardStack>) {
     dispatch('toggleStack', event.detail);
   }
@@ -77,6 +81,7 @@
       {activeStackIds}
       unboundEffectCards={$unboundEffectCards}
       on:toggle={handleCardToggle}
+      on:cardUpdated={handleCardUpdated}
       on:toggleStack={handleStackToggle}
       on:info={handleCardInfo}
       on:stackInfo={handleStackInfo}

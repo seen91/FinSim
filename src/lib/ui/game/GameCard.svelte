@@ -30,6 +30,11 @@
     dispatch('remove', card);
   }
   
+  function handleEditClick(event: MouseEvent) {
+    event.stopPropagation();
+    dispatch('edit', card);
+  }
+  
   // Drag and drop handlers
   function handleDragStart(event: DragEvent) {
     if (!event.dataTransfer) return;
@@ -75,7 +80,6 @@
   class:inactive={!isActive}
   class:dragging={isDragging}
   class:drag-over={isDragOver}
-  class:can-stack={card.stackEffects && card.stackEffects.length > 0}
   class:unbound-effect={isUnboundEffect}
   on:click={handleClick}
   on:keydown
@@ -99,10 +103,21 @@
     >×</Button>
   {/if}
   
+  <!-- Edit Mode Button -->
+  <Button
+    variant="secondary"
+    size="small"
+    onClick={handleEditClick}
+    title="Edit card values"
+    ariaLabel="Edit"
+    class="edit-btn"
+  >✏️</Button>
+  
   <div class="card-inner">
     <div class="card-background-icon">{getCardIcon(card.type)}</div>
     <div class="card-title">{card.name}</div>
     
+    <!-- Display Mode: Show formatted values -->
     <div class="card-type-container">
       <div 
         class="card-indicator" 
@@ -170,14 +185,10 @@
     z-index: 5;
   }
   
-  /* Only allow overflow visible for standalone cards with stack indicators */
-  .game-card.can-stack:hover {
-    overflow: visible;
-  }
-  
   .game-card:hover:not(.inactive) {
     transform: translateY(-30px) scale(1.1);
     border-color: rgba(120, 119, 198, 0.6);
+    overflow: visible;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 60px rgba(120, 119, 198, 0.3);
     z-index: 10;
   }
@@ -194,11 +205,11 @@
     opacity: 0.7;
   }
   
-  .game-card.can-stack {
+  .game-card {
     cursor: grab;
   }
   
-  .game-card.can-stack:active {
+  .game-card:active {
     cursor: grabbing;
   }
   
@@ -254,26 +265,12 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   }
   
-  .game-card.can-stack:not(.dragging)::before {
-    content: '⚡';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -20px);
-    font-size: 1.2rem;
-    opacity: 0.8;
-    z-index: 15;
-    color: #fbbf24;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    cursor: help;
-  }
-  
-  .game-card.can-stack:hover::after {
+  .game-card:hover::after {
     content: 'Drag onto other cards to stack';
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, 10px);
+    transform: translate(-50%, -50%);
     background: rgba(0, 0, 0, 0.9);
     color: white;
     padding: 0.25rem 0.5rem;
@@ -470,4 +467,29 @@
     transform: scale(1);
     pointer-events: auto;
   }
+
+  :global(.game-card .edit-btn) {
+    position: absolute;
+    top: 8px;
+    right: 32px;
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+    font-size: 0.7rem !important;
+    z-index: 20;
+    opacity: 0;
+    transform: scale(0.8);
+    pointer-events: none;
+    transition: all 0.3s ease !important;
+    background: rgba(255, 165, 0, 0.2) !important;
+    border-color: rgba(255, 165, 0, 0.4) !important;
+  }
+
+  .game-card:hover :global(.edit-btn) {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+
+  /* Edit Fields Styles - removed as no longer needed */
 </style>
