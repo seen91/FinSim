@@ -8,6 +8,27 @@
   let expanded = false;
   const dispatch = createEventDispatcher();
   
+  // Group cards by base cards and their stackable modifiers
+  $: groupedCards = groupCardsByStacking(deck.cards);
+  
+  function groupCardsByStacking(cards: any[]) {
+    const baseCards = cards.filter(card => card.role === 'base');
+    const modifierCards = cards.filter(card => card.role === 'modifier');
+    
+    return baseCards.map(baseCard => {
+      // Find modifiers that are compatible with this base card
+      const compatibleModifiers = modifierCards.filter(modifier => {
+        if (!modifier.compatibleWith || !baseCard.stackCategory) return false;
+        return modifier.compatibleWith.includes(baseCard.stackCategory);
+      });
+      
+      return {
+        baseCard,
+        modifiers: compatibleModifiers
+      };
+    });
+  }
+  
   function toggleExpanded() {
     expanded = !expanded;
   }
@@ -46,31 +67,88 @@
   
   {#if expanded}
     <div class="deck-contents">
-      {#each deck.cards as card}
-        <div class="card-item">
-          <div class="card-mini">
-            <div class="card-mini-header">
-              <div class="card-mini-header-left">
-                <span class="card-mini-icon">{getCardIcon(card.type)}</span>
-                <span class="card-mini-type">{card.type}</span>
-                {#if card.detailedInfo}
-                  <button 
-                    class="info-btn-mini" 
-                    on:click={(e) => handleCardInfo(e, card)}
-                    title="View detailed information"
-                    aria-label="View card details"
-                  >ℹ️</button>
-                {/if}
+      {#each groupedCards as group}
+        <!-- Base Card or Stacked Card Group -->
+        <div class="card-group">
+          {#if group.modifiers.length > 0}
+            <!-- Stacked Card Representation -->
+            <div class="card-item stacked-card-item">
+              <div class="card-mini stacked-card-mini">
+                <!-- Base card layer -->
+                <div class="card-layer base-layer"></div>
+                <!-- Modifier layers with purple overlay -->
+                {#each group.modifiers as _, index}
+                  <div 
+                    class="card-layer modifier-layer"
+                    style="transform: translateY(-{2 + (index * 1)}px) translateX({index * 1}px);">
+                  </div>
+                {/each}
+                <!-- Top overlay with combined information -->
+                <div class="stack-overlay-mini">
+                  <div class="card-mini-header">
+                    <div class="card-mini-header-left">
+                      <span class="card-mini-icon">{getCardIcon(group.baseCard.type)}</span>
+                      <span class="card-mini-type">{group.baseCard.type}</span>
+                      <span class="stacked-badge">STACKED ({group.modifiers.length + 1})</span>
+                      {#if group.baseCard.detailedInfo}
+                        <button 
+                          class="info-btn-mini" 
+                          on:click={(e) => handleCardInfo(e, group.baseCard)}
+                          title="View detailed information"
+                          aria-label="View card details"
+                        >ℹ️</button>
+                      {/if}
+                    </div>
+                    <span class="card-mini-value" 
+                          class:positive={(group.baseCard.parameters.rate ?? 0) > 0 || (group.baseCard.parameters.monthlyAmount ?? 0) > 0}
+                          class:negative={(group.baseCard.parameters.rate ?? 0) < 0 || (group.baseCard.parameters.monthlyAmount ?? 0) < 0}>
+                      {formatCardValue(group.baseCard)}
+                      <span class="modifier-count">+ {group.modifiers.length} effects</span>
+                    </span>
+                  </div>
+                  <div class="card-mini-name">{group.baseCard.name}</div>
+                  {#if group.modifiers.length > 0}
+                    <div class="modifier-effects">
+                      {#each group.modifiers as modifier}
+                        {#if modifier.stackEffects && modifier.stackEffects[0]}
+                          <span class="effect-item">{modifier.stackEffects[0].description}</span>
+                        {/if}
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               </div>
-              <span class="card-mini-value" 
-                    class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
-                    class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}>
-                {formatCardValue(card)}
-              </span>
+              <button class="add-btn" on:click={(e) => handleCardAdd(e, group.baseCard)} title="Add stacked cards">+</button>
             </div>
-            <div class="card-mini-name">{card.name}</div>
-          </div>
-          <button class="add-btn" on:click={(e) => handleCardAdd(e, card)} title="Add this card">+</button>
+          {:else}
+            <!-- Single Base Card -->
+            <div class="card-item base-card-item">
+              <div class="card-mini">
+                <div class="card-mini-header">
+                  <div class="card-mini-header-left">
+                    <span class="card-mini-icon">{getCardIcon(group.baseCard.type)}</span>
+                    <span class="card-mini-type">{group.baseCard.type}</span>
+                    <span class="base-card-badge">BASE</span>
+                    {#if group.baseCard.detailedInfo}
+                      <button 
+                        class="info-btn-mini" 
+                        on:click={(e) => handleCardInfo(e, group.baseCard)}
+                        title="View detailed information"
+                        aria-label="View card details"
+                      >ℹ️</button>
+                    {/if}
+                  </div>
+                  <span class="card-mini-value" 
+                        class:positive={(group.baseCard.parameters.rate ?? 0) > 0 || (group.baseCard.parameters.monthlyAmount ?? 0) > 0}
+                        class:negative={(group.baseCard.parameters.rate ?? 0) < 0 || (group.baseCard.parameters.monthlyAmount ?? 0) < 0}>
+                    {formatCardValue(group.baseCard)}
+                  </span>
+                </div>
+                <div class="card-mini-name">{group.baseCard.name}</div>
+              </div>
+              <button class="add-btn" on:click={(e) => handleCardAdd(e, group.baseCard)} title="Add this card">+</button>
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
@@ -146,12 +224,28 @@
     border-top: 1px solid rgba(255, 255, 255, 0.05);
   }
   
+  .card-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .card-group:last-child {
+    margin-bottom: 0;
+  }
+  
   .card-item {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 0.75rem;
-    margin-left: 1rem;
+    position: relative;
+  }
+
+  .card-item.base-card-item {
+    margin-bottom: 0.75rem;
+  }
+
+  .card-item.stacked-card-item {
+    margin-bottom: 1rem;
   }
   
   .card-item:last-child {
@@ -166,11 +260,99 @@
     padding: 0.75rem;
     transition: all 0.2s ease;
     color: white;
+    position: relative;
+  }
+
+  .card-mini.stacked-card-mini {
+    background: none;
+    border: none;
+    padding: 0;
+    min-height: 90px;
+  }
+
+  .card-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 8px;
+    border: 2px solid;
+  }
+
+  .card-layer.base-layer {
+    border-color: #8B5CF6;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
+  }
+
+  .card-layer.modifier-layer {
+    border-color: rgba(139, 92, 246, 0.7);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.08));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .stack-overlay-mini {
+    position: relative;
+    z-index: 10;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, 
+      rgba(139, 92, 246, 0.9) 0%, 
+      rgba(124, 58, 237, 0.85) 50%, 
+      rgba(109, 40, 217, 0.9) 100%);
+    border-radius: 8px;
+    color: white;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
   }
   
   .card-item:hover .card-mini {
     background: rgba(50, 50, 60, 0.6);
     border-color: rgba(120, 119, 198, 0.3);
+  }
+  
+  .base-card-badge, .stacked-badge {
+    font-size: 0.5rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  
+  .base-card-badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  
+  .stacked-badge {
+    background: rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.5);
+  }
+  
+  .modifier-count {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+    margin-left: 0.5rem;
+  }
+
+  .modifier-effects {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .effect-item {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    border-left: 2px solid rgba(139, 92, 246, 0.6);
   }
   
   .card-mini-header {
