@@ -30,19 +30,14 @@
     // The deck addition logic will handle creating the proper stacks
     dispatch('addDeck', deck);
   }
+
+  // Calculate total number of cards (individual cards + cards in stacks)
+  $: totalCards = deck.cards.length + (deck.stacks ? deck.stacks.reduce((sum, stack) => sum + stack.cards.length, 0) : 0);
 </script>
 
 <div class="deck-container">
   <div class="deck-item" on:click={toggleExpanded} on:keydown role="button" tabindex="0">
-    <div class="deck-details">
-      <div class="deck-name">{deck.name}</div>
-      <div class="deck-info">
-        {deck.cards.length} individual cards
-        {#if deck.stacks && deck.stacks.length > 0}
-          • {deck.stacks.length} pre-stacked group{deck.stacks.length > 1 ? 's' : ''}
-        {/if}
-      </div>
-    </div>
+    <div class="deck-name">{deck.name} - {totalCards} cards</div>
     <button class="add-btn" on:click={handleAddDeck} title="Add entire deck">+</button>
   </div>
   
@@ -98,11 +93,6 @@
     font-weight: 600; 
   }
   
-  .deck-info { 
-    color: #a0a0a0; 
-    font-size: 0.9rem; 
-  }
-  
   .deck-contents {
     padding: 0.75rem;
     border-top: 1px solid #e5e7eb;
@@ -111,7 +101,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-  }  .add-btn { 
+  }
+  
+  .add-btn { 
     width: 30px; 
     height: 30px; 
     border-radius: 50%; 
