@@ -52,9 +52,36 @@
       closeModal();
     }
   }
+
+  // Helper functions to handle both unified and legacy card formats
+  function getCardType(card: any): string {
+    // For unified cards
+    if (card.curve) {
+      return card.curve.type;
+    }
+    // For legacy cards
+    return card.type || 'linear';
+  }
   
-  function formatParameters(card: FinancialCard): string {
+  function formatParameters(card: any): string {
     const params = [];
+    
+    // Handle unified card format
+    if (card.curve) {
+      const { parameters, type } = card.curve;
+      if (parameters.offset) {
+        params.push(`Initial: $${parameters.offset.toLocaleString()}`);
+      }
+      if (parameters.rate && parameters.rate !== 0) {
+        params.push(`Rate: ${(parameters.rate * 100).toFixed(1)}%`);
+      }
+      if (parameters.amplitude && parameters.amplitude !== 0) {
+        params.push(`Amount: $${parameters.amplitude.toLocaleString()}`);
+      }
+      return params.join(' • ');
+    }
+    
+    // Handle legacy card format
     if (card.parameters.principal) {
       params.push(`Initial: $${card.parameters.principal.toLocaleString()}`);
     }
@@ -87,12 +114,12 @@
           {#if card}
             <div class="card-icon" style="background: {card.color}20">
               <div class="card-icon-symbol">
-                {getCardIcon(card.type)}
+                {getCardIcon(getCardType(card))}
               </div>
             </div>
             <div>
               <h2 class="card-title">{card.name}</h2>
-              <p class="card-type">{card.type.toUpperCase()}</p>
+              <p class="card-type">{getCardType(card).toUpperCase()}</p>
             </div>
           {:else if stack}
             <div class="card-icon" style="background: {stack.cards[0].color}20">

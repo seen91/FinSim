@@ -1,10 +1,57 @@
 import type { FinancialCard } from '../core/types';
 
-export function formatCardValue(card: FinancialCard): string {
-  if (card.type === 'loan') {
-    const principal = Math.abs(card.parameters.principal || 0);
-    const rate = card.parameters.rate || 0;
-    const term = card.parameters.loanTerm || 10;
+export function formatCardValue(card: any): string {
+  // Safety check for null/undefined cards
+  if (!card) return '';
+  
+  // Handle unified card format
+  if (card.curve) {
+    const { parameters, type } = card.curve;
+    const rate = parameters.rate * 100; // Convert back to percentage for display
+    const amplitude = parameters.amplitude;
+    const offset = parameters.offset;
+    
+    switch (type) {
+      case 'compound':
+        if (rate !== 0) {
+          return `${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`;
+        }
+        if (amplitude !== 0) {
+          return `${amplitude > 0 ? '+' : ''}${(Math.abs(amplitude) / 1000).toFixed(0)}k`;
+        }
+        break;
+        
+      case 'linear':
+        if (offset !== 0) {
+          // Monthly amount (converted from offset)
+          const monthly = offset / 12;
+          return `${monthly > 0 ? '+' : ''}${(monthly / 1000).toFixed(1)}k/mo`;
+        }
+        if (amplitude !== 0) {
+          return `${amplitude > 0 ? '+' : ''}${(Math.abs(amplitude) / 1000).toFixed(0)}k`;
+        }
+        break;
+        
+      case 'sinusoidal':
+        return `${amplitude > 0 ? '+' : ''}${(Math.abs(amplitude) / 1000).toFixed(0)}k/yr`;
+        
+      case 'custom':
+        return 'Custom';
+        
+      default:
+        return type;
+    }
+    return '';
+  }
+  
+  // Handle legacy card format
+  const type = card.type;
+  const parameters = card.parameters || {};
+  
+  if (type === 'loan') {
+    const principal = Math.abs(parameters.principal || 0);
+    const rate = parameters.rate || 0;
+    const term = parameters.loanTerm || 10;
     
     // Calculate annual payment for display
     const monthlyRate = rate / 100 / 12;
@@ -24,19 +71,19 @@ export function formatCardValue(card: FinancialCard): string {
   }
   
   // Show rate if it exists and is non-zero
-  if (card.parameters.rate && card.parameters.rate !== 0) {
-    return `${card.parameters.rate > 0 ? '+' : ''}${card.parameters.rate}%`;
+  if (parameters.rate && parameters.rate !== 0) {
+    return `${parameters.rate > 0 ? '+' : ''}${parameters.rate}%`;
   }
   
   // Show monthly amount if it exists and is non-zero
-  if (card.parameters.monthlyAmount && card.parameters.monthlyAmount !== 0) {
-    const monthly = card.parameters.monthlyAmount;
+  if (parameters.monthlyAmount && parameters.monthlyAmount !== 0) {
+    const monthly = parameters.monthlyAmount;
     return `${monthly > 0 ? '+' : ''}${(monthly / 1000).toFixed(1)}k/mo`;
   }
   
   // Show principal value if it exists and is non-zero (for cards with only initial value)
-  if (card.parameters.principal && card.parameters.principal !== 0) {
-    const principal = card.parameters.principal;
+  if (parameters.principal && parameters.principal !== 0) {
+    const principal = parameters.principal;
     return `${principal > 0 ? '+' : ''}${(Math.abs(principal) / 1000).toFixed(0)}k`;
   }
   
@@ -48,21 +95,47 @@ export function getCardIcon(type: string): string {
     case 'compound': return '⤴️';
     case 'linear': return '📏';
     case 'exponential': return '🚀';
+    case 'sinusoidal': return '🌊';
+    case 'logarithmic': return '📊';
+    case 'power': return '💪';
+    case 'custom': return '⚙️';
     case 'loan': return '💳';
     default: return '⚙️';
   }
 }
 
-export function isPositiveCard(card: FinancialCard): boolean {
-  if (card.type === 'loan') return false; // Loans are neither positive nor negative for color purposes
-  return (card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0;
+export function isPositiveCard(card: any): boolean {
+  if (!card) return false;
+  
+  if (card.curve) {
+    return card.curve.isPositive;
+  }
+  // Legacy format
+  const type = card.type;
+  const parameters = card.parameters || {};
+  if (type === 'loan') return false; // Loans are neither positive nor negative for color purposes
+  return (parameters.rate ?? 0) > 0 || (parameters.monthlyAmount ?? 0) > 0;
 }
 
-export function isNegativeCard(card: FinancialCard): boolean {
-  if (card.type === 'loan') return false; // Loans are neither positive nor negative for color purposes
-  return (card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0;
+export function isNegativeCard(card: any): boolean {
+  if (!card) return false;
+  
+  if (card.curve) {
+    return !card.curve.isPositive;
+  }
+  // Legacy format
+  const type = card.type;
+  const parameters = card.parameters || {};
+  if (type === 'loan') return false; // Loans are neither positive nor negative for color purposes
+  return (parameters.rate ?? 0) < 0 || (parameters.monthlyAmount ?? 0) < 0;
 }
 
-export function isLoanCard(card: FinancialCard): boolean {
+export function isLoanCard(card: any): boolean {
+  if (!card) return false;
+  
+  if (card.curve) {
+    return false; // Unified cards don't have explicit loan type
+  }
+  // Legacy format
   return card.type === 'loan';
 }

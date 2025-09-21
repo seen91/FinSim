@@ -18,13 +18,59 @@
     e.stopPropagation();
     dispatch('info', card);
   }
+
+  // Helper functions to handle both unified and legacy card formats
+  function getCardType(card: any): string {
+    // Safety check for undefined/null cards
+    if (!card) return 'linear';
+    
+    if (card.curve) {
+      // Unified card format
+      return card.curve.type || 'linear';
+    }
+    // Legacy card format
+    return card.type || 'linear';
+  }
+
+  function isPositiveCard(card: any): boolean {
+    if (!card) return false;
+    
+    if (card.curve) {
+      // Unified card format
+      return card.curve.isPositive;
+    }
+    // Legacy card format
+    return (card.parameters?.rate ?? 0) > 0 || (card.parameters?.monthlyAmount ?? 0) > 0;
+  }
+
+  function isNegativeCard(card: any): boolean {
+    if (!card) return false;
+    
+    if (card.curve) {
+      // Unified card format
+      return !card.curve.isPositive;
+    }
+    // Legacy card format
+    return (card.parameters?.rate ?? 0) < 0 || (card.parameters?.monthlyAmount ?? 0) < 0;
+  }
+
+  function isLoanCard(card: any): boolean {
+    if (!card) return false;
+    
+    if (card.curve) {
+      // Unified cards don't have explicit loan type
+      return false;
+    }
+    // Legacy card format
+    return card.type === 'loan';
+  }
 </script>
 
 <div class="card-item">
   <div class="card-mini">
     <div class="card-mini-header">
       <div class="card-mini-header-left">
-        <span class="card-mini-icon">{getCardIcon(card.type)}</span>
+        <span class="card-mini-icon">{getCardIcon(getCardType(card))}</span>
         {#if showInfoButton && card.detailedInfo}
           <button 
             class="info-btn-mini" 
@@ -35,13 +81,26 @@
         {/if}
       </div>
       <span class="card-mini-value" 
-            class:positive={(card.parameters.rate ?? 0) > 0 || (card.parameters.monthlyAmount ?? 0) > 0}
-            class:negative={(card.parameters.rate ?? 0) < 0 || (card.parameters.monthlyAmount ?? 0) < 0}
-            class:loan={card.type === 'loan'}>
+            class:positive={isPositiveCard(card)}
+            class:negative={isNegativeCard(card)}
+            class:loan={isLoanCard(card)}>
         {formatCardValue(card)}
       </span>
     </div>
     <div class="card-mini-name">{card.name}</div>
+    
+    {#if card.curve}
+      <!-- Mathematical curve information for unified cards -->
+      <div class="card-mini-math">
+        <span class="curve-type">f(t) = {card.curve.type}</span>
+        {#if card.curve.parameters.rate !== 0}
+          <span class="curve-param">r={((card.curve.parameters.rate || 0) * 100).toFixed(1)}%</span>
+        {/if}
+        {#if card.curve.parameters.frequency && card.curve.parameters.frequency > 0}
+          <span class="curve-param">ω={card.curve.parameters.frequency}</span>
+        {/if}
+      </div>
+    {/if}
   </div>
   
   {#if showAddButton}
@@ -94,6 +153,26 @@
     font-weight: 500;
     color: white;
     margin-bottom: 0.25rem;
+  }
+
+  .card-mini-math {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-top: 0.25rem;
+    font-size: 0.7rem;
+    color: #888;
+    font-family: 'Courier New', monospace;
+  }
+
+  .curve-type {
+    color: #a78bfa;
+    font-style: italic;
+  }
+
+  .curve-param {
+    color: #fbbf24;
+    font-weight: 500;
   }
 
   .card-mini-value {

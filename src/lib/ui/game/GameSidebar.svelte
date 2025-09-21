@@ -38,7 +38,7 @@
   <div class="available-section">
     <h3 class="section-title">Individual Cards</h3>
     <div class="individual-cards">
-      {#each individualCards as card}
+      {#each individualCards.filter(card => card != null) as card}
         <CardMiniDisplay 
           {card} 
           on:add={handleCardAdd}

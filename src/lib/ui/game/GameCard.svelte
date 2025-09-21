@@ -16,6 +16,26 @@
   let isDragging = false;
   let isDragOver = false;
   
+  // Helper functions to handle both unified and legacy card formats
+  function getCardType(card: any): string {
+    // For unified cards
+    if (card.curve) {
+      return card.curve.type;
+    }
+    // For legacy cards
+    return card.type || 'linear';
+  }
+
+  function getCardPrincipal(card: any): number {
+    // For unified cards
+    if (card.curve) {
+      // Use offset as the "principal" value for display
+      return card.curve.parameters?.offset || 0;
+    }
+    // For legacy cards
+    return card.parameters?.principal || 0;
+  }
+  
   function handleClick() {
     dispatch('toggle', card);
   }
@@ -114,7 +134,7 @@
   >✏️</Button>
   
   <div class="card-inner">
-    <div class="card-background-icon">{getCardIcon(card.type)}</div>
+    <div class="card-background-icon">{getCardIcon(getCardType(card))}</div>
     <div class="card-title">{card.name}</div>
     
     <!-- Display Mode: Show formatted values -->
@@ -129,12 +149,15 @@
           <span class="indicator-content">
             <span class="indicator-value">{formatCardValue(card)}</span>
             <span class="indicator-time">• {card.timeRange[1] - card.timeRange[0]}y</span>
-            {#if card.parameters.principal && card.parameters.principal !== 0}
+            {#if getCardPrincipal(card) !== 0}
               <span class="indicator-principal" 
-                    class:principal-positive={card.parameters.principal > 0}
-                    class:principal-negative={card.parameters.principal < 0}>• {card.parameters.principal > 0 ? '+' : ''}${(card.parameters.principal / 1000).toFixed(0)}k start</span>
+                    class:principal-positive={getCardPrincipal(card) > 0}
+                    class:principal-negative={getCardPrincipal(card) < 0}>• {getCardPrincipal(card) > 0 ? '+' : ''}${(getCardPrincipal(card) / 1000).toFixed(0)}k start</span>
             {/if}
-            <span class="indicator-type">• {card.type}</span>
+            <span class="indicator-type">• {getCardType(card)}</span>
+            {#if card.curve && card.detailedInfo?.mathematicalForm}
+              <span class="indicator-math">• {card.detailedInfo.mathematicalForm}</span>
+            {/if}
             {#if card.description}
               <span class="indicator-description">• {card.description}</span>
             {/if}
@@ -142,12 +165,15 @@
           <span class="indicator-content" aria-hidden="true">
             <span class="indicator-value">{formatCardValue(card)}</span>
             <span class="indicator-time">• {card.timeRange[1] - card.timeRange[0]}y</span>
-            {#if card.parameters.principal && card.parameters.principal !== 0}
+            {#if getCardPrincipal(card) !== 0}
               <span class="indicator-principal" 
-                    class:principal-positive={card.parameters.principal > 0}
-                    class:principal-negative={card.parameters.principal < 0}>• {card.parameters.principal > 0 ? '+' : ''}${(card.parameters.principal / 1000).toFixed(0)}k start</span>
+                    class:principal-positive={getCardPrincipal(card) > 0}
+                    class:principal-negative={getCardPrincipal(card) < 0}>• {getCardPrincipal(card) > 0 ? '+' : ''}${(getCardPrincipal(card) / 1000).toFixed(0)}k start</span>
             {/if}
-            <span class="indicator-type">• {card.type}</span>
+            <span class="indicator-type">• {getCardType(card)}</span>
+            {#if card.curve && card.detailedInfo?.mathematicalForm}
+              <span class="indicator-math">• {card.detailedInfo.mathematicalForm}</span>
+            {/if}
             {#if card.description}
               <span class="indicator-description">• {card.description}</span>
             {/if}
@@ -406,6 +432,14 @@
   .indicator-description {
     opacity: 0.6;
     font-size: 0.6rem;
+    font-style: italic;
+  }
+
+  .indicator-math {
+    opacity: 0.8;
+    font-size: 0.6rem;
+    font-family: 'Courier New', monospace;
+    color: #a78bfa;
     font-style: italic;
   }
 

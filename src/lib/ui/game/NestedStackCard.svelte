@@ -15,6 +15,16 @@
   
   // Get the primary card to display as the main visual
   $: primaryCard = getPrimaryCard(nestedStack);
+  
+  // Helper functions to handle both unified and legacy card formats
+  function getCardType(card: any): string {
+    // For unified cards
+    if (card.curve) {
+      return card.curve.type;
+    }
+    // For legacy cards
+    return card.type || 'linear';
+  }
   $: totalCardCount = getStackCardCount(nestedStack);
   $: stackLayerCount = nestedStack.items.length;
   
@@ -97,7 +107,7 @@
       <div class="card-content">
         <div class="card-header">
           <div class="card-title-row">
-            <span class="card-icon">{getCardIcon(primaryCard.type)}</span>
+            <span class="card-icon">{getCardIcon(getCardType(primaryCard))}</span>
             <span class="card-name">{primaryCard.name}</span>
             {#if showInfoButton}
               <button class="info-btn" on:click={handleInfoClick} title="View stack details">
