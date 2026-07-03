@@ -1,0 +1,12 @@
+{
+  "name": "finsim",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "engine"
+  ],
+  "scripts": {
+    "test": "npm --workspace @finsim/engine run test",
+    "typecheck": "npm --workspace @finsim/engine run typecheck"
+  }
+}

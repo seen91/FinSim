@@ -18,6 +18,7 @@
 | Year-winner bonus | **Cash from the bank** (not zero-sum) to the best return each year. |
 | Card scarcity | **Copies allowed.** Several players can hold the same stock, differing only in when they bought. |
 | Name | **FinSim.** |
+| Stream percent semantics | **Share of the pool remaining at the stream's turn.** Declared order is resolution order; "20 % of surplus" after an earlier stream drew means 20 % of the rest, so allocations can never exceed the pool. Fixed streams always draw in full; cash absorbs any overdraft honestly. |
 
 ---
 
