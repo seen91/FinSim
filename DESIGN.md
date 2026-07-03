@@ -1,47 +1,98 @@
-# FinSim — Design Specification (v2)
+# FinSim — Design Specification
 
-**Working title:** *Bokslut* (or *Stacks*; TBD)
 **Status:** Founding document for the ground-up rebuild on the `cleanSlate` branch. Nothing from the previous prototype carries over except the core insight.
-**One-liner:** A deliberately boring multiplayer card game about money — drafted cards, real historical curves, real(istic) rules — running on a simulation engine rigorous enough to double as a serious financial planner.
+**One-liner:** A serious financial simulator where every instrument is a card and every card is a curve f(t) — with a workshop for authoring your own cards and packs, and a deliberately boring multiplayer card game built on top of it.
 
 ---
 
-## 0. Decision log
+## 0. Decision log (all confirmed)
 
-| Decision | Status | Choice |
-|---|---|---|
-| Multiplayer form | ✅ **Confirmed** | Same room, own devices: one player hosts, friends join with a room code. Host screen is the shared table; phones/laptops hold hidden hands. |
-| Product focus | ⚠️ Assumed | **Game first.** Scenarios are the product; the engine underneath is built to full simulator rigor so a standalone planner mode can be added later without rework. |
-| Player interaction | ⚠️ Assumed | **Race + shared world.** Same passed hands, same market, same events. You compete on outcomes and by denying cards in the draft — never by attacking. |
-| Jurisdiction realism | ⚠️ Assumed | **Generic engine, Sweden pack first.** The engine knows no jurisdictions; rules ship as data (SEK, ISK, ränteavdrag, amorteringskrav). |
-
-⚠️ = my recommendation, adopted provisionally — override any of these and the doc updates.
+| Decision | Choice |
+|---|---|
+| Product focus | **Simulator first.** The sandbox planner is v1; the game is layered on top of the same engine and card system. |
+| Workshop | **First-class.** Users author their own cards (ISK, 401k, …) and bundle them into packs — this is what enables locale remixes like *"the 1990s scenario from an Argentinian point of view."* |
+| Multiplayer form | **Same room, own devices.** One player hosts; friends join with a room code. Host screen is the shared table; phones hold hidden hands. |
+| Player interaction | **Race + shared world.** Same passed hands, same market, same events. You compete on outcomes and by denying cards in the draft — never by attacking. |
+| Jurisdiction realism | **Generic engine, Sweden pack first.** The engine knows no jurisdictions; rules ship as data packs. |
+| Draft mechanic | **Full draft, Sushi Go / 7 Wonders style.** Pick 1, pass the rest, repeat until hands are empty (last card discarded). |
+| Year-winner bonus | **Cash from the bank** (not zero-sum) to the best return each year. |
+| Card scarcity | **Copies allowed.** Several players can hold the same stock, differing only in when they bought. |
+| Name | **FinSim.** |
 
 ---
 
 ## 1. Vision
 
-Two products, one engine, built in this order:
+One engine, three faces, built in this order:
 
-1. **The game** — scenario-driven, 2–6 players in a room, pick-and-pass drafting (the 7 Wonders / Sushi Go mechanic), rounds that represent years, outcomes computed by honest simulation of curves f(t).
-2. **The simulator** — the same engine exposed as a single-player sandbox/planner later. Not designed in detail here, but every engine decision below is made so this stays cheap to add.
+1. **The Simulator** — a single-player sandbox where you model a financial life by playing and stacking cards on a table, watching one honest net-worth curve respond in real time.
+2. **The Workshop** — the card and pack authoring system. Not an admin afterthought: creating a card *is* the same act as editing one, and packs are how the product grows without growing the code.
+3. **The Game** — scenario-driven, 2–6 players in a room, pick-and-pass drafting, rounds that represent years, outcomes computed by the same engine.
 
 ### Boring is the goal
 
-This is the anti-Slay-the-Spire stance, stated as design law:
+Stated as design law:
 
-- **No fantasy.** Real companies, real decades, real tax rules. The theme is the mechanic.
-- **The drama is the data.** The most exciting moment in the game is watching a year of real market history replay on the shared screen while your drafted portfolio lives through it.
-- **Honesty over juice.** No crits, no combos labels, no screen shake. Numbers use tabular numerals and never lie. The aesthetic target is *an annual report you fight over with friends*.
-- **Losing teaches.** Every scenario ends with an epilogue showing what happened next in reality (draft heavy into dot-coms in 1999 → the game shows you 2000–2002).
+- **No fantasy.** Real instruments, real decades, real tax rules. The theme is the mechanic.
+- **The drama is the data.** The most exciting moment is watching a year of real market history replay while your drafted portfolio lives through it.
+- **Honesty over juice.** No crits, no combo labels, no screen shake. Numbers use tabular numerals and never lie. Aesthetic target: *an annual report you fight over with friends*.
+- **Losing teaches.** Game scenarios end with an epilogue showing what happened next in reality.
 
 ### Why f(t) survives the reset
 
-The old prototype's curve model was right about consequences but had no *decisions* — a continuous simulation gives the player nothing to do. The fix is structural: **the engine simulates time continuously (monthly ticks); the game interrupts time at intervals (rounds) to deal decisions.** Cards are still curves; rounds, drafting, and goals are what was missing.
+The old prototype's curve model was right about **consequences** but had no **decisions** — a continuous simulation gives the player nothing to do, and its stacking semantics were never pinned down. The rebuild fixes both:
+
+- A **stacking grammar** with one rule (§7) replaces the old ad-hoc `canStackOnto` / `stackingMultiplier` / `NestedStack` mechanisms.
+- The engine simulates time continuously (monthly ticks); the simulator makes editing tactile; the **game** interrupts time at intervals (rounds) to deal decisions.
 
 ---
 
-## 2. The universal game shape
+## 2. The Simulator (product 1)
+
+One screen, no navigation for the core loop. A **table** of card stacks, a **timeline** that is the single source of truth, and a **hand/library** to play from.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  TIMELINE  net-worth curve · per-vessel bands · goal lines   │ ~40%
+│  ├─ today ─────────── time scrubber ───────────── horizon ─┤ │
+├──────────────────────────────────────────────────────────────┤
+│  THE TABLE                                                   │
+│   [Salary+Tax+Raise] ──stream──▶ [Checking]                  │ ~45%
+│        └────20% of surplus──────────────▶ [Index fund+Fee]   │
+│   [Rent −12k/mo]            [Mortgage −1.9M ◀── 8k/mo]       │
+├──────────────────────────────────────────────────────────────┤
+│  HAND / LIBRARY drawer                          [＋ New card] │ ~15%
+└──────────────────────────────────────────────────────────────┘
+```
+
+- **The chart is the truth.** Every gesture on the table updates the timeline with zero perceptible latency. Cards are the controls; the curve is the consequence.
+- **Play:** drag a card from the library to the table. Valid drop targets glow (the kind system decides validity, §7); invalid targets are simply inert.
+- **Stack:** drop a modifier onto a stack — magnetic snap, and the chart *morphs* (animated transition, never a redraw flash). Stacks fan slightly on hover so every card's header strip stays readable.
+- **Stream:** drag the output chip on a flow stack onto a vessel or debt; a radial widget sets a fixed amount or a % of surplus. Streams render as soft lines on the table. A permanent **Checking** vessel catches all unrouted flow, so the model never leaks money.
+- **Flip to edit:** tap a card to flip it. The back shows the formula and each parameter as a **slider that live-updates the chart while dragging**. No modals.
+- **Time scrub:** drag on the timeline to move a cursor; every stack annotates itself with its value at that moment (*"in 2041 this stack yields 31 200 kr/mo"*).
+- **Goals:** goal cards ("2M by 2035", "mortgage-free at 55") render as target lines with a live delta readout. No confetti — an honest gap number.
+- **Compare:** pin any saved table as a **ghost** — its net-worth curve renders dimmed behind the active one. *"What does this decision cost me over 20 years?"* is the simulator's killer feature, and it's just two curves.
+- **Everything is undoable.** The table serializes to one small immutable document; every gesture is a diff.
+
+---
+
+## 3. The Workshop (the multiplier)
+
+The workshop is not a separate editor — **the back of a blank card is the card creator.** The same flip-and-slide interaction used to tweak a salary is used to define a new instrument from scratch.
+
+- **Authoring a card:** choose a kind (§7), a curve or transform primitive (§8), set parameters, write the front (name, description, icon, tags) and the assumptions footnote (where the numbers come from). Done — it's in your library.
+- **Packs** are the unit of sharing. A pack is a data bundle (JSON, no code) containing any mix of:
+  - **Instrument cards** — "ISK", "401k", "Bostadsrätt", "AP7 Såfa";
+  - **Locale rules** — tax transforms and scheduled rules wired into engine hooks (Sweden pack: ISK schablonskatt, ränteavdrag, amorteringskrav, jobbskatteavdrag);
+  - **Data series** — real historical monthly curves (prices, inflation, interest rates, FX) with period-accurate card descriptions;
+  - **Scenarios** — game modules (§4) referencing the above.
+- **Remixing is the point.** *"1990: The Decade Trade"* is a scenario referencing a US-equities data pack and a Swedish locale pack. Swap in an Argentina pack — ARS, hyperinflation series, convertibility-plan events — and the same scenario becomes a different lesson. No engine changes, no scenario changes: packs compose.
+- Distribution starts humble: export/import pack files. Registry/sharing UI is a later concern; the *format* is a day-one concern.
+
+---
+
+## 4. The Game (product 2)
 
 Every scenario is an instance of one loop:
 
@@ -49,174 +100,172 @@ Every scenario is an instance of one loop:
 SETUP      scenario defines: era, goal, deck(s), starting position, horizon
   │
 ROUND      (usually = 1 year, scenario-configurable)
-  │  1. DEAL    each player receives a hand (default 7) from the era deck
-  │  2. DRAFT   pick 1 card, pass the rest left; repeat until K picks (default 3),
-  │             remainder discarded face-up (public information)
-  │  3. COMMIT  on your own device: play drafted cards into your ledger,
-  │             allocate cash, buy/sell within the scenario's trading rules
+  │  1. DEAL     each player receives a hand (default 7) from the era deck
+  │  2. DRAFT    pick 1 card, pass the rest left; repeat until hands are
+  │              empty — the last card is discarded face-up (Sushi Go /
+  │              7 Wonders style). Passing direction alternates each round.
+  │  3. COMMIT   on your own device: play drafted cards into your ledger,
+  │              allocate cash, buy/sell within the scenario's trading rules
   │  4. SIMULATE the engine runs the year month-by-month; the host screen
-  │             replays it as a live market/news ticker; ledgers update
-  │  5. INTERIM  year results: standings, and the year-winner bonus if the
-  │             scenario has one
+  │              replays it as a live market/news ticker; ledgers update
+  │  5. INTERIM  standings + the year-winner bonus: best return that year
+  │              receives cash from the bank
   │
-FINAL      scoring per scenario goal → results screen → real-history epilogue
+FINAL      scoring per scenario goal → results → real-history epilogue
 ```
-
-Key vocabulary:
 
 | Term | Meaning |
 |---|---|
 | **Scenario** | A data-defined game module: era, deck, goal, rules, tunables. |
-| **Era deck** | The card pool for a scenario, possibly changing per round (1993's IPOs appear in 1993). |
-| **Ledger** | A player's private tableau: their cards, cash, positions, and household — lives on their own device. |
+| **Era deck** | The card pool, possibly changing per round (1993's IPOs appear in 1993). |
+| **Ledger** | A player's private tableau — cards, cash, positions — on their own device. |
 | **Table** | The shared host screen: race chart, market replay, events, discards, standings. |
-| **Round / Year** | One decision-simulation cycle. |
 
-### Drafting notes
+Drafting notes:
 
-- Pick-and-pass with hidden hands is *the* reason for own-device multiplayer. Passing direction alternates per round (left, then right) as in 7 Wonders.
-- Drafting is simultaneous — no waiting for turns. The host screen shows who's still deciding.
-- Discards are public. Knowing what everyone *didn't* take is information.
-- Hate-drafting (taking a card to deny it) is the only direct interaction in the game, and it's enough.
+- Drafting is simultaneous — no turn-waiting; the host screen shows who's still deciding.
+- Discards are public. Knowing what nobody took is information.
+- Hate-drafting (taking a card to deny it) is the game's only direct interaction, and it's enough.
+- The deck contains **copies** of popular assets — several players can hold Microsoft; they differ only in entry timing and allocation.
+- Not every drafted card must be funded: cards you keep but don't buy into stay in your ledger as options for later COMMIT phases (scenario-tunable).
 
 ---
 
-## 3. Flagship scenario A — *"1990: The Decade Trade"*
+## 5. Flagship scenario A — *"1990: The Decade Trade"*
 
-**Goal:** highest net worth on 31 Dec 1999. **Players:** 2–6. **Length:** 10 rounds ≈ 45–60 min.
+**Goal:** highest net worth on 31 Dec 1999. **Players:** 2–6. **Length:** 10 rounds.
 
 - Everyone starts with the same cash (default 100 000 kr) and an empty portfolio.
-- The era deck is **real equities with real monthly price data**: Microsoft, Intel, Nokia, Ericsson, GE, Coca-Cola, Enron, AOL, pets.com-era IPOs appearing in their actual listing years… plus bonds, an index fund, and a savings account as the boring anchors.
-- **A card only shows what was knowable at the in-game date.** Front: company name, sector, a 3-year *trailing* sparkline, dividend yield, a volatility grade, and a period-accurate one-line description ("Finnish conglomerate; rubber boots, cables, and now mobile telephones"). No survivorship hints, no logos from the future.
-- COMMIT phase: allocate cash across drafted cards; selling existing positions allowed only during this window (with a small spread/courtage — Sweden pack supplies realistic fees and capital-gains tax).
-- SIMULATE: the host screen replays the year month-by-month — a ticker, the race chart of everyone's net worth, and 2–4 curated period headlines ("1997: Asian currency crisis") that explain what players are watching.
-- **Year-winner bonus:** best portfolio return (%) that year receives a cash bonus (default: 10 % of starting capital, paid by the bank — not zero-sum, per the race-not-war stance). This rewards yearly risk-taking and keeps trailing players in the game.
-- **Epilogue:** the final screen scrolls forward through 2000–2002 with everyone's *final* portfolio held frozen. The dot-com lesson delivers itself.
+- The era deck is **real equities with real monthly price data** — Microsoft, Intel, Nokia, Ericsson, GE, Coca-Cola, Enron, AOL, dot-com IPOs appearing in their actual listing years — plus bonds, an index fund, and a savings account as the boring anchors.
+- **Epistemic rule: a card only shows what was knowable at the in-game date.** Front: name, sector, a 3-year *trailing* sparkline, dividend yield, volatility grade, and a period-accurate one-liner ("Finnish conglomerate; rubber boots, cables, and now mobile telephones"). No survivorship hints.
+- COMMIT: allocate cash across drafted cards; selling existing positions allowed only in this window, with realistic courtage and capital-gains tax from the locale pack.
+- SIMULATE: the host screen replays the year — ticker, the race chart of everyone's net worth, and 2–4 curated period headlines ("1997: Asian currency crisis").
+- **Year-winner bonus:** best portfolio return (%) that year gets cash from the bank (default 10 % of starting capital). Rewards yearly conviction, keeps trailing players alive.
+- **Epilogue:** the final screen scrolls through 2000–2002 with everyone's final portfolio frozen. The dot-com lesson delivers itself.
 
-Why this is the first scenario to build: it needs no household modeling, no jurisdiction rules beyond fees/tax on trades, and its fun depends only on drafting + real data + the replay moment — the smallest thing that proves the whole concept.
-
----
-
-## 4. Flagship scenario B — *"Financial Independence First"*
-
-**Goal:** first player to reach FI — passive income ≥ living expenses for 12 consecutive months (equivalently: liquid net worth ≥ 25× annual expenses; exact definition is a scenario tunable). **Length:** up to 30 rounds/years, expected win around year 15–25; if no one reaches FI by the horizon, highest FI-ratio wins.
-
-- Everyone starts from the same household baseline: a salary, rent, living expenses, some savings. (Variant for later: draft your starting life — job, city, flat — in round 0.)
-- The era deck mixes card kinds: **assets** (index funds, rental flat, förräntningskonto), **income moves** (career change, side business, negotiate raise), **expense changes** (move somewhere cheaper, car vs no car), **instruments** (ISK vs depot, amortize vs invest), and **life** (kids, sabbatical — cards with honest costs and no scoring value, which some players will draft anyway; that's the point).
-- **Shared world events** between rounds hit everyone identically: rate hikes, a 2008-style crash, tax reform, inflation spikes. Scripted per scenario seed, not random per player.
-- The **Sweden pack** is what makes this boring-in-the-good-way: ISK schablonskatt vs 30 % capital gains, ränteavdrag on mortgage interest, amorteringskrav tiers, jobbskatteavdrag. All data, not code (§6).
-- This scenario exercises the full **stacking grammar** (§5): your salary stack wears tax and raise modifiers; your fund stack wears fees; your mortgage consumes a stream of your surplus.
+This is the first *game* milestone because it needs no household modeling — its fun depends only on drafting + real data + the replay moment: the smallest thing that proves the game layer.
 
 ---
 
-## 5. Card system
+## 6. Flagship scenario B — *"Financial Independence First"*
+
+**Goal:** first player to reach FI — passive income ≥ living expenses for 12 consecutive months (exact definition is a scenario tunable; alternative: net worth ≥ 25× annual expenses). **Length:** up to 30 rounds; if nobody reaches FI, highest FI-ratio wins.
+
+- Everyone starts from the same household baseline: salary, rent, expenses, small savings. (Later variant: round 0 drafts your starting life — job, city, flat.)
+- The era deck mixes kinds: **assets** (index funds, rental flat), **income moves** (career change, side business, negotiate raise), **expense changes** (move somewhere cheaper, car vs no car), **instruments** (ISK vs depot, amortize vs invest), and **life cards** (kids, sabbatical — honest costs, no scoring value; some players will draft them anyway, which is the point).
+- **Shared world events** between rounds hit everyone identically: rate hikes, a 2008-style crash, tax reform, inflation spikes. Scripted per scenario seed.
+- The Sweden pack is what gives this scenario teeth, and it exercises the full stacking grammar: salary stacks wear tax and raise modifiers, fund stacks wear fees, the mortgage consumes a stream of surplus.
+
+---
+
+## 7. Card system
 
 ### Kinds
 
-Every card is exactly one kind; kind determines where it can be played. This is a type system, not per-card allowlists.
+Every card is exactly one kind; kind alone determines where it can be played. A type system, not per-card allowlists.
 
 | Kind | Produces | Examples |
 |---|---|---|
 | **Source** | a flow (kr/month) | salary, side business, rental income |
-| **Asset** | a balance with a growth curve | stocks (historical curve), funds, property, savings |
+| **Asset** | a balance with a growth curve | stocks (sampled curve), funds, property, savings |
 | **Debt** | a negative balance accruing interest | mortgage, student loan |
 | **Modifier** | a transform on the stack below it | income tax, fund fee, raise, amortization rule |
 | **Event** | a scripted world change (scenario-dealt, never drafted) | crash, rate hike, tax reform |
 
 ### Stacking grammar (one rule)
 
-> A **stack** is a base card (source/asset/debt) plus modifiers, evaluated bottom-up as function composition. `raise(tax(salary))(t)`. One level deep — no stacks of stacks.
+> A **stack** is one base card (source/asset/debt) plus modifiers, evaluated bottom-up as function composition: `raise(tax(salary))(t)`. One level deep — no stacks of stacks.
 
-Cross-stack routing is a **stream**, not a stack: "40 % of monthly surplus → index fund" is an edge in the ledger, set during COMMIT. Every ledger has a default cash account that catches unrouted flow, so the model never leaks money.
+Cross-stack routing is a **stream**, not a stack: "40 % of monthly surplus → index fund" is an edge in the table/ledger. The default cash account catches unrouted flow.
 
 ### Anatomy
 
-Two-sided. **Front = meaning** (kind band, name, headline number, trailing sparkline, one-line period-accurate description). **Back = math** (the formula, parameters, assumptions, source of data). Tap to flip. In the game, backs are mostly read-only; in the future simulator mode, backs are where you edit parameters.
-
-**Epistemic rule, worth repeating:** a card front may only display information available at the current in-game date.
+Two-sided. **Front = meaning:** kind band, icon, name, headline number (signed, per-month for flows, absolute for balances), trailing sparkline, one-line description, tags. **Back = math:** formula, parameters as live sliders, assumptions footnote, data source. In the simulator the back is fully editable (and the back of a blank card is the workshop, §3); in the game, backs are read-only.
 
 ---
 
-## 6. The engine
+## 8. The engine
 
-Pure, deterministic, dependency-free TypeScript module. No framework imports, own test suite. This is the part that must be simulator-grade from day one.
+Pure, deterministic, dependency-free TypeScript module with its own test suite. No framework imports. This is the long-lived asset and it is simulator-grade from day one.
 
-- **Tick:** monthly. Each month: evaluate flow stacks bottom-up → resolve streams in order, remainder to cash → update balances (growth/interest/fees, then inflows).
-- **`simulate(ledger, world, from, to) → Series[]`** — no hidden state. Ghost curves, replays, undo, and "what if" diffs are all just calls.
-- **Determinism everywhere:** shuffles and event schedules are seeded per game. A finished game is fully reproducible from `(scenario, seed, decisions)` — which is also the save format and the spectator/replay format.
-- **Curve primitives:** linear, compound, step, sinusoidal, **sampled** (real historical monthly data — the 1990 scenario's card type), and a sandboxed custom expression as escape hatch.
-- **Jurisdiction as data:** the engine exposes hooks (flow transforms, balance transforms, scheduled rules); a locale pack (Sweden first) is a JSON/TS data file wiring real rules into those hooks. No `if (sweden)` anywhere.
-- **Historical data as packs:** each era scenario bundles a static, curated dataset (~30–60 instruments, monthly adjusted closes, dividends, listing/delisting dates, period descriptions). Shipped with the app; no live APIs, no licensing surprises (source from free monthly-resolution datasets; curation is an authoring task, not an engineering one).
+- **Tick:** monthly. Each month: evaluate flow stacks bottom-up → resolve streams in declared order, remainder to cash → update balances (growth/interest/fees, then inflows). **Net worth(t)** = Σ assets − Σ debts.
+- **`simulate(table, world, from, to) → Series[]`** — no hidden state. Ghosts, replays, undo, and what-if diffs are just calls.
+- **Curve primitives:** linear, compound, step, sinusoidal, **sampled** (real historical monthly data), and a sandboxed custom expression as escape hatch.
+- **Determinism everywhere:** shuffles and event schedules are seeded. A finished game is fully reproducible from `(scenario, seed, decisions)` — which is also the save format and the replay format.
+- **Jurisdiction as data:** the engine exposes hooks (flow transforms, balance transforms, scheduled rules); locale packs wire real rules into those hooks. No `if (sweden)` anywhere.
+- **Historical data as packs:** static curated datasets (~30–60 instruments per era; monthly adjusted closes, dividends, listing/delisting dates, descriptions). Bundled, no live APIs.
+- **Real vs nominal:** inflation lives in a table-level Assumptions slot; a global toggle re-renders all curves in real terms.
 
 ---
 
-## 7. Multiplayer architecture
+## 9. Multiplayer architecture
 
 **Jackbox model, host-authoritative.**
 
-- **Host screen** (laptop on the table / TV): the shared Table — race chart, market replay, event announcements, public discards, standings, and "waiting for Anna…" draft status.
-- **Player devices** (phones): the private Ledger — hidden hand, drafting UI, commit/allocation UI, own net-worth detail.
-- The host device runs the entire simulation (the engine is pure and light — 6 players × 600 months is trivial). Player devices are thin views sending decisions and receiving state.
-- **Join flow:** host creates room → 4-letter room code → players open the same web app on their phones and enter it. No accounts.
-- **Sync layer:** a minimal WebSocket relay (host ↔ players; the relay stores nothing and understands nothing — it forwards messages). Deterministic state + full-state broadcasts make reconnects trivial: rejoin, receive current state doc, continue. Local-network-only fallback is possible later; a tiny hosted relay is the pragmatic v1.
-- **Same codebase, two routes:** `/table` (host) and `/hand` (player) are views of one app.
+- **Host screen** (laptop/TV on the table): the shared Table — race chart, market replay, events, public discards, standings, draft status ("waiting for Anna…").
+- **Player devices** (phones): the private Ledger — hidden hand, drafting, commit/allocation, own net-worth detail.
+- The host runs the entire simulation (pure engine; 6 players × 600 months is trivial). Player devices are thin views sending decisions, receiving state.
+- **Join:** host creates a room → 4-letter code → players open the same web app and enter it. No accounts.
+- **Sync:** a minimal WebSocket relay that stores nothing and understands nothing — it forwards messages. Deterministic state + full-state broadcasts make reconnects trivial.
+- **Same codebase, two routes:** `/table` (host) and `/hand` (player).
 
 ---
 
-## 8. Visual direction
+## 10. Visual direction
 
-**"An annual report you fight over with friends."** Evolved from v1's "Bloomberg terminal meets tarot deck", turned further toward boring:
+**"An annual report you fight over with friends."**
 
-- Warm paper and ink; the five kind-band colors are the only identity hues; green/red reserved strictly for money direction. Light + dark from day one.
-- Serif display for card names and scenario titles (the annual-report half); a sans with **tabular numerals** for every figure (the terminal half). Numbers never jiggle.
-- Card faces look like beautifully set index cards, not game art: engraved monochrome sector glyphs, no illustrations, no characters.
-- The market replay is the one place motion is spent: the ticker advances, curves draw, headlines slide in. Everything else is calm.
-- Sound: paper slides, a single soft tick per simulated month, a page-turn on year end. No fanfares — the year-winner gets a dry stamp: *"Årets resultat: Anna. +14,2 %."*
-
----
-
-## 9. Platform & tech
-
-- **TypeScript + React + Vite web app**, PWA. One deploy serves host and players; nothing to install at game night.
-- **Engine:** pure TS package (`/engine`) with exhaustive tests — the long-lived asset.
-- **UI:** DOM (not canvas) — the interface is text and numbers; accessibility and speed of iteration win. `framer-motion` for the few earned animations, `dnd-kit` for drag interactions in the ledger, `visx`/D3 for the race chart and replay.
-- **Sync:** WebSocket relay (PartyKit/Durable Object or a ~100-line Node relay). Protocol: JSON state docs + decision messages. Host-authoritative, seeded-deterministic.
-- **Persistence:** games are `(scenario, seed, decisions)` tuples — a few KB. LocalStorage/IndexedDB on the host; export/share as a file or link.
-- **Scenarios are data**, not code: a scenario file declares era, deck composition, tunables, goal function, event script, epilogue. This is what makes "a fairly advanced financial simulator *as well as* a card game" one product — and lets us (and eventually players) author new scenarios without touching the engine.
+- Warm paper and ink; the five kind-band colors are the only identity hues; **green/red reserved strictly for money direction**. Light + dark from day one.
+- Serif display for card names and scenario titles; a sans with **tabular numerals** for every figure. Numbers never jiggle.
+- Card faces are beautifully set index cards, not game art: engraved monochrome glyphs, no illustrations, no characters.
+- Motion is spent in exactly two places: the tactile card interactions in the simulator (lift, snap, fan, flip), and the market replay in the game (ticker advances, curves draw, headlines slide). Everything else is calm.
+- Sound: paper slides, one soft tick per simulated month, a page-turn on year end. The year-winner gets a dry stamp: *"Årets resultat: Anna. +14,2 %."*
 
 ---
 
-## 10. Tunables (proposed defaults — all playtest fodder)
+## 11. Platform & tech
+
+- **TypeScript + React + Vite web app**, PWA, local-first. Simulator data (your financial life) never leaves the device: IndexedDB persistence, JSON export/import. No backend for the simulator at all.
+- **Engine:** pure TS package (`/engine`), exhaustively tested.
+- **UI:** DOM, not canvas — the interface is text and numbers; accessibility and iteration speed win. `dnd-kit` for drag/stack/stream gestures, `framer-motion` for the earned animations, `visx`/D3 for timeline and replay.
+- **Sync (game only):** a tiny WebSocket relay (PartyKit/Durable Object or a ~100-line Node relay). JSON state docs + decision messages.
+- **Packs and scenarios are data files**, not code (§3). Saved games are `(scenario, seed, decisions)` tuples — a few KB, shareable as files or links.
+- Touch-first sizing (phones are the game controllers; iPad is a fine simulator surface).
+
+---
+
+## 12. Tunables (proposed defaults — playtest fodder)
 
 | Tunable | Default | Notes |
 |---|---|---|
 | Players | 2–6 | Draft degrades below 3; solo needs bots (later). |
-| Hand size | 7 | Your memory of the mechanic; matches 7 Wonders. |
-| Picks per round | 3 | Full 7-card drafts make years drag; 3 keeps a 10-round game under an hour. |
+| Hand size | 7 | Confirmed feel: Sushi Go / 7 Wonders. |
+| Picks per round | full draft (6 of 7, last discarded) | **Confirmed.** If 10-round games drag in playtests, the lever is hand size, not the mechanic. |
 | Round length | 1 year | Scenario-configurable. |
-| Year-winner bonus | +10 % of starting capital, from the bank | Not zero-sum. Alternative: a shared pot everyone feeds — more cutthroat, revisit in playtest. |
+| Year-winner bonus | +10 % of starting capital, from the bank | **Confirmed** bank-paid. Size/scaling is playtest fodder. |
 | Starting capital (1990) | 100 000 kr | |
-| FI definition | passive income ≥ expenses for 12 consecutive months | Alternative: net worth ≥ 25× annual expenses. |
+| FI definition | passive income ≥ expenses for 12 consecutive months | Alternative: 25× annual expenses. |
 | Trading windows | COMMIT phase only | Mid-year trading would kill the drafting tension. |
 
 ---
 
-## 11. Build order
+## 13. Build order (simulator first)
 
-**M0 — Engine core.** Curves, stacks, streams, monthly tick, seeded determinism, sampled-data curve type. Tests. No UI.
-**M1 — 1990 scenario, hot-seat prototype.** Single device, pass-around drafting with a "look away" screen. Ugly UI. Purpose: find out if the game is fun *before* building sync. (This is the cheap insurance against the "did the concept actually work out" doubt.)
-**M2 — Own-devices multiplayer.** Room codes, host table, phone hands, the market replay done properly.
-**M3 — Sweden pack + FI scenario.** Household stacks, streams, locale rules, shared events.
-**M4 — Polish + epilogues + replays.** Sound, standings, share-a-replay.
-**Later:** simulator/sandbox mode, scenario authoring UI, bots for solo, more eras (1929, 1970s stagflation, 2008, Japan 1989).
+**M0 — Engine core.** Curves (incl. sampled), stacks, streams, monthly tick, seeded determinism, pack/locale hooks. Tests. No UI.
+**M1 — Simulator v1.** The table, timeline, stacking, streams, flip-to-edit, goals, undo, persistence. Ships with a starter Sweden pack (core household cards + basic rules).
+**M2 — Workshop v1.** Blank-card authoring, pack export/import. (Much of it falls out of M1's flip-to-edit for free.)
+**M3 — Game prototype, hot-seat.** The 1990 scenario on a single device with "look away" drafting. Deliberately ugly. Purpose: find out whether the game is *fun* before building sync — the cheap insurance against the "did this concept actually work out" doubt.
+**M4 — Own-devices multiplayer.** Room codes, host table, phone hands, the market replay done properly.
+**M5 — FI scenario + Sweden pack deep.** Full locale rules, shared events, life cards.
+**M6 — Polish.** Epilogues, replays, sound, compare ghosts in game post-mortems.
+**Later:** bots for solo, pack registry/sharing, more eras (1929, 1970s stagflation, 2008, Japan 1989, Argentina).
 
 ---
 
-## 12. Open questions for playtesting / next design pass
+## 14. Open questions for the next design pass
 
-1. **Draft depth:** is 3 picks per year right, or should early years draft more (building) and late years fewer (managing)?
-2. **Bonus mechanics:** bank-paid bonus vs shared pot; flat vs scaling; does a *streak* bonus create runaway leaders?
-3. **Selling rules (1990):** courtage + capital-gains tax only, or also a limited number of sells per year to force conviction?
-4. **FI scenario deck:** exact card list and how life cards (kids, sabbatical) score — pure flavor-with-cost, or do scenarios define non-financial win conditions?
-5. **Card scarcity:** in a 4-player draft, are stock cards unique (only one Microsoft position exists) or copies (everyone can hold Microsoft, differing only in when they bought)? Current lean: copies — it's a race, and uniqueness is hate-draft enough.
-6. **Name.** *Bokslut*? *Stacks*? Something else?
+1. **Selling rules (1990):** courtage + capital-gains tax only, or also a cap on sells per year to force conviction?
+2. **FI scenario deck:** exact card list; how do life cards interact with winning — pure flavor-with-cost, or can scenarios define non-financial win conditions?
+3. **Unfunded drafted cards:** keep-as-option forever, expire after N years, or scenario-defined?
+4. **Simulator scope for M1:** is Compare (ghost tables) v1 or v1.1? Current lean: v1.1 — the single-table loop must feel great first.
+5. **Pack format versioning:** decide before the first shared pack exists, not after.
