@@ -17,6 +17,7 @@ A financial simulator where every instrument is a card and every card is a curve
 - Growth parameters are `(expected, volatility?)` from day one; v1 ignores volatility (Monte Carlo comes later).
 - App stack: TypeScript + React + Vite, PWA, local-first (IndexedDB), DOM not canvas.
 - Numbers use tabular numerals; green/red strictly for money direction. "Boring is the goal."
+- **Dependencies start at the newest stable version — no exceptions.** When scaffolding or adding a package, check the current latest stable release (`npm view <pkg> version`) instead of trusting memorized or template versions, then verify the installed lockfile versions match. The old prototype started on outdated packages; don't repeat that.
 
 ## M1 acceptance test (the north star)
 
