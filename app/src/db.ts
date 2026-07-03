@@ -1,0 +1,63 @@
+import type { Doc } from './model'
+
+/**
+ * Local-first persistence: the table document lives in IndexedDB and never
+ * leaves the device (DESIGN.md §11). One store, one key, plain JSON.
+ */
+
+const DB_NAME = 'finsim'
+const STORE = 'docs'
+const KEY = 'table-v1'
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1)
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE)
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+export async function loadDoc(): Promise<Doc | undefined> {
+  try {
+    const db = await openDb()
+    return await new Promise((resolve, reject) => {
+      const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY)
+      req.onsuccess = () => {
+        const doc = req.result as Doc | undefined
+        resolve(doc && Array.isArray(doc.table?.stacks) ? doc : undefined)
+      }
+      req.onerror = () => reject(req.error)
+    })
+  } catch {
+    return undefined
+  }
+}
+
+export async function saveDoc(doc: Doc): Promise<void> {
+  try {
+    const db = await openDb()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite')
+      tx.objectStore(STORE).put(doc, KEY)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch {
+    // persistence is best-effort; the session keeps working in memory
+  }
+}
+
+export async function clearDoc(): Promise<void> {
+  try {
+    const db = await openDb()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite')
+      tx.objectStore(STORE).delete(KEY)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch {
+    // best-effort
+  }
+}

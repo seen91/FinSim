@@ -3,10 +3,13 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "engine"
+    "engine",
+    "app"
   ],
   "scripts": {
     "test": "npm --workspace @finsim/engine run test",
-    "typecheck": "npm --workspace @finsim/engine run typecheck"
+    "typecheck": "npm --workspace @finsim/engine run typecheck && npm --workspace @finsim/app run typecheck",
+    "dev": "npm --workspace @finsim/app run dev",
+    "build": "npm --workspace @finsim/app run build"
   }
 }
