@@ -18,7 +18,8 @@
 | Year-winner bonus | **Cash from the bank** (not zero-sum) to the best return each year. |
 | Card scarcity | **Copies allowed.** Several players can hold the same stock, differing only in when they bought. |
 | Name | **FinSim.** |
-| Stream percent semantics | **Share of the pool remaining at the stream's turn.** Declared order is resolution order; "20 % of surplus" after an earlier stream drew means 20 % of the rest, so allocations can never exceed the pool. Fixed streams always draw in full; cash absorbs any overdraft honestly. |
+| Stream percent semantics | **Share of the pool remaining at the stream's turn.** Superseded by the pipeline model below, which generalizes exactly this rule to every card. |
+| Calculation model (v2, supersedes stacks/streams/modifiers) | **A hand is played top to bottom.** Every card acts on a running monthly total: sources add their curve, drains subtract (a fixed amount, or a % of the positive running total), assets and debts take their deposit/payment from it, and whatever reaches the bottom of the root lands in Cash. **A hand nested in a hand computes its own subtotal from zero and contributes its net at its position** — recursion is the scoping rule, so two salaries can carry different taxes without interference. The Modifier kind is removed: tax is a % drain (positional), a raise is the source card's own growth curve, a fee is an asset parameter. Order is load-bearing and visible — the column *is* the calculation. |
 
 ---
 
@@ -172,19 +173,20 @@ This is the first *game* milestone because it needs no household modeling — it
 
 Every card is exactly one kind; kind alone determines where it can be played. A type system, not per-card allowlists.
 
-| Kind | Produces | Examples |
+| Kind | Does | Examples |
 |---|---|---|
-| **Source** | a flow (kr/month) | salary, side business, rental income |
-| **Asset** | a balance with a growth curve | stocks (sampled curve), funds, property, savings |
-| **Debt** | a negative balance accruing interest | mortgage, student loan |
-| **Modifier** | a transform on the stack below it | income tax, fund fee, raise, amortization rule |
+| **Source** | adds its curve (kr/month) to the running total | salary (raise = its own growth curve), side business, rental income |
+| **Drain** | subtracts a fixed curve, or a % of the positive running total | rent, living expenses, income tax (−30 %) |
+| **Asset** | a balance with a growth curve (and optional fee); takes its deposit from the running total | stocks (sampled curve), funds, property, savings |
+| **Debt** | a positive principal accruing interest; takes its payment from the running total, capped at payoff | mortgage, student loan |
+| **Hand** | a named, toggleable, nestable collection; computes its own subtotal and contributes its net | "Current budget", "Buy the car", "Financing" |
 | **Event** | a scripted world change (scenario-dealt, never drafted) | crash, rate hike, tax reform |
 
-### Stacking grammar (one rule)
+### The pipeline (one rule)
 
-> A **stack** is one base card (source/asset/debt) plus modifiers, evaluated bottom-up as function composition: `raise(tax(salary))(t)`. One level deep — no stacks of stacks.
+> A **hand is played top to bottom.** Each card acts on a running monthly total; a nested hand computes its own subtotal from zero and contributes its net at its position. What reaches the bottom of the root hand lands in the permanent cash account, so the model never leaks money.
 
-Cross-stack routing is a **stream**, not a stack: "40 % of monthly surplus → index fund" is an edge in the table/ledger. The default cash account catches unrouted flow.
+Order is load-bearing and visible: put the tax above the salary and it taxes nothing — the column is the calculation. Percentage cards read the running total *at their position*, which is what makes "20 % of surplus" composable and allocation impossible to oversubscribe. Nested hands are the scoping construct: a tax inside a hand sees only that hand's subtotal.
 
 ### Anatomy
 
@@ -196,7 +198,7 @@ Two-sided. **Front = meaning:** kind band, icon, name, headline number (signed, 
 
 Pure, deterministic, dependency-free TypeScript module with its own test suite. No framework imports. This is the long-lived asset and it is simulator-grade from day one.
 
-- **Tick:** monthly. Each month: evaluate flow stacks bottom-up → resolve streams in declared order, remainder to cash → update balances (growth/interest/fees, then inflows). **Net worth(t)** = Σ assets − Σ debts.
+- **Tick:** monthly. Each month: play the root hand top to bottom (depth-first) — sources add, drains subtract, assets/debts grow/accrue and then take their deposit/payment from the running total — remainder to cash → scheduled rules (taxes, events). **Net worth(t)** = Σ assets − Σ debts.
 - **`simulate(table, world, from, to) → Series[]`** — no hidden state. Ghosts, replays, undo, and what-if diffs are just calls.
 - **Curve primitives:** linear, compound, step, sinusoidal, **sampled** (real historical monthly data), and a sandboxed custom expression as escape hatch.
 - **Determinism everywhere:** shuffles and event schedules are seeded. A finished game is fully reproducible from `(scenario, seed, decisions)` — which is also the save format and the replay format.

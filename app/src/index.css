@@ -1,21 +1,27 @@
 /* "An annual report you fight over with friends." (DESIGN.md §10)
    Warm paper and ink; five kind-band hues are the only identity colors;
-   green/red strictly for money direction; tabular numerals everywhere. */
+   green/red strictly for money direction; tabular numerals everywhere.
+   Cards are beautifully set index cards with engraved glyphs — the table
+   should feel like a game night, not a brokerage terminal. */
 
 :root {
   color-scheme: light dark;
   --paper: #f7f4ee;
+  --felt: #ece5d6;
   --card: #fffdf8;
   --ink: #221f1a;
   --ink-soft: #6c665c;
   --line: #d9d2c4;
   --accent-line: #b5ad9d;
+  --shadow: rgba(60, 50, 30, 0.18);
 
   --kind-source: #41648c;
+  --kind-drain: #58707a;
   --kind-asset: #a67c2e;
   --kind-debt: #8a5a44;
-  --kind-modifier: #5f7464;
   --kind-event: #6d5e80;
+  --kind-vessel: #7a746a;
+  --kind-hand: #6d5e80;
 
   --money-pos: #1e7a3c;
   --money-neg: #b03a2e;
@@ -27,16 +33,20 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --paper: #16140f;
-    --card: #1e1b15;
+    --felt: #100e0a;
+    --card: #211d16;
     --ink: #e8e4da;
     --ink-soft: #9a937f;
     --line: #38342a;
     --accent-line: #4c4739;
+    --shadow: rgba(0, 0, 0, 0.5);
     --kind-source: #7da2cc;
+    --kind-drain: #8fa7b0;
     --kind-asset: #d0a758;
     --kind-debt: #c08a70;
-    --kind-modifier: #8fa896;
     --kind-event: #a091b8;
+    --kind-vessel: #8d8578;
+    --kind-hand: #a091b8;
     --money-pos: #5cb87d;
     --money-neg: #d97a6c;
   }
@@ -52,6 +62,7 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   font-size: 14px;
+  overflow: hidden;
 }
 
 .num {
@@ -64,7 +75,7 @@ body {
 
 .app {
   display: grid;
-  grid-template-rows: auto minmax(220px, 38vh) auto 1fr;
+  grid-template-rows: auto minmax(170px, 27vh) auto 1fr;
   height: 100vh;
 }
 
@@ -73,7 +84,7 @@ body {
   display: flex;
   align-items: baseline;
   gap: 1.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 1rem;
   border-bottom: 1px solid var(--line);
 }
 
@@ -174,7 +185,6 @@ button:not(:disabled):hover {
 .timeline .curve.ghost {
   stroke: var(--ink-soft);
   stroke-width: 1.25;
-  stroke-dasharray: 5 4;
   opacity: 0.7;
 }
 
@@ -200,140 +210,219 @@ button:not(:disabled):hover {
   fill: var(--ink);
 }
 
-/* ---- readout ---- */
+/* ---- legend ---- */
 .readout {
-  padding: 0.5rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.6rem;
+  padding: 0.4rem 1rem;
   border-bottom: 1px solid var(--line);
   font-family: var(--serif);
-  font-size: 1.02rem;
+  font-size: 0.95rem;
 }
 
 .readout p {
-  margin: 0.15rem 0;
-  font-variant-numeric: tabular-nums;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
 }
 
-/* ---- table ---- */
-.table-view {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 1rem;
-  padding: 1rem;
-  overflow-y: auto;
-  align-content: start;
+.readout .swatch {
+  flex-shrink: 0;
+  align-self: center;
 }
 
-@media (max-width: 860px) {
-  .table-view {
-    grid-template-columns: 1fr;
-  }
+.readout .swatch line {
+  stroke: var(--ink);
+  stroke-width: 1.75;
 }
 
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
-  gap: 0.75rem;
+.readout p.muted .swatch line,
+.readout p:not(:first-child) .swatch line {
+  stroke: var(--ink-soft);
+  stroke-width: 1.25;
 }
 
-.card {
+.readout-name {
+  font-weight: 600;
+}
+
+/* zone labels: what part of the game this is */
+.zone-label {
+  font-size: 0.62rem;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+  margin: 0 0 0.6rem;
+}
+
+/* ---- playing cards ---- */
+.pcard {
+  --card-w: 168px;
+  width: var(--card-w);
+  aspect-ratio: 63 / 88;
+  perspective: 1000px;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.pcard-hand {
+  --card-w: 124px;
+}
+
+.pcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.pcard-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0 0.75rem 0.65rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  cursor: pointer;
-  min-height: 118px;
+  border-radius: 10px;
+  padding: 0 0.6rem 0.5rem;
+  box-shadow: 0 1px 2px var(--shadow), 0 3px 8px -4px var(--shadow);
   overflow: hidden;
 }
 
-.card-band {
-  margin: 0 -0.75rem;
-  padding: 0.15rem 0.75rem;
-  border-bottom: 2px solid var(--line);
+.pcard-back {
+  transform: rotateY(180deg);
 }
 
-.kind-source .card-band { border-color: var(--kind-source); }
-.kind-asset .card-band { border-color: var(--kind-asset); }
-.kind-debt .card-band { border-color: var(--kind-debt); }
-.kind-modifier .card-band { border-color: var(--kind-modifier); }
-.kind-event .card-band { border-color: var(--kind-event); }
-
-.card-kind {
-  font-size: 0.62rem;
+.pcard-band {
+  margin: 0 -0.6rem;
+  padding: 0.18rem 0.6rem 0.14rem;
+  border-bottom: 2px solid var(--line);
+  font-size: 0.58rem;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   color: var(--ink-soft);
 }
 
-.kind-source .card-kind { color: var(--kind-source); }
-.kind-asset .card-kind { color: var(--kind-asset); }
-.kind-debt .card-kind { color: var(--kind-debt); }
+.kind-source .pcard-band { border-color: var(--kind-source); color: var(--kind-source); }
+.kind-drain .pcard-band { border-color: var(--kind-drain); color: var(--kind-drain); }
+.kind-asset .pcard-band { border-color: var(--kind-asset); color: var(--kind-asset); }
+.kind-debt .pcard-band { border-color: var(--kind-debt); color: var(--kind-debt); }
+.kind-event .pcard-band { border-color: var(--kind-event); color: var(--kind-event); }
+.kind-vessel .pcard-band { border-color: var(--kind-vessel); color: var(--kind-vessel); }
+.kind-hand .pcard-band { border-color: var(--kind-hand); color: var(--kind-hand); }
 
-.card-name {
+.pcard-name {
   font-family: var(--serif);
   font-weight: 600;
-  font-size: 1rem;
-  margin: 0.5rem 0 0.25rem;
+  font-size: 0.95rem;
+  line-height: 1.15;
+  margin: 0.4rem 0 0;
 }
 
-.card-headline {
-  font-size: 1.05rem;
+.pcard-hand .pcard-name {
+  font-size: 0.82rem;
+}
+
+.pcard-art {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.55;
+}
+
+.kind-source .pcard-art { color: var(--kind-source); }
+.kind-drain .pcard-art { color: var(--kind-drain); }
+.kind-asset .pcard-art { color: var(--kind-asset); }
+.kind-debt .pcard-art { color: var(--kind-debt); }
+.kind-vessel .pcard-art { color: var(--kind-vessel); }
+.kind-hand .pcard-art { color: var(--kind-hand); }
+
+.pcard-stats {
+  margin: 0 0 0.2rem;
+}
+
+.pcard-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  padding: 0.08rem 0;
+  border-top: 1px dotted var(--line);
+}
+
+.pcard-stat:first-child {
+  border-top: none;
+}
+
+.pcard-stat dt {
+  color: var(--ink-soft);
+}
+
+.pcard-stat dd {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pcard-headline {
+  font-size: 0.92rem;
   margin: 0;
   text-align: right;
 }
 
-.card-headline.pos { color: var(--money-pos); }
-.card-headline.neg { color: var(--money-neg); }
-
-.card-chips {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin: 0.5rem 0 0;
-  padding: 0;
+.pcard-hand .pcard-headline {
+  font-size: 0.78rem;
 }
 
-.chip {
-  font-size: 0.7rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.05rem 0.5rem;
-  color: var(--kind-modifier);
-}
+.pcard-headline.pos { color: var(--money-pos); }
+.pcard-headline.neg { color: var(--money-neg); }
 
-.card-note {
-  font-size: 0.72rem;
+.pcard-spark {
   color: var(--ink-soft);
-  margin: 0.35rem 0 0;
+  text-align: right;
+  margin-top: 0.15rem;
 }
 
-.cash-card {
-  cursor: default;
-  border-style: dashed;
+.pcard-desc {
+  font-size: 0.6rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
+  margin: 0.3rem 0 0;
 }
 
-/* card back: parameters as sliders */
-.card-back {
-  cursor: default;
+.pcard-back-body {
+  flex: 1;
+  overflow-y: auto;
   padding-top: 0.35rem;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
 }
 
+/* parameter sliders on card backs */
 .param {
   display: block;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
 }
 
 .param-label {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  gap: 0.3rem;
+  font-size: 0.68rem;
   color: var(--ink-soft);
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.05rem;
 }
 
 .param-value {
   color: var(--ink);
+  white-space: nowrap;
 }
 
 input[type='range'] {
@@ -342,79 +431,535 @@ input[type='range'] {
   accent-color: var(--ink-soft);
 }
 
-/* bundles */
-.bundle {
-  margin-top: 1rem;
-  border: 1px dashed var(--accent-line);
-  border-radius: 8px;
-  padding: 0.6rem 0.75rem 0.75rem;
+.card-action {
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
 }
 
-.bundle.off {
+.card-action:last-child {
+  margin-top: auto;
+}
+
+.param .mod-remove {
+  opacity: 1;
+}
+
+/* ---- stacks: base card + modifier cards tucked beneath ---- */
+.stack {
+  position: relative;
+  width: 168px;
+  flex-shrink: 0;
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 0.18s ease;
+}
+
+.stack:hover,
+.stack:focus-within {
+  transform: rotate(0deg) translateY(-6px);
+  z-index: 30;
+}
+
+.stack > .pcard:hover,
+.stack > .pcard:has(.pcard-inner:focus-within),
+.stack.pinned > .pcard {
+  z-index: 26;
+}
+
+.mod-remove {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  padding: 0 0.15rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.stack:hover .mod-remove,
+.hand-col:hover > .hand-head .mod-remove {
+  opacity: 1;
+}
+
+/* reorder controls — order is the calculation */
+.card-move {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.card-move button {
+  flex: 1;
+  font-size: 0.6rem;
+  padding: 0.08rem 0;
+  color: var(--ink-soft);
+}
+
+/* each hand announces its monthly net at the bottom of the column */
+.hand-net {
+  margin: 0.45rem 0.1rem 0;
+  font-size: 0.74rem;
+  text-align: right;
+}
+
+.hand-net.pos {
+  color: var(--money-pos);
+}
+
+.hand-net.neg {
+  color: var(--money-neg);
+}
+
+/* ---- the table: a loose spread of cards on the same paper as everything else ---- */
+.table-felt {
+  overflow-y: auto;
+  padding: 1rem 1rem 7.5rem;
+}
+
+.table-felt.accepts {
+  outline: 2px dashed var(--accent-line);
+  outline-offset: -6px;
+}
+
+.table-felt.over {
+  outline-color: var(--kind-source);
+}
+
+/* hands side by side on the X axis; cards cascade down the Y axis */
+.hands-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  align-items: flex-start;
+  padding: 0.2rem 0.4rem;
+}
+
+.hand-col {
+  width: 192px;
+  flex-shrink: 0;
+  border: 1px dashed transparent;
+  border-radius: 12px;
+  padding: 0.35rem 0.55rem 0.7rem;
+}
+
+.hand-col:not(.loose) {
+  border-color: var(--accent-line);
+}
+
+.hand-col.off {
   border-color: var(--line);
 }
 
-.bundle legend {
-  padding: 0 0.4rem;
+.hand-col.over {
+  border-style: solid;
+  border-color: var(--kind-source);
 }
 
-.bundle-toggle {
+.hand-col.nested {
+  width: 100%;
+  padding: 0.25rem 0 0.45rem 0.45rem;
+  border-left-style: solid;
+}
+
+.hand-col.loose {
+  border: none;
+  padding-top: 1.65rem;
+}
+
+.hand-head {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  font-family: var(--serif);
-  font-weight: 600;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.hand-toggle {
+  display: flex;
   cursor: pointer;
 }
 
-/* streams */
-.streams {
-  border-left: 1px solid var(--line);
-  padding-left: 1rem;
-}
-
-@media (max-width: 860px) {
-  .streams {
-    border-left: none;
-    padding-left: 0;
-  }
-}
-
-.streams h2 {
+.hand-name {
+  border: none;
+  background: none;
+  padding: 0;
   font-family: var(--serif);
-  font-size: 0.95rem;
-  margin: 0 0 0.2rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.streams-note {
+.hand-name-input {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--accent-line);
+  border-radius: 4px;
+  padding: 0 0.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.hand-count {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+
+.hand-fold {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  padding: 0 0.15rem;
+  font-size: 0.75rem;
+}
+
+.hand-remove {
+  margin-left: auto;
+}
+
+.hand-col:hover > .hand-head .hand-remove {
+  opacity: 1;
+}
+
+/* the Y cascade: each card shows its header strip; hover lifts it clear */
+.hand-cascade {
+  display: flex;
+  flex-direction: column;
+}
+
+.cascade-slot {
+  position: relative;
+  margin-top: -158px;
+}
+
+.cascade-slot:first-child {
+  margin-top: 0;
+}
+
+.cascade-slot:hover,
+.cascade-slot:focus-within,
+.cascade-slot:has(.stack.pinned) {
+  z-index: 25;
+}
+
+.cascade-slot.cascade-hand {
+  margin-top: 0.4rem;
+}
+
+.cascade-slot.cascade-hand + .cascade-slot {
+  margin-top: 0.4rem;
+}
+
+.hand-empty {
   font-size: 0.72rem;
   color: var(--ink-soft);
-  margin: 0 0 0.6rem;
+  margin: 0.2rem 0;
 }
 
-.streams ol {
-  list-style: none;
+/* a nested hand at rest: unmistakably a pile of several cards */
+.hand-pile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  width: 168px;
+  padding: 0.5rem 0.65rem 0.45rem;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--ink) 4%, transparent) 6px 7px),
+    var(--card);
+  border: 1px solid var(--accent-line);
+  border-radius: 9px;
+  box-shadow: 0 1px 0 var(--card), 0 2px 0 var(--line), 0 3px 0 var(--card), 0 4px 0 var(--line), 0 6px 8px -2px var(--shadow);
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+.hand-pile.off {
+  opacity: 0.55;
+}
+
+.hand-pile:hover {
+  transform: translateY(-3px);
+}
+
+.hand-pile-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+
+.hand-pile-count {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
+
+
+/* ---- the draw pile ---- */
+.pile {
+  position: fixed;
+  right: 1.4rem;
+  bottom: 1.2rem;
+  z-index: 40;
+  width: 96px;
+  height: 130px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.pile-card {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 88px;
+  height: 118px;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 5px, color-mix(in srgb, var(--ink) 5%, transparent) 5px 6px),
+    var(--card);
+  border: 1px solid var(--accent-line);
+  border-radius: 9px;
+  box-shadow: 0 2px 5px var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pile-card:nth-child(1) {
+  transform: translate(6px, 8px) rotate(2.5deg);
+}
+
+.pile-card:nth-child(2) {
+  transform: translate(3px, 4px) rotate(-1.5deg);
+}
+
+.pile-top em {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  color: var(--accent-line);
+}
+
+.pile-label {
+  position: absolute;
+  bottom: -1.1rem;
+  left: 0;
+  width: 96px;
+  text-align: center;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+
+.pile:hover .pile-top {
+  transform: translateY(-5px) rotate(0.5deg);
+  transition: transform 0.15s ease;
+}
+
+/* ---- the open drawer: the whole library, spread out ---- */
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--paper) 72%, transparent);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.drawer-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.drawer-panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px -12px var(--shadow);
+  padding: 1.1rem 1.4rem 1.4rem;
+  max-width: 1080px;
+  width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+.drawer-head {
+  position: relative;
+  margin-bottom: 0.9rem;
+}
+
+.drawer-head h2 {
+  font-family: var(--serif);
+  font-size: 1.15rem;
   margin: 0;
+}
+
+.drawer-head p {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.drawer-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border: none;
+  background: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  padding: 0 0.2rem;
+}
+
+.drawer-section {
+  font-family: var(--serif);
+  font-size: 0.92rem;
+  margin: 0.9rem 0 0.5rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.2rem;
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.preset {
+  width: 200px;
+}
+
+.preset-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.6rem 0.7rem 0.55rem;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--ink) 4%, transparent) 6px 7px),
+    var(--card);
+  border: 1px solid var(--accent-line);
+  border-radius: 9px;
+  box-shadow: 0 1px 0 var(--card), 0 2px 0 var(--line), 0 3px 0 var(--card), 0 4px 0 var(--line), 0 6px 8px -2px var(--shadow);
+  cursor: pointer;
+  text-align: left;
+}
+
+.preset-tile:hover {
+  transform: translateY(-3px);
+}
+
+.preset-glyph {
+  color: var(--kind-hand);
+  opacity: 0.65;
+}
+
+.preset-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.preset-count {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
+
+.preset-open {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  padding: 0.35rem 0.2rem 0;
+  text-decoration: underline dotted;
+}
+
+.preset-cards {
+  list-style: none;
+  margin: 0.3rem 0 0;
   padding: 0;
 }
 
-.streams li {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0 0.5rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--line);
+.preset-cards button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0.22rem 0.2rem;
+  border-bottom: 1px dotted var(--line);
+  font-size: 0.72rem;
+  color: var(--ink);
+  text-align: left;
 }
 
-.streams li input {
-  grid-column: 1 / -1;
+.preset-cards button:hover {
+  background: var(--card);
 }
 
-.stream-target {
-  font-size: 0.8rem;
+.preset-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.stream-value {
-  font-size: 0.8rem;
+.preset-card-headline {
+  margin-left: auto;
   color: var(--ink-soft);
+  white-space: nowrap;
+  font-size: 0.66rem;
+}
+
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  justify-items: center;
+}
+
+.drawer-slot {
+  cursor: grab;
+  touch-action: none;
+  transition: transform 0.14s ease;
+}
+
+.drawer-slot:hover {
+  transform: translateY(-6px) scale(1.04);
+}
+
+.drawer-slot.lifting {
+  opacity: 0.25;
+}
+
+.drawer-slot .pcard {
+  pointer-events: none;
+  --card-w: 140px;
+}
+
+/* the drag ghost follows the pointer with a lifted look */
+.drag-ghost .pcard {
+  transform: rotate(3.5deg) scale(1.04);
+}
+
+.drag-ghost .pcard-face {
+  box-shadow: 0 10px 26px -6px var(--shadow), 0 2px 5px var(--shadow);
 }

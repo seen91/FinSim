@@ -7,7 +7,7 @@ import type { Doc } from './model'
 
 const DB_NAME = 'finsim'
 const STORE = 'docs'
-const KEY = 'table-v1'
+const KEY = 'table-v3' // v3: the pipeline model — one root hand, played top to bottom
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -25,7 +25,7 @@ export async function loadDoc(): Promise<Doc | undefined> {
       const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY)
       req.onsuccess = () => {
         const doc = req.result as Doc | undefined
-        resolve(doc && Array.isArray(doc.table?.stacks) ? doc : undefined)
+        resolve(doc && Array.isArray(doc.table?.root?.children) ? doc : undefined)
       }
       req.onerror = () => reject(req.error)
     })

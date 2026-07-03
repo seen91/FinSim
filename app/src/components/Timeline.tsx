@@ -3,7 +3,7 @@ import { scaleLinear } from 'd3-scale'
 import { line } from 'd3-shape'
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactElement, type RefObject } from 'react'
 import { formatKr } from '../format'
-import type { Sim } from '../model'
+import { GHOST_DASHES, type Sim } from '../model'
 
 /**
  * The timeline is the single source of truth (DESIGN.md §2): net-worth curve,
@@ -105,9 +105,14 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
           {activeCross !== null ? ` · reached ${formatMonth(activeCross)}` : ' · not reached in horizon'}
         </text>
 
-        {/* ghost curves: each bundle flipped */}
-        {sim.compares.map((c) => (
-          <path key={c.bundleId} className="curve ghost" d={path(c.flipped.netWorth.points) ?? undefined} />
+        {/* ghost curves: one line per compared hand, dash-coded to the legend */}
+        {sim.compares.map((c, i) => (
+          <path
+            key={c.handId}
+            className="curve ghost"
+            strokeDasharray={GHOST_DASHES[i % GHOST_DASHES.length]}
+            d={path(c.flipped.netWorth.points) ?? undefined}
+          />
         ))}
         {/* the one honest net-worth curve */}
         <path className="curve active" d={path(nw) ?? undefined} />
@@ -116,7 +121,7 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
         {activeCross !== null && <circle className="cross active" cx={x(activeCross)} cy={y(goal)} r={3.5} />}
         {sim.compares.map((c) => {
           const cross = crossingMarker(c.flipped, goal)
-          return cross !== null && <circle key={c.bundleId} className="cross ghost" cx={x(cross)} cy={y(goal)} r={3} />
+          return cross !== null && <circle key={c.handId} className="cross ghost" cx={x(cross)} cy={y(goal)} r={3} />
         })}
 
         {/* time scrubber */}

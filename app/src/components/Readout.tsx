@@ -1,52 +1,49 @@
 import { formatMonth, formatMonthsDelta } from '@finsim/engine'
 import type { ReactElement } from 'react'
-import type { Sim } from '../model'
+import { GHOST_DASHES, type HandCompare, type Sim } from '../model'
 
 /**
- * The killer feature, in words (DESIGN.md §2): the time-to-goal delta per
- * decision bundle — "10 MSEK: 2034-06 → 2036-11. The car costs you 2 yr 5 mo."
+ * The legend: one swatch per curve — your table, then each hand compared.
+ * Names only; the dates live on the chart's goal line and the details on
+ * the cards themselves.
  */
 interface Props {
   sim: Sim
-  goal: number
 }
 
-function goalLabel(goal: number): string {
-  if (goal >= 1_000_000 && goal % 100_000 === 0) {
-    return `${(goal / 1_000_000).toLocaleString('sv-SE')} MSEK`
+/** The time-to-goal delta, one hover away: "2045-06 → 2048-03 · costs 2 yr 9 mo". */
+function deltaTooltip(c: HandCompare): string {
+  const { baseMonth, variantMonth, deltaMonths } = c.delta
+  if (baseMonth !== null && variantMonth !== null && deltaMonths !== null) {
+    const verdict = deltaMonths > 0 ? `costs ${formatMonthsDelta(deltaMonths)}` : deltaMonths < 0 ? `saves ${formatMonthsDelta(-deltaMonths)}` : 'no difference'
+    return `${formatMonth(baseMonth)} → ${formatMonth(variantMonth)} · ${verdict}`
   }
-  return `${goal.toLocaleString('sv-SE')} kr`
+  if (baseMonth !== null) return `goal ${formatMonth(baseMonth)} without — never with`
+  if (variantMonth !== null) return `goal never without — ${formatMonth(variantMonth)} with`
+  return 'goal not reached either way'
 }
 
-export function Readout({ sim, goal }: Props): ReactElement | null {
-  if (sim.compares.length === 0) return null
+function Swatch({ dash }: { dash?: string }): ReactElement {
+  return (
+    <svg className="swatch" width="26" height="9" aria-hidden>
+      <line x1="1" y1="4.5" x2="25" y2="4.5" strokeDasharray={dash} />
+    </svg>
+  )
+}
+
+export function Readout({ sim }: Props): ReactElement {
   return (
     <section className="readout">
-      {sim.compares.map((c) => {
-        const { baseMonth, variantMonth, deltaMonths } = c.delta
-        let sentence: string
-        if (baseMonth !== null && variantMonth !== null && deltaMonths !== null) {
-          const verdict =
-            deltaMonths > 0
-              ? `${c.name} costs you ${formatMonthsDelta(deltaMonths)}.`
-              : deltaMonths < 0
-                ? `${c.name} saves you ${formatMonthsDelta(-deltaMonths)}.`
-                : `${c.name} makes no difference.`
-          sentence = `${goalLabel(goal)}: ${formatMonth(baseMonth)} → ${formatMonth(variantMonth)}. ${verdict}`
-        } else if (baseMonth !== null) {
-          sentence = `${goalLabel(goal)}: reached ${formatMonth(baseMonth)} without ${c.name} — never within the horizon with it.`
-        } else if (variantMonth !== null) {
-          sentence = `${goalLabel(goal)}: never reached within the horizon without ${c.name} — ${formatMonth(variantMonth)} with it.`
-        } else {
-          sentence = `${goalLabel(goal)}: not reached within the horizon, with or without ${c.name}.`
-        }
-        return (
-          <p key={c.bundleId} className={c.enabled ? '' : 'muted'}>
-            {sentence}
-            {!c.enabled && ' (bundle is off — the ghost shows it on)'}
-          </p>
-        )
-      })}
+      <p>
+        <Swatch />
+        <span className="readout-name">Your table</span>
+      </p>
+      {sim.compares.map((c, i) => (
+        <p key={c.handId} className={c.enabled ? '' : 'muted'} title={deltaTooltip(c)}>
+          <Swatch dash={GHOST_DASHES[i % GHOST_DASHES.length]} />
+          <span className="readout-name">{c.name}</span>
+        </p>
+      ))}
     </section>
   )
 }

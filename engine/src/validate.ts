@@ -1,91 +1,91 @@
-import type { Stack, Table } from './types.js'
+import type { Card, Curve, HandCard, Table } from './types.js'
 
 /**
- * Structural validation of a table — the kind system as code (DESIGN.md §7:
- * kind alone determines where a card can be played). `simulate` refuses
- * invalid tables; the UI uses the same checks to decide which drop targets glow.
+ * Structural validation of a table — the kind system as code (DESIGN.md §7).
+ * `simulate` refuses invalid tables; the UI uses the same checks to decide
+ * what may be played where.
  */
 
 export const CASH_ID = 'cash'
 
-function validateStack(stack: Stack, errors: string[]): void {
-  const base = stack.base
-  if (base.kind === 'source') {
-    for (const m of stack.modifiers ?? []) {
-      if (m.target !== 'flow' || m.modifier.type === 'annualFee') {
-        errors.push(`Stack "${stack.id}": modifier "${m.id}" (${m.modifier.type}) cannot stack on a source`)
+function validateCurveShape(curve: Curve, where: string, errors: string[]): void {
+  if (curve.type === 'step') {
+    for (let i = 1; i < curve.steps.length; i++) {
+      if (curve.steps[i]!.atMonth <= curve.steps[i - 1]!.atMonth) {
+        errors.push(`${where}: step curve months must be strictly increasing`)
+        break
       }
     }
-    if (base.flow.type === 'step') {
-      const steps = base.flow.steps
-      for (let i = 1; i < steps.length; i++) {
-        if (steps[i]!.atMonth <= steps[i - 1]!.atMonth) {
-          errors.push(`Stack "${stack.id}": step curve months must be strictly increasing`)
-          break
-        }
+  }
+}
+
+function validateCard(card: Card, errors: string[]): void {
+  switch (card.kind) {
+    case 'source':
+      validateCurveShape(card.flow, `Card "${card.id}"`, errors)
+      break
+    case 'drain': {
+      const hasAmount = card.amount !== undefined
+      const hasPercent = card.percent !== undefined
+      if (hasAmount === hasPercent) {
+        errors.push(`Card "${card.id}": a drain has exactly one of amount or percent`)
       }
-    }
-  } else if (base.kind === 'asset') {
-    for (const m of stack.modifiers ?? []) {
-      if (m.target !== 'balance' || m.modifier.type !== 'annualFee') {
-        errors.push(`Stack "${stack.id}": modifier "${m.id}" (${m.modifier.type}) cannot stack on an asset`)
+      if (card.amount) validateCurveShape(card.amount, `Card "${card.id}"`, errors)
+      if (card.percent !== undefined && (card.percent < 0 || card.percent > 1)) {
+        errors.push(`Card "${card.id}": drain percent must be within 0..1`)
       }
+      break
     }
-    if (base.price && base.growth) {
-      errors.push(`Stack "${stack.id}": an asset has either a growth rate or a price curve, not both`)
-    }
-    if (!base.price && base.initialUnits !== undefined) {
-      errors.push(`Stack "${stack.id}": initialUnits requires a price curve`)
-    }
-  } else {
-    // debt
-    if ((stack.modifiers ?? []).length > 0) {
-      errors.push(`Stack "${stack.id}": debt stacks take no modifiers yet (amortization rules are locale-pack hooks)`)
-    }
-    if (base.principal < 0) {
-      errors.push(`Stack "${stack.id}": debt principal must be ≥ 0 (it is reported as a negative balance)`)
-    }
+    case 'asset':
+      if (card.price && card.growth) {
+        errors.push(`Card "${card.id}": an asset has either a growth rate or a price curve, not both`)
+      }
+      if (!card.price && card.initialUnits !== undefined) {
+        errors.push(`Card "${card.id}": initialUnits requires a price curve`)
+      }
+      if (card.fee !== undefined && card.fee < 0) {
+        errors.push(`Card "${card.id}": fee must be ≥ 0`)
+      }
+      if (card.take?.type === 'percent' && (card.take.percent < 0 || card.take.percent > 1)) {
+        errors.push(`Card "${card.id}": take percent must be within 0..1`)
+      }
+      if (card.take?.type === 'fixed' && card.take.amountPerMonth < 0) {
+        errors.push(`Card "${card.id}": take amount must be ≥ 0`)
+      }
+      break
+    case 'debt':
+      if (card.principal < 0) {
+        errors.push(`Card "${card.id}": debt principal must be ≥ 0 (it is reported as a negative balance)`)
+      }
+      if (card.payment?.type === 'percent' && (card.payment.percent < 0 || card.payment.percent > 1)) {
+        errors.push(`Card "${card.id}": payment percent must be within 0..1`)
+      }
+      if (card.payment?.type === 'fixed' && card.payment.amountPerMonth < 0) {
+        errors.push(`Card "${card.id}": payment amount must be ≥ 0`)
+      }
+      break
+    case 'hand':
+      for (const child of card.children) validateCard(child, errors)
+      break
   }
 }
 
 export function validateTable(table: Table): string[] {
   const errors: string[] = []
-  const stackIds = new Set<string>()
-  const bundleIds = new Set((table.bundles ?? []).map((b) => b.id))
-
-  for (const stack of table.stacks) {
-    if (stack.id === CASH_ID) errors.push(`Stack id "${CASH_ID}" is reserved for the default cash account`)
-    if (stackIds.has(stack.id)) errors.push(`Duplicate stack id "${stack.id}"`)
-    stackIds.add(stack.id)
-    if (stack.bundleId !== undefined && !bundleIds.has(stack.bundleId)) {
-      errors.push(`Stack "${stack.id}" references unknown bundle "${stack.bundleId}"`)
-    }
-    validateStack(stack, errors)
+  if (table.root.kind !== 'hand') {
+    errors.push('Table root must be a hand')
+    return errors
   }
-
-  const streamIds = new Set<string>()
-  const targetKind = new Map(table.stacks.map((s) => [s.id, s.base.kind]))
-  for (const stream of table.streams) {
-    if (streamIds.has(stream.id)) errors.push(`Duplicate stream id "${stream.id}"`)
-    streamIds.add(stream.id)
-    if (stream.to !== CASH_ID) {
-      const kind = targetKind.get(stream.to)
-      if (kind === undefined) {
-        errors.push(`Stream "${stream.id}" targets unknown stack "${stream.to}"`)
-      } else if (kind === 'source') {
-        errors.push(`Stream "${stream.id}" targets a source; streams may only feed assets, debts or cash`)
-      }
-    }
-    if (stream.bundleId !== undefined && !bundleIds.has(stream.bundleId)) {
-      errors.push(`Stream "${stream.id}" references unknown bundle "${stream.bundleId}"`)
-    }
-    if (stream.rule.type === 'fixed' && stream.rule.amountPerMonth < 0) {
-      errors.push(`Stream "${stream.id}": fixed amount must be ≥ 0`)
-    }
-    if (stream.rule.type === 'percent' && (stream.rule.percent < 0 || stream.rule.percent > 1)) {
-      errors.push(`Stream "${stream.id}": percent must be within 0..1`)
+  const seen = new Set<string>([table.root.id])
+  const walk = (hand: HandCard): void => {
+    for (const child of hand.children) {
+      if (child.id === CASH_ID) errors.push(`Card id "${CASH_ID}" is reserved for the default cash account`)
+      if (seen.has(child.id)) errors.push(`Duplicate card id "${child.id}"`)
+      seen.add(child.id)
+      if (child.kind === 'hand') walk(child)
     }
   }
-
+  walk(table.root)
+  for (const child of table.root.children) validateCard(child, errors)
   return errors
 }

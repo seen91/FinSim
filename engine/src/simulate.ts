@@ -1,57 +1,57 @@
-import { monthlyFactor, resolveSampled, sampleAt } from './curves.js'
-import { assetMonthlyGrowthFactor, evalFlowStack } from './stack.js'
+import { evalCurve, monthlyFactor, resolveSampled, sampleAt } from './curves.js'
+import { allCards } from './tree.js'
 import type {
+  AssetCard,
+  Card,
+  DebtCard,
+  HandCard,
   RuleEffect,
   RuleSchedule,
   RuleTarget,
   SampledData,
-  ScheduledRule,
   Series,
   SimResult,
-  Stack,
   Table,
+  Take,
   World,
 } from './types.js'
 import { CASH_ID, validateTable } from './validate.js'
 
 /**
- * The monthly tick (DESIGN.md §8), in this exact order:
+ * The monthly tick (DESIGN.md §7–8): play the root hand top to bottom.
+ * Each card acts on a running monthly total —
  *
- *   1. evaluate flow stacks bottom-up (then jurisdiction flow rules)
- *   2. pool the flows; resolve streams in declared order; remainder → cash
- *   3. update balances: growth/interest/fees first, then inflows
- *   4. apply scheduled balance rules (taxes, events)
+ *   - a source adds its curve (after jurisdiction flow rules);
+ *   - a drain subtracts a fixed curve, or a share of the positive total;
+ *   - an asset grows (net of fee), then takes its deposit from the total;
+ *   - a debt accrues interest, then takes its payment, capped at payoff;
+ *   - a nested hand computes its own subtotal from zero and contributes its
+ *     net at its position — recursion is the scoping rule.
  *
- * Conventions the closed-form tests rely on:
+ * Whatever reaches the bottom of the root lands in cash. Then scheduled
+ * balance rules (taxes, crashes) fire. Conventions the closed-form tests
+ * rely on:
+ *
  *   - Series point `i` is the state at the *end* of month `from + i`.
- *   - On a stack's start month its initial balance appears and receives
- *     inflows, but no growth/interest — nothing existed during that month.
- *   - A fixed stream always draws its full amount (the cash remainder may go
- *     negative: an honest overdraft, never leaked money). A percent stream
- *     takes its share of what is non-negatively left at its turn.
- *   - A stream into a debt that was already fully paid draws nothing; an
- *     overpayment in the payoff month is refunded to cash.
+ *   - On a card's start month its initial balance appears and it takes its
+ *     deposit/payment, but no growth/interest — nothing existed during that
+ *     month.
+ *   - Fixed drains/takes always draw in full (the running total may go
+ *     negative: an honest overdraft, never leaked money). Percent cards read
+ *     `max(0, total)` at their position.
  */
 
-interface GrowthAssetState {
-  type: 'growth'
-  stack: Stack
+interface AssetState {
+  card: AssetCard
   factor: number
+  data: SampledData | null
   balance: number
-  start: number
-}
-
-interface PricedAssetState {
-  type: 'priced'
-  stack: Stack
-  data: SampledData
   units: number
-  initialBalance: number | undefined
   start: number
 }
 
 interface DebtState {
-  stack: Stack
+  card: DebtCard
   monthlyRate: number
   balance: number
   start: number
@@ -68,19 +68,19 @@ function scheduleMatches(schedule: RuleSchedule, month: number): boolean {
   }
 }
 
-function targetMatches(target: RuleTarget, stack: Stack): boolean {
-  if (target.stackIds && !target.stackIds.includes(stack.id)) return false
-  if (target.kinds && !target.kinds.includes(stack.base.kind)) return false
+function targetMatches(target: RuleTarget, card: Card): boolean {
+  if (target.cardIds && !target.cardIds.includes(card.id)) return false
+  if (target.kinds && !target.kinds.includes(card.kind)) return false
   if (target.tags) {
-    const tags = stack.base.tags ?? []
+    const tags = card.tags ?? []
     if (!target.tags.some((t) => tags.includes(t))) return false
   }
   return true
 }
 
-/** The cash account is only ever targeted explicitly, by stack id. */
+/** The cash account is only ever targeted explicitly, by id. */
 function targetsCash(target: RuleTarget): boolean {
-  return target.stackIds?.includes(CASH_ID) ?? false
+  return target.cardIds?.includes(CASH_ID) ?? false
 }
 
 function applyFlowEffect(effect: RuleEffect, flow: number, ruleId: string): number {
@@ -105,6 +105,15 @@ function applyBalanceEffect(effect: RuleEffect, balance: number, ruleId: string)
   }
 }
 
+function takeAmount(take: Take, total: number): number {
+  return take.type === 'fixed' ? take.amountPerMonth : take.percent * Math.max(0, total)
+}
+
+/** Negate without ever emitting IEEE −0 into a series. */
+function neg(x: number): number {
+  return x === 0 ? 0 : -x
+}
+
 export function simulate(table: Table, world: World, from: number, to: number): SimResult {
   if (!Number.isInteger(from) || !Number.isInteger(to) || from > to) {
     throw new Error(`simulate: invalid range ${from}..${to}`)
@@ -114,177 +123,154 @@ export function simulate(table: Table, world: World, from: number, to: number): 
     throw new Error(`simulate: invalid table:\n- ${errors.join('\n- ')}`)
   }
 
-  const enabledBundles = new Set((table.bundles ?? []).filter((b) => b.enabled).map((b) => b.id))
-  const isActive = (bundleId: string | undefined): boolean => bundleId === undefined || enabledBundles.has(bundleId)
-
-  const stacks = table.stacks.filter((s) => isActive(s.bundleId))
-  const streams = table.streams.filter((s) => isActive(s.bundleId))
-  for (const stack of stacks) {
-    const start = stack.startMonth ?? from
-    if (start < from) throw new Error(`Stack "${stack.id}" starts at ${start}, before the simulation start ${from}`)
+  const cards = allCards(table.root)
+  for (const card of cards) {
+    const start = card.startMonth ?? from
+    if (start < from) throw new Error(`Card "${card.id}" starts at ${start}, before the simulation start ${from}`)
   }
 
   const rules = world.rules ?? []
   const flowRules = rules.filter((r) => r.effect.type === 'flowTax' || r.effect.type === 'flowScale')
   const balanceRules = rules.filter((r) => r.effect.type === 'balanceScale' || r.effect.type === 'balanceTax')
 
-  const flowStacks = stacks.filter((s) => s.base.kind === 'source')
-  const growthAssets: GrowthAssetState[] = []
-  const pricedAssets: PricedAssetState[] = []
-  const debts: DebtState[] = []
-  for (const stack of stacks) {
-    const start = stack.startMonth ?? from
-    if (stack.base.kind === 'asset') {
-      if (stack.base.price) {
-        pricedAssets.push({
-          type: 'priced',
-          stack,
-          data: resolveSampled(stack.base.price, world, `Asset "${stack.id}" price`),
-          units: 0,
-          initialBalance: stack.base.initialBalance,
-          start,
-        })
-      } else {
-        growthAssets.push({
-          type: 'growth',
-          stack,
-          factor: assetMonthlyGrowthFactor(stack),
-          balance: 0,
-          start,
-        })
-      }
-    } else if (stack.base.kind === 'debt') {
-      debts.push({
-        stack,
-        monthlyRate: monthlyFactor(stack.base.interest.expected) - 1,
+  const assetStates = new Map<string, AssetState>()
+  const debtStates = new Map<string, DebtState>()
+  for (const card of cards) {
+    if (card.kind === 'asset') {
+      assetStates.set(card.id, {
+        card,
+        factor: monthlyFactor(card.growth?.expected ?? 0) * monthlyFactor(-(card.fee ?? 0)),
+        data: card.price ? resolveSampled(card.price, world, `Asset "${card.id}" price`) : null,
         balance: 0,
-        start,
+        units: 0,
+        start: card.startMonth ?? from,
+      })
+    } else if (card.kind === 'debt') {
+      debtStates.set(card.id, {
+        card,
+        monthlyRate: monthlyFactor(card.interest.expected) - 1,
+        balance: 0,
+        start: card.startMonth ?? from,
       })
     }
   }
-  const debtById = new Map(debts.map((d) => [d.stack.id, d]))
 
   const cashFactor = monthlyFactor(table.cash?.growth?.expected ?? 0)
   let cash = table.cash?.initialBalance ?? 0
 
   const n = to - from + 1
-  const points = new Map<string, number[]>(stacks.map((s) => [s.id, new Array<number>(n).fill(0)]))
+  const contributions = new Map<string, number[]>(cards.map((c) => [c.id, new Array<number>(n).fill(0)]))
+  const balancePoints = new Map<string, number[]>(
+    cards.filter((c) => c.kind === 'asset' || c.kind === 'debt').map((c) => [c.id, new Array<number>(n).fill(0)]),
+  )
   const cashPoints = new Array<number>(n).fill(0)
   const netWorthPoints = new Array<number>(n).fill(0)
+
+  const applyFlowRules = (card: Card, flow: number, month: number): number => {
+    for (const rule of flowRules) {
+      if (scheduleMatches(rule.schedule, month) && targetMatches(rule.target, card)) {
+        flow = applyFlowEffect(rule.effect, flow, rule.id)
+      }
+    }
+    return flow
+  }
+
+  /** Play one hand for one month: children top to bottom over a fresh subtotal. */
+  const playHand = (hand: HandCard, month: number, i: number): number => {
+    let total = 0
+    for (const card of hand.children) {
+      const start = card.startMonth ?? from
+      if (month < start && card.kind !== 'hand') continue
+      const t = month - start
+      switch (card.kind) {
+        case 'source': {
+          const flow = applyFlowRules(card, evalCurve(card.flow, { t, month, world }), month)
+          total += flow
+          contributions.get(card.id)![i] = flow
+          break
+        }
+        case 'drain': {
+          const drawn =
+            card.percent !== undefined
+              ? card.percent * Math.max(0, total)
+              : applyFlowRules(card, evalCurve(card.amount!, { t, month, world }), month)
+          total -= drawn
+          contributions.get(card.id)![i] = neg(drawn)
+          break
+        }
+        case 'asset': {
+          const state = assetStates.get(card.id)!
+          if (state.data) {
+            const price = sampleAt(state.data, month, `Asset "${card.id}" price`)
+            if (month === state.start) state.units = card.initialUnits ?? (card.initialBalance ?? 0) / price
+            const deposit = card.take ? takeAmount(card.take, total) : 0
+            if (deposit !== 0) {
+              if (price <= 0) throw new Error(`Asset "${card.id}": cannot buy at non-positive price ${price}`)
+              state.units += deposit / price
+            }
+            total -= deposit
+            contributions.get(card.id)![i] = neg(deposit)
+            state.balance = state.units * price
+          } else {
+            if (month === state.start) state.balance = card.initialBalance ?? 0
+            else state.balance *= state.factor
+            const deposit = card.take ? takeAmount(card.take, total) : 0
+            state.balance += deposit
+            total -= deposit
+            contributions.get(card.id)![i] = neg(deposit)
+          }
+          balancePoints.get(card.id)![i] = state.balance
+          break
+        }
+        case 'debt': {
+          const state = debtStates.get(card.id)!
+          if (month === state.start) state.balance = card.principal
+          else state.balance *= 1 + state.monthlyRate
+          const payment = card.payment ? Math.min(takeAmount(card.payment, total), state.balance) : 0
+          state.balance -= payment
+          total -= payment
+          contributions.get(card.id)![i] = neg(payment)
+          balancePoints.get(card.id)![i] = state.balance === 0 ? 0 : -state.balance
+          break
+        }
+        case 'hand': {
+          if (card.enabled === false) break
+          const net = playHand(card, month, i)
+          total += net
+          contributions.get(card.id)![i] = net
+          break
+        }
+      }
+    }
+    return total
+  }
 
   for (let month = from; month <= to; month++) {
     const i = month - from
 
-    // 1. Flows.
-    let pool = 0
-    for (const stack of flowStacks) {
-      const start = stack.startMonth ?? from
-      if (month < start) continue
-      let flow = evalFlowStack(stack, { t: month - start, month, world })
-      for (const rule of flowRules) {
-        if (scheduleMatches(rule.schedule, month) && targetMatches(rule.target, stack)) {
-          flow = applyFlowEffect(rule.effect, flow, rule.id)
-        }
-      }
-      points.get(stack.id)![i] = flow
-      pool += flow
-    }
-
-    // 2. Streams, in declared order.
-    const inflows = new Map<string, number>()
-    for (const stream of streams) {
-      if (month < (stream.startMonth ?? from)) continue
-      if (stream.endMonth !== undefined && month > stream.endMonth) continue
-      const targetStack = stream.to === CASH_ID ? undefined : stacks.find((s) => s.id === stream.to)
-      if (stream.to !== CASH_ID) {
-        if (!targetStack) continue // target belongs to a disabled bundle — stream is inert
-        if (month < (targetStack.startMonth ?? from)) continue
-        const debt = debtById.get(stream.to)
-        if (debt && debt.start <= month - 1 && debt.balance === 0) continue // already paid off
-      }
-      const amount = stream.rule.type === 'fixed' ? stream.rule.amountPerMonth : stream.rule.percent * Math.max(0, pool)
-      pool -= amount
-      inflows.set(stream.to, (inflows.get(stream.to) ?? 0) + amount)
-    }
-
-    // 3. Balances: growth/interest first, then inflows.
-    let assetTotal = 0
-    let debtTotal = 0
-    let refunds = 0
-
-    for (const asset of growthAssets) {
-      if (month < asset.start) continue
-      if (month === asset.start) asset.balance = asset.stack.base.kind === 'asset' ? (asset.stack.base.initialBalance ?? 0) : 0
-      else asset.balance *= asset.factor
-      asset.balance += inflows.get(asset.stack.id) ?? 0
-      points.get(asset.stack.id)![i] = asset.balance
-      assetTotal += asset.balance
-    }
-
-    for (const asset of pricedAssets) {
-      if (month < asset.start) continue
-      const price = sampleAt(asset.data, month, `Asset "${asset.stack.id}" price`)
-      if (month === asset.start) {
-        const base = asset.stack.base
-        asset.units = base.kind === 'asset' ? (base.initialUnits ?? (asset.initialBalance ?? 0) / price) : 0
-      }
-      const inflow = inflows.get(asset.stack.id) ?? 0
-      if (inflow !== 0) {
-        if (price <= 0) throw new Error(`Asset "${asset.stack.id}": cannot buy at non-positive price ${price}`)
-        asset.units += inflow / price
-      }
-      const value = asset.units * price
-      points.get(asset.stack.id)![i] = value
-      assetTotal += value
-    }
-
-    for (const debt of debts) {
-      if (month < debt.start) continue
-      if (month === debt.start) debt.balance = debt.stack.base.kind === 'debt' ? debt.stack.base.principal : 0
-      else debt.balance *= 1 + debt.monthlyRate
-      const payment = inflows.get(debt.stack.id) ?? 0
-      if (payment > debt.balance) {
-        refunds += payment - debt.balance
-        debt.balance = 0
-      } else {
-        debt.balance -= payment
-      }
-      points.get(debt.stack.id)![i] = debt.balance === 0 ? 0 : -debt.balance
-      debtTotal += debt.balance
-    }
-
-    // Cash catches the remainder (and debt-overpayment refunds).
+    // 1.–2. Play the root hand; the remainder lands in cash.
+    const remainder = playHand(table.root, month, i)
     if (month > from) cash *= cashFactor
-    cash += pool + refunds + (inflows.get(CASH_ID) ?? 0)
-    // `pool` already excludes explicit cash-stream draws, so adding both is exact.
+    cash += remainder
 
-    // 4. Scheduled balance rules (taxes, crashes) at end of tick.
+    // 3. Scheduled balance rules (taxes, crashes) at end of tick.
     for (const rule of balanceRules) {
       if (!scheduleMatches(rule.schedule, month)) continue
-      for (const asset of growthAssets) {
-        if (month >= asset.start && targetMatches(rule.target, asset.stack)) {
-          const before = asset.balance
-          asset.balance = applyBalanceEffect(rule.effect, asset.balance, rule.id)
-          assetTotal += asset.balance - before
-          points.get(asset.stack.id)![i] = asset.balance
+      for (const state of assetStates.values()) {
+        if (month >= state.start && targetMatches(rule.target, state.card)) {
+          if (state.data) {
+            state.units = applyBalanceEffect(rule.effect, state.units, rule.id)
+            state.balance = state.units * sampleAt(state.data, month, `Asset "${state.card.id}" price`)
+          } else {
+            state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
+          }
+          balancePoints.get(state.card.id)![i] = state.balance
         }
       }
-      for (const asset of pricedAssets) {
-        if (month >= asset.start && targetMatches(rule.target, asset.stack)) {
-          const price = sampleAt(asset.data, month, `Asset "${asset.stack.id}" price`)
-          const before = asset.units * price
-          asset.units = applyBalanceEffect(rule.effect, asset.units, rule.id)
-          const after = asset.units * price
-          assetTotal += after - before
-          points.get(asset.stack.id)![i] = after
-        }
-      }
-      for (const debt of debts) {
-        if (month >= debt.start && targetMatches(rule.target, debt.stack)) {
-          const before = debt.balance
-          debt.balance = applyBalanceEffect(rule.effect, debt.balance, rule.id)
-          debtTotal += debt.balance - before
-          points.get(debt.stack.id)![i] = debt.balance === 0 ? 0 : -debt.balance
+      for (const state of debtStates.values()) {
+        if (month >= state.start && targetMatches(rule.target, state.card)) {
+          state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
+          balancePoints.get(state.card.id)![i] = state.balance === 0 ? 0 : -state.balance
         }
       }
       if (targetsCash(rule.target)) {
@@ -292,34 +278,38 @@ export function simulate(table: Table, world: World, from: number, to: number): 
       }
     }
 
+    // 4. Net worth — but only what is actually in play this month.
     cashPoints[i] = cash
-    netWorthPoints[i] = assetTotal + cash - debtTotal
+    let net = cash
+    const sumEnabled = (hand: HandCard): void => {
+      for (const card of hand.children) {
+        if (card.kind === 'hand') {
+          if (card.enabled !== false) sumEnabled(card)
+        } else if (card.kind === 'asset' || card.kind === 'debt') {
+          net += balancePoints.get(card.id)![i]!
+        }
+      }
+    }
+    sumEnabled(table.root)
+    netWorthPoints[i] = net
   }
 
-  const stackSeries: Series[] = stacks.map((s) => ({
-    id: s.id,
-    role: s.base.kind === 'source' ? 'flow' : 'balance',
+  const contributionSeries: Series[] = cards.map((c) => ({
+    id: c.id,
+    role: c.kind === 'hand' ? ('net' as const) : ('flow' as const),
     startMonth: from,
-    points: points.get(s.id)!,
+    points: contributions.get(c.id)!,
   }))
+  const balanceSeries: Series[] = cards
+    .filter((c) => c.kind === 'asset' || c.kind === 'debt')
+    .map((c) => ({ id: c.id, role: 'balance' as const, startMonth: from, points: balancePoints.get(c.id)! }))
 
   return {
     from,
     to,
     netWorth: { id: 'netWorth', role: 'netWorth', startMonth: from, points: netWorthPoints },
     cash: { id: CASH_ID, role: 'cash', startMonth: from, points: cashPoints },
-    stacks: stackSeries,
-  }
-}
-
-/** Returns a copy of the table with one bundle toggled — ghost compares are just two `simulate` calls. */
-export function setBundleEnabled(table: Table, bundleId: string, enabled: boolean): Table {
-  const bundles = table.bundles ?? []
-  if (!bundles.some((b) => b.id === bundleId)) {
-    throw new Error(`setBundleEnabled: unknown bundle "${bundleId}"`)
-  }
-  return {
-    ...table,
-    bundles: bundles.map((b) => (b.id === bundleId ? { ...b, enabled } : b)),
+    contributions: contributionSeries,
+    balances: balanceSeries,
   }
 }

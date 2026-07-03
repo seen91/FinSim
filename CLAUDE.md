@@ -6,14 +6,14 @@ A financial simulator where every instrument is a card and every card is a curve
 
 ## Current state
 
-- Branch `cleanSlate` is a fresh orphan start. The old Svelte prototype lives on `main`/`cardGameDesignFirst` and must never be referenced or ported — it was abandoned deliberately.
-- No code yet. Next milestone is **M0: the engine** (see DESIGN.md §13 build order).
+- Branch `cleanSlate` is a fresh orphan start. The old Svelte prototype lives on `main`/`cardGameDesignFirst` and must never be ported — it was abandoned deliberately (Sebastian has allowed consulting it for interaction *inspiration* only).
+- M0 (engine) and an M1 simulator slice exist: `/engine` (pure TS, tested) and `/app` (React+Vite card-table UI).
 
 ## Non-negotiables (from DESIGN.md)
 
 - The engine is a **pure, deterministic, dependency-free TypeScript package** (`/engine`): no framework imports, no `Date.now()`, seeded randomness only, monthly tick. Exhaustively tested.
 - Jurisdiction rules (Sweden pack: ISK, ränteavdrag, amorteringskrav) are **data wired into engine hooks** — never `if (sweden)` in engine code.
-- Stacking grammar: one rule — a stack is one base card + modifiers, composed bottom-up, one level deep. Cross-stack routing is a stream. Default cash account catches unrouted flow.
+- Pipeline grammar: one rule — a hand is played top to bottom; each card acts on a running monthly total; a nested hand computes its own subtotal from zero and contributes its net at its position (recursion = scoping). No Modifier kind: tax is a % drain, a raise is the source's own curve, a fee is an asset parameter. Cash catches whatever reaches the bottom of the root hand.
 - Growth parameters are `(expected, volatility?)` from day one; v1 ignores volatility (Monte Carlo comes later).
 - App stack: TypeScript + React + Vite, PWA, local-first (IndexedDB), DOM not canvas.
 - Numbers use tabular numerals; green/red strictly for money direction. "Boring is the goal."

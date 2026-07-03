@@ -1,10 +1,12 @@
-import type { Stack, Stream } from '@finsim/engine'
+import type { Card } from '@finsim/engine'
 import { formatKr, formatKrPerMonth, formatPercent } from './format'
 
 /**
  * The back of a card: each editable parameter as a live slider (DESIGN.md §2,
- * "flip to edit"). An editor mutates a *fresh clone* of its stack — the app's
- * update cycle owns immutability and undo.
+ * "flip to edit"). An editor mutates a *fresh clone* of its card — the app's
+ * update cycle owns immutability and undo. Every card is self-contained:
+ * a salary's raise, an asset's fee and deposit, a debt's payment all live
+ * here, not in separate panels.
  */
 export interface ParamEditor {
   key: string
@@ -14,69 +16,160 @@ export interface ParamEditor {
   step: number
   value: number
   format: (v: number) => string
-  set: (stack: Stack, value: number) => void
+  set: (card: Card, value: number) => void
 }
 
-export function stackEditors(stack: Stack): ParamEditor[] {
+export function cardEditors(card: Card): ParamEditor[] {
   const editors: ParamEditor[] = []
-  const base = stack.base
 
-  if (base.kind === 'source' && base.flow.type === 'constant') {
-    editors.push({
-      key: 'flow',
-      label: base.flow.value < 0 ? 'Cost' : 'Amount',
-      min: base.flow.value < 0 ? -60000 : 0,
-      max: base.flow.value < 0 ? 0 : 150000,
-      step: 500,
-      value: base.flow.value,
-      format: formatKrPerMonth,
-      set: (s, v) => {
-        if (s.base.kind === 'source' && s.base.flow.type === 'constant') s.base.flow.value = v
-      },
-    })
-  }
-
-  if (base.kind === 'asset' && !base.price) {
-    editors.push({
-      key: 'growth',
-      label: 'Expected growth /yr',
-      min: -0.2,
-      max: 0.2,
-      step: 0.0025,
-      value: base.growth?.expected ?? 0,
-      format: (v) => formatPercent(v),
-      set: (s, v) => {
-        if (s.base.kind === 'asset') s.base.growth = { ...s.base.growth, expected: v }
-      },
-    })
-    if ((base.initialBalance ?? 0) > 0) {
+  if (card.kind === 'source') {
+    const flow = card.flow
+    if (flow.type === 'constant' || flow.type === 'compound') {
       editors.push({
-        key: 'initial',
-        label: 'Initial value',
+        key: 'amount',
+        label: 'Amount',
         min: 0,
-        max: 2_000_000,
-        step: 5000,
-        value: base.initialBalance ?? 0,
-        format: formatKr,
-        set: (s, v) => {
-          if (s.base.kind === 'asset') s.base.initialBalance = v
+        max: 150000,
+        step: 500,
+        value: flow.type === 'constant' ? flow.value : flow.base,
+        format: formatKrPerMonth,
+        set: (c, v) => {
+          if (c.kind !== 'source') return
+          if (c.flow.type === 'constant') c.flow.value = v
+          else if (c.flow.type === 'compound') c.flow.base = v
+        },
+      })
+    }
+    if (flow.type === 'compound') {
+      editors.push({
+        key: 'raise',
+        label: 'Raise /yr',
+        min: 0,
+        max: 0.1,
+        step: 0.0025,
+        value: flow.annualRate.expected,
+        format: (v) => formatPercent(v),
+        set: (c, v) => {
+          if (c.kind === 'source' && c.flow.type === 'compound') c.flow.annualRate = { ...c.flow.annualRate, expected: v }
         },
       })
     }
   }
 
-  if (base.kind === 'debt') {
+  if (card.kind === 'drain') {
+    if (card.percent !== undefined) {
+      editors.push({
+        key: 'percent',
+        label: 'Share of subtotal',
+        min: 0,
+        max: 0.6,
+        step: 0.005,
+        value: card.percent,
+        format: (v) => formatPercent(v),
+        set: (c, v) => {
+          if (c.kind === 'drain') c.percent = v
+        },
+      })
+    } else if (card.amount?.type === 'constant') {
+      editors.push({
+        key: 'amount',
+        label: 'Cost',
+        min: 0,
+        max: 60000,
+        step: 250,
+        value: card.amount.value,
+        format: formatKrPerMonth,
+        set: (c, v) => {
+          if (c.kind === 'drain' && c.amount?.type === 'constant') c.amount.value = v
+        },
+      })
+    }
+  }
+
+  if (card.kind === 'asset') {
+    if (!card.price) {
+      editors.push({
+        key: 'growth',
+        label: 'Expected growth /yr',
+        min: -0.2,
+        max: 0.2,
+        step: 0.0025,
+        value: card.growth?.expected ?? 0,
+        format: (v) => formatPercent(v),
+        set: (c, v) => {
+          if (c.kind === 'asset') c.growth = { ...c.growth, expected: v }
+        },
+      })
+      editors.push({
+        key: 'fee',
+        label: 'Fee /yr',
+        min: 0,
+        max: 0.02,
+        step: 0.0005,
+        value: card.fee ?? 0,
+        format: (v) => formatPercent(v, 2),
+        set: (c, v) => {
+          if (c.kind === 'asset') c.fee = v
+        },
+      })
+    }
+    if ((card.initialBalance ?? 0) > 0) {
+      editors.push({
+        key: 'initial',
+        label: 'Initial value',
+        min: 0,
+        max: 6_000_000,
+        step: 10000,
+        value: card.initialBalance ?? 0,
+        format: formatKr,
+        set: (c, v) => {
+          if (c.kind === 'asset') c.initialBalance = v
+        },
+      })
+    }
+    if (card.take) {
+      editors.push(
+        card.take.type === 'percent'
+          ? {
+              key: 'take',
+              label: 'Takes, % of subtotal',
+              min: 0,
+              max: 1,
+              step: 0.01,
+              value: card.take.percent,
+              format: (v) => formatPercent(v, 0),
+              set: (c, v) => {
+                if (c.kind === 'asset' && c.take?.type === 'percent') c.take.percent = v
+              },
+            }
+          : {
+              key: 'take',
+              label: 'Deposit /mo',
+              min: 0,
+              max: 30000,
+              step: 100,
+              value: card.take.amountPerMonth,
+              format: formatKrPerMonth,
+              set: (c, v) => {
+                if (c.kind === 'asset' && c.take?.type === 'fixed') c.take.amountPerMonth = v
+              },
+            },
+      )
+    }
+  }
+
+  if (card.kind === 'debt') {
     editors.push(
       {
         key: 'principal',
         label: 'Principal',
         min: 0,
-        max: 2_000_000,
-        step: 5000,
-        value: base.principal,
+        max: 6_000_000,
+        step: 10000,
+        value: card.principal,
         format: formatKr,
-        set: (s, v) => {
-          if (s.base.kind === 'debt') s.base.principal = v
+        set: (c, v) => {
+          if (c.kind === 'debt') c.principal = v
         },
       },
       {
@@ -85,96 +178,43 @@ export function stackEditors(stack: Stack): ParamEditor[] {
         min: 0,
         max: 0.15,
         step: 0.0025,
-        value: base.interest.expected,
+        value: card.interest.expected,
         format: (v) => formatPercent(v),
-        set: (s, v) => {
-          if (s.base.kind === 'debt') s.base.interest = { ...s.base.interest, expected: v }
+        set: (c, v) => {
+          if (c.kind === 'debt') c.interest = { ...c.interest, expected: v }
         },
       },
     )
-  }
-
-  for (const [index, card] of (stack.modifiers ?? []).entries()) {
-    const m = card.modifier
-    const label = card.name ?? card.id
-    if (m.type === 'taxRate') {
-      editors.push({
-        key: `mod${index}`,
-        label,
-        min: 0,
-        max: 0.6,
-        step: 0.005,
-        value: m.rate,
-        format: (v) => formatPercent(v),
-        set: (s, v) => {
-          const mod = s.modifiers?.[index]?.modifier
-          if (mod?.type === 'taxRate') mod.rate = v
-        },
-      })
-    } else if (m.type === 'annualRaise') {
-      editors.push({
-        key: `mod${index}`,
-        label: `${label} /yr`,
-        min: 0,
-        max: 0.1,
-        step: 0.0025,
-        value: m.rate,
-        format: (v) => formatPercent(v),
-        set: (s, v) => {
-          const mod = s.modifiers?.[index]?.modifier
-          if (mod?.type === 'annualRaise') mod.rate = v
-        },
-      })
-    } else if (m.type === 'annualFee') {
-      editors.push({
-        key: `mod${index}`,
-        label: `${label} /yr`,
-        min: 0,
-        max: 0.02,
-        step: 0.0005,
-        value: m.rate,
-        format: (v) => formatPercent(v, 2),
-        set: (s, v) => {
-          const mod = s.modifiers?.[index]?.modifier
-          if (mod?.type === 'annualFee') mod.rate = v
-        },
-      })
+    if (card.payment) {
+      editors.push(
+        card.payment.type === 'fixed'
+          ? {
+              key: 'payment',
+              label: 'Payment /mo',
+              min: 0,
+              max: 30000,
+              step: 100,
+              value: card.payment.amountPerMonth,
+              format: formatKrPerMonth,
+              set: (c, v) => {
+                if (c.kind === 'debt' && c.payment?.type === 'fixed') c.payment.amountPerMonth = v
+              },
+            }
+          : {
+              key: 'payment',
+              label: 'Payment, % of subtotal',
+              min: 0,
+              max: 1,
+              step: 0.01,
+              value: card.payment.percent,
+              format: (v) => formatPercent(v, 0),
+              set: (c, v) => {
+                if (c.kind === 'debt' && c.payment?.type === 'percent') c.payment.percent = v
+              },
+            },
+      )
     }
   }
 
   return editors
-}
-
-export interface StreamEditor {
-  min: number
-  max: number
-  step: number
-  value: number
-  format: (v: number) => string
-  set: (stream: Stream, value: number) => void
-}
-
-export function streamEditor(stream: Stream): StreamEditor {
-  if (stream.rule.type === 'percent') {
-    return {
-      min: 0,
-      max: 1,
-      step: 0.01,
-      value: stream.rule.percent,
-      format: (v) => `${formatPercent(v, 0)} of remaining`,
-      set: (s, v) => {
-        if (s.rule.type === 'percent') s.rule.percent = v
-      },
-    }
-  }
-  return {
-    min: 0,
-    max: 30000,
-    step: 100,
-    value: stream.rule.amountPerMonth,
-    format: formatKrPerMonth,
-    set: (s, v) => {
-      if (s.rule.type === 'fixed') s.rule.amountPerMonth = v
-    },
-  }
 }

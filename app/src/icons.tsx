@@ -1,0 +1,134 @@
+import type { ReactElement } from 'react'
+
+/**
+ * Engraved monochrome glyphs (DESIGN.md §10): no illustrations, no
+ * characters — single-stroke marks like the ones stamped on index cards.
+ */
+export type GlyphName =
+  | 'coins'
+  | 'briefcase'
+  | 'home'
+  | 'receipt'
+  | 'trend'
+  | 'vault'
+  | 'percent'
+  | 'raise'
+  | 'stamp'
+  | 'car'
+  | 'building'
+  | 'bank'
+  | 'bundle'
+  | 'cash'
+
+const PATHS: Record<GlyphName, ReactElement> = {
+  coins: (
+    <>
+      <circle cx="9" cy="10" r="5.5" />
+      <circle cx="15" cy="14" r="5.5" />
+      <path d="M12.5 10.5a5.5 5.5 0 0 1-4 4" opacity="0.4" />
+    </>
+  ),
+  briefcase: (
+    <>
+      <rect x="4" y="8" width="16" height="11" rx="1.5" />
+      <path d="M9 8V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5V8M4 12.5h16" />
+    </>
+  ),
+  home: (
+    <>
+      <path d="M4 11.5 12 5l8 6.5" />
+      <path d="M6.5 10.5V19h11v-8.5M10.5 19v-5h3v5" />
+    </>
+  ),
+  receipt: (
+    <>
+      <path d="M6 4h12v15l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 19Z" />
+      <path d="M9 8.5h6M9 11.5h6M9 14.5h4" />
+    </>
+  ),
+  trend: (
+    <>
+      <path d="M4 18 10 12l3 3 7-7" />
+      <path d="M16 8h4v4" />
+    </>
+  ),
+  vault: (
+    <>
+      <rect x="4.5" y="5" width="15" height="14" rx="1.5" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 8.5V10M12 14v1.5M8.5 12H10M14 12h1.5" />
+    </>
+  ),
+  percent: (
+    <>
+      <path d="M6 18 18 6" />
+      <circle cx="7.5" cy="7.5" r="2.5" />
+      <circle cx="16.5" cy="16.5" r="2.5" />
+    </>
+  ),
+  raise: (
+    <>
+      <path d="M12 19V6M7 11l5-5 5 5" />
+      <path d="M6 19h12" opacity="0.4" />
+    </>
+  ),
+  stamp: (
+    <>
+      <circle cx="12" cy="10" r="4" />
+      <path d="M10 13.5 8.5 19h7L14 13.5" />
+      <path d="M6 20.5h12" />
+    </>
+  ),
+  car: (
+    <>
+      <path d="M5 14l1.3-4.2A2 2 0 0 1 8.2 8.5h7.6a2 2 0 0 1 1.9 1.3L19 14" />
+      <path d="M4 14h16v3.5h-2M4 17.5V14M6 17.5h10" />
+      <circle cx="7.5" cy="17.5" r="1.8" />
+      <circle cx="16.5" cy="17.5" r="1.8" />
+    </>
+  ),
+  building: (
+    <>
+      <rect x="6" y="4.5" width="12" height="15" />
+      <path d="M9 8h2M13 8h2M9 11.5h2M13 11.5h2M9 15h2M13 15h2M12 19.5V17" />
+    </>
+  ),
+  bank: (
+    <>
+      <path d="M4 9.5 12 4.5l8 5" />
+      <path d="M5.5 9.5V17M9.8 9.5V17M14.2 9.5V17M18.5 9.5V17M4 17h16v2.5H4Z" />
+    </>
+  ),
+  bundle: (
+    <>
+      <rect x="4.5" y="7" width="11" height="13" rx="1.2" />
+      <rect x="8.5" y="4" width="11" height="13" rx="1.2" />
+    </>
+  ),
+  cash: (
+    <>
+      <rect x="3.5" y="7" width="17" height="10" rx="1.2" />
+      <circle cx="12" cy="12" r="2.6" />
+      <path d="M6.2 9.5v.01M17.8 14.5v.01" />
+    </>
+  ),
+}
+
+export function Glyph({ name, size = 40 }: { name: GlyphName; size?: number }): ReactElement {
+  return (
+    <svg
+      className="glyph"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {PATHS[name]}
+    </svg>
+  )
+}

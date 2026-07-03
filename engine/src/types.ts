@@ -3,8 +3,8 @@
  * tables, packs and scenarios are JSON, never code (DESIGN.md §3, §8).
  */
 
-/** Card kinds. Kind alone determines where a card can be played (DESIGN.md §7). */
-export type Kind = 'source' | 'asset' | 'debt' | 'modifier' | 'event'
+/** Card kinds. Kind alone determines what a card does in the pipeline (DESIGN.md §7). */
+export type Kind = 'source' | 'drain' | 'asset' | 'debt' | 'hand' | 'event'
 
 /**
  * Growth is `(expected, volatility?)` from day one. The deterministic v1
@@ -24,14 +24,14 @@ export interface SampledData {
 
 /**
  * Curve primitives — every card is a curve f(t) built from these.
- * `t` below is months since the stack's start; sampled data is indexed by
+ * `t` below is months since the card's start; sampled data is indexed by
  * absolute month, because history has dates.
  */
 export type Curve =
   | { type: 'constant'; value: number }
   | { type: 'linear'; base: number; slopePerMonth: number }
   | { type: 'compound'; base: number; annualRate: GrowthParam }
-  | { type: 'step'; initial: number; steps: { atMonth: number; value: number }[] } // atMonth: months since stack start
+  | { type: 'step'; initial: number; steps: { atMonth: number; value: number }[] } // atMonth: months since card start
   | { type: 'sinusoidal'; base: number; amplitude: number; periodMonths: number; phaseMonths?: number }
   | { type: 'sampled'; seriesId?: string; data?: SampledData }
   | { type: 'expression'; expr: string } // variables: t (local months), month (absolute)
@@ -40,48 +40,75 @@ export interface CardBase {
   id: string
   name?: string
   tags?: string[]
+  /** Absolute month the card enters play. Defaults to the simulation start. */
+  startMonth?: number
 }
 
-/** Produces a flow in kr/month. Positive = income, negative = expense. */
+/** Adds its flow (kr/month) to the running total. A raise is the curve's own growth. */
 export interface SourceCard extends CardBase {
   kind: 'source'
   flow: Curve
 }
 
 /**
+ * Subtracts from the running total: either a fixed curve (kr/month, stored
+ * positive), or a share of the positive running total at its position —
+ * which is how income tax is a card.
+ */
+export interface DrainCard extends CardBase {
+  kind: 'drain'
+  amount?: Curve
+  percent?: number
+}
+
+/** How an asset's deposit or a debt's payment draws from the running total. */
+export type Take =
+  | { type: 'fixed'; amountPerMonth: number }
+  /** Share of the positive running total at this card's position. */
+  | { type: 'percent'; percent: number }
+
+/**
  * A balance with a growth curve. Either a growth-rate asset (funds, savings:
- * `initialBalance` + `growth`) or a priced asset (stocks, property: a price
- * curve plus units; inflows buy units at the current price).
+ * `initialBalance` + `growth`, with an optional annual `fee` drag) or a
+ * priced asset (stocks, property: a price curve plus units; deposits buy
+ * units at the current price). `take` is its monthly deposit.
  */
 export interface AssetCard extends CardBase {
   kind: 'asset'
   initialBalance?: number
   growth?: GrowthParam
+  /** Annual fee drag, e.g. 0.004 = 0.40 %/yr. */
+  fee?: number
   price?: { seriesId?: string; data?: SampledData }
   initialUnits?: number
+  take?: Take
 }
 
-/** A positive principal accruing interest; reported as a negative balance. */
+/**
+ * A positive principal accruing interest; reported as a negative balance.
+ * Its monthly `payment` draws from the running total, capped at payoff —
+ * money never leaves the pipeline for a paid-off debt.
+ */
 export interface DebtCard extends CardBase {
   kind: 'debt'
   principal: number
   interest: GrowthParam
+  payment?: Take
 }
 
-/** Transforms applied to the stack below, composed bottom-up (DESIGN.md §7). */
-export type ModifierSpec =
-  | { type: 'taxRate'; rate: number } // flow ×(1 − rate)
-  | { type: 'flowScale'; factor: number } // flow × factor
-  | { type: 'flowOffset'; amountPerMonth: number } // flow + amount
-  | { type: 'annualRaise'; rate: number } // flow ×(1 + rate)^floor(t/12) — yearly steps
-  | { type: 'annualFee'; rate: number } // balance growth ×(1 − rate)^(1/12) per month
-  | { type: 'expression'; expr: string } // flow transform; variables: f (input flow), t, month
-
-export interface ModifierCard extends CardBase {
-  kind: 'modifier'
-  target: 'flow' | 'balance'
-  modifier: ModifierSpec
+/**
+ * A named, toggleable, nestable collection — the grouping AND scoping
+ * construct. A hand computes its own subtotal from zero, top to bottom, and
+ * contributes its net at its position in the parent (DESIGN.md §7).
+ */
+export interface HandCard extends CardBase {
+  kind: 'hand'
+  /** Toggled off, the hand and everything in it is set aside. Default true. */
+  enabled?: boolean
+  children: Card[]
 }
+
+export type Card = SourceCard | DrainCard | AssetCard | DebtCard | HandCard
 
 /**
  * A scripted world change. Events are scenario-dealt, never drafted; the
@@ -92,54 +119,6 @@ export interface EventCard extends CardBase {
   rule: ScheduledRule
 }
 
-/**
- * A stack: one base card (source/asset/debt) plus modifiers, one level deep.
- * `modifiers[0]` is closest to the base — `raise(tax(salary))` is
- * `modifiers: [tax, raise]`.
- */
-export interface Stack {
-  id: string
-  name?: string
-  base: SourceCard | AssetCard | DebtCard
-  modifiers?: ModifierCard[]
-  /** Absolute month the stack enters play. Defaults to the simulation start. */
-  startMonth?: number
-  /** Membership in a decision bundle; the whole bundle toggles as one unit. */
-  bundleId?: string
-}
-
-export type StreamRule =
-  | { type: 'fixed'; amountPerMonth: number }
-  /**
-   * Share of the surplus pool *remaining when this stream resolves* (streams
-   * resolve in declared order, so "20 % of what's left after the mortgage"
-   * is expressible and allocations can never exceed the pool).
-   */
-  | { type: 'percent'; percent: number }
-
-/**
- * Cross-stack routing. All flow-stack output pools each month; streams draw
- * from the pool in declared order; the remainder lands in the cash account,
- * so the model never leaks money (DESIGN.md §2, §8).
- */
-export interface Stream {
-  id: string
-  /** Target stack id (asset or debt), or 'cash'. */
-  to: string
-  rule: StreamRule
-  bundleId?: string
-  startMonth?: number
-  /** Last month (inclusive) the stream runs. */
-  endMonth?: number
-}
-
-/** A decision bundle: cards + streams played together that toggle as one. */
-export interface Bundle {
-  id: string
-  name?: string
-  enabled: boolean
-}
-
 export type RuleSchedule =
   | { kind: 'monthly' }
   | { kind: 'yearly'; monthOfYear: number } // 1..12, calendar month it fires
@@ -148,12 +127,12 @@ export type RuleSchedule =
 export interface RuleTarget {
   kinds?: Kind[]
   tags?: string[]
-  stackIds?: string[]
+  cardIds?: string[]
 }
 
 /**
  * Effects locale packs and events can wire into the engine's hooks.
- * Flow effects apply after the stack's own modifiers; balance effects apply
+ * Flow effects apply to matching source/drain amounts; balance effects apply
  * at the end of the month's tick.
  */
 export type RuleEffect =
@@ -173,7 +152,7 @@ export interface ScheduledRule {
   effect: RuleEffect
 }
 
-/** The permanent cash vessel that catches all unrouted flow. */
+/** The permanent cash vessel that catches whatever reaches the bottom of the root. */
 export interface CashConfig {
   initialBalance?: number
   growth?: GrowthParam
@@ -184,12 +163,9 @@ export interface Assumptions {
   inflation?: GrowthParam
 }
 
-/** The table (simulator) / ledger (game): the full state of a financial life. */
+/** The table (simulator) / ledger (game): one root hand, played top to bottom. */
 export interface Table {
-  stacks: Stack[]
-  /** Declared order is resolution order. */
-  streams: Stream[]
-  bundles?: Bundle[]
+  root: HandCard
   cash?: CashConfig
   assumptions?: Assumptions
 }
@@ -205,7 +181,7 @@ export interface World {
 /** One output curve. `points[i]` is the state at the end of month `startMonth + i`. */
 export interface Series {
   id: string
-  role: 'netWorth' | 'balance' | 'flow' | 'cash'
+  role: 'netWorth' | 'cash' | 'flow' | 'balance' | 'net'
   startMonth: number
   points: number[]
 }
@@ -215,6 +191,12 @@ export interface SimResult {
   to: number
   netWorth: Series
   cash: Series
-  /** One series per stack: balances for assets/debts (debts negative), net flow for sources. */
-  stacks: Series[]
+  /**
+   * One series per card: what it did to the running total each month
+   * (sources positive, drains/takes negative, hands their net). Disabled
+   * subtrees are all zero.
+   */
+  contributions: Series[]
+  /** One series per asset/debt: its balance (debts negative). */
+  balances: Series[]
 }
