@@ -49,6 +49,12 @@ The old prototype's curve model was right about **consequences** but had no **de
 
 ## 2. The Simulator (product 1)
 
+**North-star use case — v1 is judged by this:** model your own finances as cards (salary, expenses, monthly savings streamed into five index funds), then play a "car" onto the table and read off the answer to:
+
+> *"How much longer will it take to reach 10 million SEK just because I bought this car?"*
+
+Every design choice below serves that question shape: model a life, toggle a decision, read its cost **in time-to-goal**, not just in kronor.
+
 One screen, no navigation for the core loop. A **table** of card stacks, a **timeline** that is the single source of truth, and a **hand/library** to play from.
 
 ```
@@ -71,8 +77,9 @@ One screen, no navigation for the core loop. A **table** of card stacks, a **tim
 - **Stream:** drag the output chip on a flow stack onto a vessel or debt; a radial widget sets a fixed amount or a % of surplus. Streams render as soft lines on the table. A permanent **Checking** vessel catches all unrouted flow, so the model never leaks money.
 - **Flip to edit:** tap a card to flip it. The back shows the formula and each parameter as a **slider that live-updates the chart while dragging**. No modals.
 - **Time scrub:** drag on the timeline to move a cursor; every stack annotates itself with its value at that moment (*"in 2041 this stack yields 31 200 kr/mo"*).
-- **Goals:** goal cards ("2M by 2035", "mortgage-free at 55") render as target lines with a live delta readout. No confetti — an honest gap number.
-- **Compare:** pin any saved table as a **ghost** — its net-worth curve renders dimmed behind the active one. *"What does this decision cost me over 20 years?"* is the simulator's killer feature, and it's just two curves.
+- **Goals:** goal cards ("10 MSEK", "mortgage-free at 55") render as target lines annotated with **the date you cross them**. No confetti — an honest date and gap number.
+- **Decisions are bundles.** "Buy the car" is never one card — it's a cash outlay, a depreciating asset, running-cost flows (insurance, fuel, service, skatt), maybe a loan. Cards played together can be grouped into a **decision bundle** that toggles on/off as one unit.
+- **Compare:** toggle a bundle off (or pin any saved table) and the alternative renders as a **ghost curve** behind the active one. The readout speaks in the units that matter: **time-to-goal delta** per goal line — *"10 MSEK: 2034-06 → 2036-11. The car costs you 2 yr 5 mo."* — plus money-at-horizon. This is the simulator's killer feature and its v1 acceptance test.
 - **Everything is undoable.** The table serializes to one small immutable document; every gesture is a diff.
 
 ---
@@ -195,6 +202,8 @@ Pure, deterministic, dependency-free TypeScript module with its own test suite. 
 - **Jurisdiction as data:** the engine exposes hooks (flow transforms, balance transforms, scheduled rules); locale packs wire real rules into those hooks. No `if (sweden)` anywhere.
 - **Historical data as packs:** static curated datasets (~30–60 instruments per era; monthly adjusted closes, dividends, listing/delisting dates, descriptions). Bundled, no live APIs.
 - **Real vs nominal:** inflation lives in a table-level Assumptions slot; a global toggle re-renders all curves in real terms.
+- **Goal solver:** `firstCrossing(series, target)` — the month a curve first (sustainably) crosses a target — is a first-class query, because the product's north-star outputs are **dates and date-deltas**, not just curves.
+- **Stochastic-ready:** growth parameters are `(expected, volatility?)` from day one, with volatility simply ignored by the deterministic v1 engine. A later **Monte Carlo mode** runs N seeded paths over the same table and reports percentile fans (P10/P50/P90) and *probability of reaching the goal by date X*. Shaping the parameters now costs nothing; retrofitting them would touch every card.
 
 ---
 
@@ -252,13 +261,13 @@ Pure, deterministic, dependency-free TypeScript module with its own test suite. 
 ## 13. Build order (simulator first)
 
 **M0 — Engine core.** Curves (incl. sampled), stacks, streams, monthly tick, seeded determinism, pack/locale hooks. Tests. No UI.
-**M1 — Simulator v1.** The table, timeline, stacking, streams, flip-to-edit, goals, undo, persistence. Ships with a starter Sweden pack (core household cards + basic rules).
+**M1 — Simulator v1.** The table, timeline, stacking, streams, flip-to-edit, goals, decision bundles, ghost compare with time-to-goal deltas, undo, persistence. Ships with a starter Sweden pack (core household cards, a car bundle, basic rules). **Acceptance test:** Sebastian models salary + expenses + five index-fund streams, plays a car bundle, and reads "how much longer to 10 MSEK" off the screen.
 **M2 — Workshop v1.** Blank-card authoring, pack export/import. (Much of it falls out of M1's flip-to-edit for free.)
 **M3 — Game prototype, hot-seat.** The 1990 scenario on a single device with "look away" drafting. Deliberately ugly. Purpose: find out whether the game is *fun* before building sync — the cheap insurance against the "did this concept actually work out" doubt.
 **M4 — Own-devices multiplayer.** Room codes, host table, phone hands, the market replay done properly.
 **M5 — FI scenario + Sweden pack deep.** Full locale rules, shared events, life cards.
 **M6 — Polish.** Epilogues, replays, sound, compare ghosts in game post-mortems.
-**Later:** bots for solo, pack registry/sharing, more eras (1929, 1970s stagflation, 2008, Japan 1989, Argentina).
+**Later:** **Monte Carlo mode** on your own table (fan charts, goal-probability curves, stress tests beyond MC — sequence-of-returns, historical replay of *your* plan through 2008), bots for solo, pack registry/sharing, more eras (1929, 1970s stagflation, 2008, Japan 1989, Argentina).
 
 ---
 
@@ -267,5 +276,5 @@ Pure, deterministic, dependency-free TypeScript module with its own test suite. 
 1. **Selling rules (1990):** courtage + capital-gains tax only, or also a cap on sells per year to force conviction?
 2. **FI scenario deck:** exact card list; how do life cards interact with winning — pure flavor-with-cost, or can scenarios define non-financial win conditions?
 3. **Unfunded drafted cards:** keep-as-option forever, expire after N years, or scenario-defined?
-4. **Simulator scope for M1:** is Compare (ghost tables) v1 or v1.1? Current lean: v1.1 — the single-table loop must feel great first.
-5. **Pack format versioning:** decide before the first shared pack exists, not after.
+4. **Pack format versioning:** decide before the first shared pack exists, not after.
+5. **Monte Carlo inputs (later, but shapes the data model):** where do per-fund volatility estimates come from, and are the five funds' returns modeled as correlated (they should be — independent draws across index funds that track overlapping markets would badly understate risk)?
