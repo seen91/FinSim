@@ -1,4 +1,3 @@
-import { useDraggable } from '@dnd-kit/core'
 import { useState, type ReactElement } from 'react'
 import { Glyph } from '../icons'
 import { LIBRARY, type Blueprint } from '../library'
@@ -7,14 +6,14 @@ import { Card } from './Card'
 
 /**
  * The draw pile: a face-down deck in the corner of the table. Open it and
- * the library spreads out — whole hands first (import them as one, or open
- * a hand and take single cards), then the loose cards. Cards can also be
- * dragged straight onto the table.
+ * everything not in play spreads out in a grid — whole hands first (import
+ * them as one, or take single cards), then the loose cards. Click a card to
+ * draw it; it plays into whichever hand is open (the main hand by default).
  */
 interface Props {
   open: boolean
-  /** Kept mounted but invisible while a card is being dragged out of it. */
-  hidden: boolean
+  /** Name of the hand a drawn card will play into. */
+  targetName: string
   onOpen: () => void
   onClose: () => void
   onChoose: (bp: Blueprint) => void
@@ -23,15 +22,8 @@ interface Props {
 }
 
 function DrawerCard({ bp, onChoose }: { bp: Blueprint; onChoose: (bp: Blueprint) => void }): ReactElement {
-  const { setNodeRef, listeners, attributes, isDragging } = useDraggable({ id: `bp:${bp.id}`, data: { bp } })
   return (
-    <div
-      ref={setNodeRef}
-      className={`drawer-slot${isDragging ? ' lifting' : ''}`}
-      onClick={() => onChoose(bp)}
-      {...listeners}
-      {...attributes}
-    >
+    <button className="drawer-slot" onClick={() => onChoose(bp)} title={`Draw — plays at the bottom of the open hand`}>
       <Card
         size="hand"
         face={{
@@ -43,7 +35,7 @@ function DrawerCard({ bp, onChoose }: { bp: Blueprint; onChoose: (bp: Blueprint)
           description: bp.description,
         }}
       />
-    </div>
+    </button>
   )
 }
 
@@ -88,24 +80,33 @@ function PresetTile({
   )
 }
 
-export function DrawPile({ open, hidden, onOpen, onClose, onChoose, onImportHand, onImportCard }: Props): ReactElement {
+export function DrawPile({ open, targetName, onOpen, onClose, onChoose, onImportHand, onImportCard }: Props): ReactElement {
   return (
     <>
-      <button className="pile" onClick={onOpen} title="Open the library" aria-label="Open the library">
+      <button className="pile" onClick={onOpen} title="Open the draw pile" aria-label="Open the draw pile">
         <span className="pile-card" />
         <span className="pile-card" />
         <span className="pile-card pile-top">
           <em>f(t)</em>
         </span>
-        <span className="pile-label">Library</span>
+        <span className="pile-label">Draw pile</span>
       </button>
 
       {open && (
-        <div className={`drawer${hidden ? ' drawer-hidden' : ''}`} onClick={onClose} role="dialog" aria-label="Library">
+        <div className="drawer" onClick={onClose} role="dialog" aria-label="Draw pile">
           <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
-            <header className="drawer-head">
-              <h2>Library</h2>
-              <p>Import a whole hand, take single cards from one, or play loose cards — click, or drag onto a hand. Order matters: a hand plays top to bottom.</p>
+            <header className="drawer-bar">
+              <h2>Draw pile</h2>
+              <p className="drawer-hint">
+                click to draw into <strong>{targetName}</strong> · order matters — a hand plays top to bottom
+              </p>
+              <button className="workshop" disabled title="The Workshop — card authoring, coming in M2">
+                <span>
+                  Work
+                  <br />
+                  shop
+                </span>
+              </button>
               <button className="drawer-close" onClick={onClose} aria-label="Close">
                 ×
               </button>

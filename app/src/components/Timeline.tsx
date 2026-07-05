@@ -1,14 +1,13 @@
-import { firstCrossing, formatMonth, fromMonthIndex, valueAt, type SimResult } from '@finsim/engine'
-import { scaleLinear } from 'd3-scale'
-import { line } from 'd3-shape'
+import { firstCrossing, formatMonth, fromMonthIndex, valueAt } from '@finsim/engine'
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactElement, type RefObject } from 'react'
 import { formatKr } from '../format'
-import { GHOST_DASHES, type Sim } from '../model'
+import type { Sim } from '../model'
+import { linePath, scaleLinear } from '../scale'
 
 /**
- * The timeline is the single source of truth (DESIGN.md §2): net-worth curve,
- * ghost curves for flipped decision bundles, goal line annotated with the
- * date it is crossed, and a time scrubber.
+ * The chart: one honest net-worth line, the goal line annotated with the date
+ * it is crossed, and a time scrubber. Nothing else — the per-bundle
+ * time-to-goal deltas live on the bundle stacks themselves.
  */
 interface Props {
   sim: Sim
@@ -19,7 +18,7 @@ interface Props {
   onScrub: (month: number) => void
 }
 
-const MARGIN = { top: 18, right: 74, bottom: 26, left: 12 }
+const MARGIN = { top: 24, right: 20, bottom: 30, left: 16 }
 
 function useSize(): [RefObject<HTMLDivElement | null>, { width: number; height: number }] {
   const ref = useRef<HTMLDivElement | null>(null)
@@ -36,34 +35,26 @@ function useSize(): [RefObject<HTMLDivElement | null>, { width: number; height: 
   return [ref, size]
 }
 
-function crossingMarker(result: SimResult, goal: number): number | null {
-  return firstCrossing(result, goal)
-}
-
 export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Props): ReactElement {
   const [ref, { width, height }] = useSize()
   const to = from + horizonMonths - 1
 
   const nw = sim.active.netWorth.points
-  const ghosts = sim.compares.map((c) => c.flipped.netWorth.points)
-  const yMax = Math.max(goal, ...nw, ...ghosts.flat()) * 1.06
-  const yMin = Math.min(0, ...nw, ...ghosts.flat())
+  const yMax = Math.max(goal, ...nw) * 1.06
+  const yMin = Math.min(0, ...nw)
 
   const x = scaleLinear([from, to], [MARGIN.left, width - MARGIN.right])
   const y = scaleLinear([yMin, yMax], [height - MARGIN.bottom, MARGIN.top])
 
-  const path = line<number>()
-    .x((_, i) => x(from + i))
-    .y((v) => y(v))
+  const path = (points: number[]): string => linePath(points, (i) => x(from + i), y)
 
-  const yTicks = y.ticks(4).filter((t) => t !== 0 || yMin < 0)
   const startYear = fromMonthIndex(from).year
   const xTicks: number[] = []
   for (let year = Math.ceil(startYear / 5) * 5; year * 12 <= to; year += 5) {
     if (year * 12 >= from) xTicks.push(year * 12)
   }
 
-  const activeCross = crossingMarker(sim.active, goal)
+  const activeCross = firstCrossing(sim.active, goal)
   const scrubX = x(scrub)
   const scrubNw = valueAt(sim.active.netWorth, scrub)
 
@@ -83,15 +74,6 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
         role="img"
         aria-label="Net worth over time"
       >
-        {/* y grid + labels (right side, annual-report style) */}
-        {yTicks.map((t) => (
-          <g key={t}>
-            <line className="grid" x1={MARGIN.left} x2={width - MARGIN.right} y1={y(t)} y2={y(t)} />
-            <text className="tick" x={width - MARGIN.right + 6} y={y(t) + 3}>
-              {t >= 1_000_000 ? `${(t / 1_000_000).toLocaleString('sv-SE')} M` : t.toLocaleString('sv-SE')}
-            </text>
-          </g>
-        ))}
         {xTicks.map((t) => (
           <text key={t} className="tick" x={x(t)} y={height - 8} textAnchor="middle">
             {fromMonthIndex(t).year}
@@ -105,24 +87,9 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
           {activeCross !== null ? ` · reached ${formatMonth(activeCross)}` : ' · not reached in horizon'}
         </text>
 
-        {/* ghost curves: one line per compared hand, dash-coded to the legend */}
-        {sim.compares.map((c, i) => (
-          <path
-            key={c.handId}
-            className="curve ghost"
-            strokeDasharray={GHOST_DASHES[i % GHOST_DASHES.length]}
-            d={path(c.flipped.netWorth.points) ?? undefined}
-          />
-        ))}
         {/* the one honest net-worth curve */}
-        <path className="curve active" d={path(nw) ?? undefined} />
-
-        {/* crossing markers */}
+        <path className="curve active" d={path(nw)} />
         {activeCross !== null && <circle className="cross active" cx={x(activeCross)} cy={y(goal)} r={3.5} />}
-        {sim.compares.map((c) => {
-          const cross = crossingMarker(c.flipped, goal)
-          return cross !== null && <circle key={c.handId} className="cross ghost" cx={x(cross)} cy={y(goal)} r={3} />
-        })}
 
         {/* time scrubber */}
         <line className="scrub-line" x1={scrubX} x2={scrubX} y1={MARGIN.top} y2={height - MARGIN.bottom} />

@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import type { ReactElement, ReactNode } from 'react'
 import { Glyph, type GlyphName } from '../icons'
 import { Sparkline } from './Sparkline'
@@ -39,12 +38,7 @@ interface Props {
 export function Card({ face, size = 'table', flipped = false, onFlip, back, muted }: Props): ReactElement {
   return (
     <div className={`pcard pcard-${size} kind-${face.kind}${muted ? ' muted' : ''}`}>
-      <motion.div
-        className="pcard-inner"
-        animate={{ rotateY: flipped ? 180 : 0 }}
-        transition={{ duration: 0.4, ease: [0.3, 0.8, 0.3, 1] }}
-        onClick={back ? onFlip : undefined}
-      >
+      <div className={`pcard-inner${flipped ? ' flipped' : ''}`} onClick={back ? onFlip : undefined}>
         <div className="pcard-face pcard-front">
           <header className="pcard-band">
             <span>{face.kind}</span>
@@ -64,7 +58,7 @@ export function Card({ face, size = 'table', flipped = false, onFlip, back, mute
             </dl>
           )}
           {face.headline !== undefined && <p className={`pcard-headline num ${face.headlineClass ?? ''}`}>{face.headline}</p>}
-          {face.sparkline && size === 'table' && (
+          {face.sparkline && (
             <div className="pcard-spark">
               <Sparkline points={face.sparkline} />
             </div>
@@ -89,7 +83,7 @@ export function Card({ face, size = 'table', flipped = false, onFlip, back, mute
             </div>
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   )
 }

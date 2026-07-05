@@ -1,34 +1,29 @@
-import { closestCenter, DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
-import { findCard } from '@finsim/engine'
+import { findCard, valueAt, type HandCard } from '@finsim/engine'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { Arena } from './components/Arena'
 import { Card } from './components/Card'
-import { CardView } from './components/TableView'
+import { CardView } from './components/CardView'
 import { DrawPile } from './components/DrawPile'
-import { Readout } from './components/Readout'
-import { TableView } from './components/TableView'
-import { Timeline } from './components/Timeline'
+import { Fan, type FanGeometry } from './components/Fan'
+import { HandStack } from './components/HandStack'
 import { clearDoc, loadDoc, saveDoc } from './db'
-import { addCard, findParentHand, removeCard, reorderCard } from './hands'
+import { formatKr } from './format'
+import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import type { Blueprint } from './library'
 import { runSim, useDoc } from './model'
 import type { HandPreset, PresetCard } from './presets'
 import { starterDoc } from './starter'
 
-/** The drag-overlay card only shows its front, so its controls never fire. */
-const NO_HANDLERS = {
-  onRemoveCard: () => {},
-  onRenameHand: () => {},
-}
+/** The main hand at the bottom of the screen: a wide, gentle arc. */
+const MAIN_FAN: FanGeometry = { radius: 1150, maxStep: 5, maxSpread: 40, visibleTo: 90, cardWidth: 168 }
 
 export function App(): ReactElement {
   const store = useDoc(starterDoc())
   const { doc } = store
   const [scrubRaw, setScrub] = useState(doc.from)
-  const [draggingBp, setDraggingBp] = useState<Blueprint | null>(null)
-  const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [openHandId, setOpenHandId] = useState<string | null>(null)
   const loaded = useRef(false)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   // local-first: load once, then save (debounced) on every change
   useEffect(() => {
@@ -44,173 +39,163 @@ export function App(): ReactElement {
     return () => clearTimeout(timer)
   }, [doc])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setDrawerOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
   const sim = useMemo(() => runSim(doc), [doc])
   const to = doc.from + doc.horizonMonths - 1
   const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
+  const root = doc.table.root
 
-  // the card lifted for reordering — rendered in the drag overlay so it slides
-  // out from the cascade and follows the pointer
-  const draggingCard = draggingCardId ? findCard(doc.table.root, draggingCardId) : null
+  // the opened hand and the chain of hands above it (undo can vanish it — fall back to chart)
+  const opened = openHandId ? findCard(root, openHandId) : null
+  const trail = useMemo(() => {
+    const chain: HandCard[] = []
+    let cur = opened?.kind === 'hand' ? opened : null
+    while (cur && cur.id !== root.id) {
+      chain.unshift(cur)
+      cur = findParentHand(root, cur.id)
+    }
+    return chain
+  }, [opened, root])
+  const openHand = trail[trail.length - 1] ?? null
 
-  const playCard = (bp: Blueprint, intoHandId: string | null): void => {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return
+      if (drawerOpen) setDrawerOpen(false)
+      else if (trail.length > 0) setOpenHandId(trail[trail.length - 2]?.id ?? null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [drawerOpen, trail])
+
+  const targetId = openHand?.id ?? null
+
+  const playCard = (bp: Blueprint): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update(`play-${uid}`, (d) => addCard(d, intoHandId, bp.make(uid)))
+    store.update(`play-${uid}`, (d) => addCard(d, targetId, bp.make(uid)))
     store.commit()
+    setDrawerOpen(false)
   }
 
   const handleImportHand = (preset: HandPreset): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update(`import-${uid}`, (d) => {
-      d.table.root.children.push(preset.build(uid))
-    })
+    store.update(`import-${uid}`, (d) => addCard(d, targetId, preset.build(uid)))
     store.commit()
     setDrawerOpen(false)
   }
 
   const handleImportCard = (card: PresetCard): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update(`import-card-${uid}`, (d) => addCard(d, null, card.make(uid)))
+    store.update(`import-card-${uid}`, (d) => addCard(d, targetId, card.make(uid)))
     store.commit()
     setDrawerOpen(false)
   }
 
-  const handleDragStart = (e: DragStartEvent): void => {
-    const bp = e.active.data.current?.['bp'] as Blueprint | undefined
-    if (bp) setDraggingBp(bp)
-    else setDraggingCardId(String(e.active.id))
+  const handleReorder = (cardId: string, toIndex: number): void => {
+    store.update(`reorder-${cardId}`, (d) => moveCard(d, cardId, toIndex))
+    store.commit()
   }
 
-  const handleDragEnd = (e: DragEndEvent): void => {
-    const bp = draggingBp
-    const cardId = draggingCardId
-    setDraggingBp(null)
-    setDraggingCardId(null)
-    setDrawerOpen(false)
-    if (!e.over) return
-    const overId = String(e.over.id)
-
-    if (bp) {
-      // playing a card from the library: onto the table, a hand, or another card
-      if (overId === 'table') playCard(bp, null)
-      else if (overId.startsWith('hand:')) playCard(bp, overId.slice('hand:'.length))
-      else playCard(bp, findParentHand(doc.table.root, overId)?.id ?? null)
-      return
-    }
-
-    if (cardId && overId !== cardId && !overId.startsWith('hand:') && overId !== 'table') {
-      store.update(`reorder-${cardId}`, (d) => reorderCard(d, cardId, overId))
-      store.commit()
-    }
+  const handleRemoveCard = (cardId: string): void => {
+    store.update(`remove-${cardId}`, (d) => removeCard(d, cardId))
+    store.commit()
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => {
-        setDraggingBp(null)
-        setDraggingCardId(null)
-      }}
-    >
-      <div className="app">
-        <header className="topbar">
-          <h1>FinSim</h1>
-          <label className="goal-input">
-            Goal
-            <input
-              type="number"
-              min={0}
-              step={500000}
-              value={doc.goal}
-              onChange={(e) => store.update('goal', (d) => (d.goal = Number(e.target.value) || 0))}
-              onBlur={store.commit}
-            />
-            kr
-          </label>
-          <div className="topbar-actions">
-            <button onClick={store.undo} disabled={!store.canUndo}>
-              Undo
-            </button>
-            <button onClick={store.redo} disabled={!store.canRedo}>
-              Redo
-            </button>
-            <button
-              onClick={() => {
-                void clearDoc()
-                store.replace(starterDoc())
-              }}
-            >
-              Reset
-            </button>
-          </div>
-        </header>
+    <div className="app">
+      <header className="topbar">
+        <h1>FinSim</h1>
+        <label className="goal-input">
+          Goal
+          <input
+            type="number"
+            min={0}
+            step={500000}
+            value={doc.goal}
+            onChange={(e) => store.update('goal', (d) => (d.goal = Number(e.target.value) || 0))}
+            onBlur={store.commit}
+          />
+          kr
+        </label>
+        <div className="topbar-actions">
+          <button onClick={store.undo} disabled={!store.canUndo}>
+            Undo
+          </button>
+          <button onClick={store.redo} disabled={!store.canRedo}>
+            Redo
+          </button>
+          <button
+            onClick={() => {
+              void clearDoc()
+              store.replace(starterDoc())
+              setOpenHandId(null)
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      </header>
 
-        <Timeline sim={sim} goal={doc.goal} from={doc.from} horizonMonths={doc.horizonMonths} scrub={scrub} onScrub={setScrub} />
+      <Arena
+        doc={doc}
+        sim={sim}
+        scrub={scrub}
+        onScrub={setScrub}
+        trail={trail}
+        onNavigate={setOpenHandId}
+        onReorder={handleReorder}
+        onRemoveCard={handleRemoveCard}
+        onRenameHand={(handId, name) => {
+          store.update(`rename-${handId}`, (d) => {
+            const hand = findCard(d.table.root, handId)
+            if (hand?.kind === 'hand') hand.name = name
+          })
+          store.commit()
+        }}
+      />
 
-        <Readout sim={sim} />
-
-        <TableView
-          doc={doc}
-          sim={sim}
-          scrub={scrub}
-          draggingBp={draggingBp}
-          onRemoveCard={(cardId) => {
-            store.update(`remove-${cardId}`, (d) => removeCard(d, cardId))
-            store.commit()
+      <footer className="hand-strip">
+        <p className="zone-label">{root.name ?? 'Your plan'} · plays left to right</p>
+        <Fan
+          hand={root}
+          geometry={MAIN_FAN}
+          onReorder={handleReorder}
+          onItemClick={(card) => {
+            if (card.kind === 'hand') setOpenHandId(card.id)
           }}
-          onRenameHand={(handId, name) => {
-            store.update(`rename-${handId}`, (d) => {
-              const hand = findCard(d.table.root, handId)
-              if (hand?.kind === 'hand') hand.name = name
-            })
-            store.commit()
-          }}
+          renderItem={(card) =>
+            card.kind === 'hand' ? (
+              <HandStack hand={card} sim={sim} scrub={scrub} compare={sim.compares.find((c) => c.handId === card.id)} />
+            ) : (
+              <CardView card={card} sim={sim} scrub={scrub} onRemove={handleRemoveCard} />
+            )
+          }
         />
+        {root.children.length === 0 && <p className="hand-empty">your hand is empty — draw from the pile</p>}
+      </footer>
 
-        <DrawPile
-          open={drawerOpen}
-          hidden={draggingBp !== null}
-          onOpen={() => setDrawerOpen(true)}
-          onClose={() => setDrawerOpen(false)}
-          onChoose={(bp) => {
-            playCard(bp, null)
-            setDrawerOpen(false)
+      <div className="cash-corner">
+        <Card
+          size="hand"
+          face={{
+            kind: 'vessel',
+            name: 'Cash',
+            glyph: 'cash',
+            headline: formatKr(valueAt(sim.active.cash, scrub)),
+            stats: [{ label: 'In', value: 'whatever is left' }],
+            sparkline: sim.active.cash.points,
           }}
-          onImportHand={handleImportHand}
-          onImportCard={handleImportCard}
         />
       </div>
 
-      <DragOverlay dropAnimation={null}>
-        {draggingBp && (
-          <div className="drag-ghost">
-            <Card
-              size="hand"
-              face={{
-                kind: draggingBp.kind,
-                name: draggingBp.name,
-                glyph: draggingBp.glyph,
-                headline: draggingBp.headline,
-              }}
-            />
-          </div>
-        )}
-        {draggingCard && (
-          <div className="drag-ghost drag-ghost-lift">
-            <CardView card={draggingCard} sim={sim} scrub={scrub} handlers={NO_HANDLERS} />
-          </div>
-        )}
-      </DragOverlay>
-    </DndContext>
+      <DrawPile
+        open={drawerOpen}
+        targetName={openHand ? (openHand.name ?? openHand.id) : (root.name ?? 'Your plan')}
+        onOpen={() => setDrawerOpen(true)}
+        onClose={() => setDrawerOpen(false)}
+        onChoose={playCard}
+        onImportHand={handleImportHand}
+        onImportCard={handleImportCard}
+      />
+    </div>
   )
 }

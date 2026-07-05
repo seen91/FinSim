@@ -43,16 +43,14 @@ export function removeCard(doc: Doc, cardId: string): void {
 }
 
 /**
- * Drag-reorder: slot `activeId` where `overId` currently sits, within the hand
- * they share. Cross-hand drops are ignored — reordering stays within a column.
+ * Drag-reorder: move a card to `toIndex` within its own hand. Cross-hand
+ * moves don't exist — a card leaves a hand only via the draw pile.
  */
-export function reorderCard(doc: Doc, activeId: string, overId: string): void {
-  if (activeId === overId) return
-  const parent = findParentHand(doc.table.root, activeId)
-  if (!parent || findParentHand(doc.table.root, overId) !== parent) return
-  const from = parent.children.findIndex((c) => c.id === activeId)
-  const to = parent.children.findIndex((c) => c.id === overId)
-  if (from < 0 || to < 0) return
+export function moveCard(doc: Doc, cardId: string, toIndex: number): void {
+  const parent = findParentHand(doc.table.root, cardId)
+  if (!parent) return
+  const from = parent.children.findIndex((c) => c.id === cardId)
+  if (from < 0) return
   const [moved] = parent.children.splice(from, 1)
-  parent.children.splice(to, 0, moved!)
+  parent.children.splice(Math.max(0, Math.min(parent.children.length, toIndex)), 0, moved!)
 }

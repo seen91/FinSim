@@ -23,14 +23,11 @@ export interface Sim {
   compares: HandCompare[]
 }
 
-/** Dash patterns for ghost curves — one per compared bundle, shared by the timeline and its legend. */
-export const GHOST_DASHES = ['6 4', '2 3', '9 3', '2 2 6 2']
-
 /**
- * No hidden state: ghosts and what-if diffs are just more simulate calls.
- * Every decision bundle (a hand played directly into the main hand) auto-draws
- * its own ghost = the plan with that bundle removed, so the cost of the car is
- * always on screen without a toggle.
+ * No hidden state: what-if diffs are just more simulate calls. Every decision
+ * bundle (a hand played directly into the main hand) auto-computes the plan
+ * without itself, so its time-to-goal cost sits on the bundle's own stack —
+ * no toggle, no extra curves on the chart.
  */
 export function runSim(doc: Doc): Sim {
   const to = doc.from + doc.horizonMonths - 1

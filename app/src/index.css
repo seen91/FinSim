@@ -1,54 +1,56 @@
-/* "An annual report you fight over with friends." (DESIGN.md §10)
-   Warm paper and ink; five kind-band hues are the only identity colors;
-   green/red strictly for money direction; tabular numerals everywhere.
-   Cards are beautifully set index cards with engraved glyphs — the table
-   should feel like a game night, not a brokerage terminal. */
+/* "A quest ledger you fight over with friends." D&D-table feel, real-world
+   content: parchment cards with gold frames and engraved sigils on a dark
+   wooden table; candlelight vignette. The rules of DESIGN.md §10 still bind —
+   green/red strictly for money direction, tabular numerals everywhere, no
+   fantasy instruments. The theme is the table, never the math. */
 
 :root {
-  color-scheme: light dark;
-  --paper: #f7f4ee;
-  --felt: #ece5d6;
-  --card: #fffdf8;
-  --ink: #221f1a;
-  --ink-soft: #6c665c;
-  --line: #d9d2c4;
-  --accent-line: #b5ad9d;
-  --shadow: rgba(60, 50, 30, 0.18);
+  color-scheme: light;
+
+  /* parchment surfaces (cards, arena, drawer) */
+  --card: #f4e9cd;
+  --card-deep: #ead9b1;
+  --ink: #3d2c17;
+  --ink-soft: #7c6749;
+  --line: #cbb489;
+  --accent-line: #a3874f;
+
+  /* the wooden table (page background, topbar) */
+  --wood: #59391f;
+  --wood-dark: #40270f;
+  --wood-ink: #e9d8ad;
+  --wood-ink-soft: #bda878;
+
+  --gold: #b08d3f;
+  --gold-deep: #7a5f2e;
+  --shadow: rgba(28, 16, 4, 0.4);
 
   --kind-source: var(--money-pos);
   --kind-drain: var(--money-neg);
   --kind-asset: #a67c2e;
-  --kind-debt: #8a5a44;
-  --kind-event: #6d5e80;
-  --kind-vessel: #7a746a;
-  --kind-hand: #6d5e80;
+  --kind-debt: #7c4a33;
+  --kind-event: #5f4b85;
+  --kind-vessel: #6f6250;
+  --kind-hand: #5f4b85;
 
-  --money-pos: #1e7a3c;
-  --money-neg: #b03a2e;
+  --money-pos: #2e6b2e;
+  --money-neg: #9c2b1f;
 
+  --display: 'Luminari', 'Trattatello', 'Iowan Old Style', Palatino, Georgia, serif;
   --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --sans: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* night at the tavern: the table darkens, the cards stay candlelit parchment */
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #16140f;
-    --felt: #100e0a;
-    --card: #211d16;
-    --ink: #e8e4da;
-    --ink-soft: #9a937f;
-    --line: #38342a;
-    --accent-line: #4c4739;
-    --shadow: rgba(0, 0, 0, 0.5);
-    --kind-source: var(--money-pos);
-    --kind-drain: var(--money-neg);
-    --kind-asset: #d0a758;
-    --kind-debt: #c08a70;
-    --kind-event: #a091b8;
-    --kind-vessel: #8d8578;
-    --kind-hand: #a091b8;
-    --money-pos: #5cb87d;
-    --money-neg: #d97a6c;
+    --card: #ecdcb4;
+    --card-deep: #e0cc9c;
+    --wood: #33200e;
+    --wood-dark: #201305;
+    --wood-ink: #d8c491;
+    --wood-ink-soft: #a68d5e;
+    --shadow: rgba(0, 0, 0, 0.55);
   }
 }
 
@@ -56,13 +58,23 @@
   box-sizing: border-box;
 }
 
+/* clip, not hidden: nothing (not even scrollIntoView) may scroll the table */
+html,
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
+  height: 100%;
+  overflow: clip;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 130% 100% at 50% 15%, transparent 50%, rgba(15, 7, 0, 0.5)),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.09) 0 2px, transparent 2px 122px),
+    repeating-linear-gradient(0deg, rgba(255, 214, 140, 0.03) 0 2px, transparent 2px 43px),
+    linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
+  color: var(--wood-ink);
   font-family: var(--sans);
   font-size: 14px;
-  overflow: hidden;
 }
 
 .num {
@@ -75,32 +87,34 @@ body {
 
 .app {
   display: grid;
-  grid-template-rows: auto minmax(170px, 27vh) auto 1fr;
+  grid-template-rows: auto 1fr 268px;
   height: 100vh;
 }
 
-/* ---- top bar ---- */
+/* ---- top bar: a brass rail on the table's edge ---- */
 .topbar {
   display: flex;
   align-items: baseline;
   gap: 1.5rem;
-  padding: 0.45rem 1rem;
-  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.18);
 }
 
 .topbar h1 {
-  font-family: var(--serif);
-  font-size: 1.15rem;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 500;
   margin: 0;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
+  color: var(--wood-ink);
 }
 
 .goal-input {
   display: flex;
   align-items: baseline;
   gap: 0.4rem;
-  color: var(--ink-soft);
+  color: var(--wood-ink-soft);
 }
 
 .goal-input input {
@@ -109,7 +123,7 @@ body {
   font-variant-numeric: tabular-nums;
   color: var(--ink);
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid var(--gold-deep);
   border-radius: 4px;
   padding: 0.15rem 0.4rem;
   text-align: right;
@@ -125,7 +139,7 @@ button {
   font: inherit;
   color: var(--ink);
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid var(--accent-line);
   border-radius: 4px;
   padding: 0.2rem 0.7rem;
   cursor: pointer;
@@ -137,13 +151,104 @@ button:disabled {
 }
 
 button:not(:disabled):hover {
-  border-color: var(--accent-line);
+  border-color: var(--gold-deep);
 }
 
-/* ---- timeline ---- */
-.timeline {
+/* leather buttons on the wooden rail */
+.topbar button {
+  color: var(--wood-ink);
+  background: rgba(0, 0, 0, 0.25);
+  border-color: var(--gold-deep);
+}
+
+.topbar button:not(:disabled):hover {
+  border-color: var(--gold);
+}
+
+/* ---- the arena: a parchment map pinned to the table ---- */
+.arena {
   position: relative;
-  border-bottom: 1px solid var(--line);
+  margin: 0.7rem 1rem 0.35rem;
+  border: 2px solid var(--gold-deep);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 25% 15%, rgba(255, 252, 240, 0.5), transparent 55%),
+    radial-gradient(ellipse at 80% 90%, rgba(130, 85, 25, 0.14), transparent 50%),
+    var(--card);
+  color: var(--ink);
+  overflow: hidden;
+  min-height: 0;
+  box-shadow: inset 0 0 70px rgba(95, 60, 15, 0.22), 0 10px 26px -10px var(--shadow);
+}
+
+/* the map's inner rule line */
+.arena::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid color-mix(in srgb, var(--accent-line) 55%, transparent);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+.arena-game {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(130, 85, 25, 0.16), transparent 60%),
+    radial-gradient(ellipse at 25% 10%, rgba(255, 252, 240, 0.45), transparent 55%),
+    var(--card-deep);
+}
+
+/* breadcrumb back to the chart / up through nested hands */
+.trail {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.95rem;
+  z-index: 10;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.trail button {
+  border: none;
+  background: none;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-decoration: underline dotted;
+}
+
+.trail button:disabled {
+  opacity: 1;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: default;
+}
+
+.trail button + button::before {
+  content: '/ ';
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+
+.arena-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.85rem;
+  z-index: 10;
+  border: none;
+  background: none;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  padding: 0.1rem 0.3rem;
+}
+
+/* ---- the chart: one honest line, drawn in ink ---- */
+.timeline {
+  position: absolute;
+  inset: 0;
 }
 
 .timeline svg {
@@ -151,11 +256,6 @@ button:not(:disabled):hover {
   width: 100%;
   height: 100%;
   touch-action: none;
-}
-
-.timeline .grid {
-  stroke: var(--line);
-  stroke-width: 0.5;
 }
 
 .timeline .tick,
@@ -167,9 +267,13 @@ button:not(:disabled):hover {
 }
 
 .timeline .goal-line {
-  stroke: var(--ink-soft);
+  stroke: var(--gold-deep);
   stroke-width: 1;
-  stroke-dasharray: 2 4;
+  stroke-dasharray: 2 5;
+}
+
+.timeline .goal-label {
+  fill: var(--gold-deep);
 }
 
 .timeline .curve {
@@ -179,22 +283,11 @@ button:not(:disabled):hover {
 
 .timeline .curve.active {
   stroke: var(--ink);
-  stroke-width: 1.75;
-}
-
-.timeline .curve.ghost {
-  stroke: var(--ink-soft);
-  stroke-width: 1.25;
-  opacity: 0.7;
+  stroke-width: 2;
 }
 
 .timeline .cross.active {
   fill: var(--ink);
-}
-
-.timeline .cross.ghost {
-  fill: none;
-  stroke: var(--ink-soft);
 }
 
 .timeline .scrub-line {
@@ -210,55 +303,17 @@ button:not(:disabled):hover {
   fill: var(--ink);
 }
 
-/* ---- legend ---- */
-.readout {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem 1.6rem;
-  padding: 0.4rem 1rem;
-  border-bottom: 1px solid var(--line);
-  font-family: var(--serif);
-  font-size: 0.95rem;
-}
-
-.readout p {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
-}
-
-.readout .swatch {
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.readout .swatch line {
-  stroke: var(--ink);
-  stroke-width: 1.75;
-}
-
-.readout p.muted .swatch line,
-.readout p:not(:first-child) .swatch line {
-  stroke: var(--ink-soft);
-  stroke-width: 1.25;
-}
-
-.readout-name {
-  font-weight: 600;
-}
-
 /* zone labels: what part of the game this is */
 .zone-label {
   font-size: 0.62rem;
   font-family: var(--sans);
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: var(--ink-soft);
-  margin: 0 0 0.6rem;
+  color: var(--wood-ink-soft);
+  margin: 0;
 }
 
-/* ---- playing cards ---- */
+/* ---- playing cards: parchment, gold frame, engraved sigil ---- */
 .pcard {
   --card-w: 168px;
   width: var(--card-w);
@@ -267,6 +322,7 @@ button:not(:disabled):hover {
   position: relative;
   z-index: 1;
   flex-shrink: 0;
+  color: var(--ink);
 }
 
 .pcard-hand {
@@ -278,6 +334,11 @@ button:not(:disabled):hover {
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+
+.pcard-inner.flipped {
+  transform: rotateY(180deg);
 }
 
 .pcard-face {
@@ -287,12 +348,25 @@ button:not(:disabled):hover {
   -webkit-backface-visibility: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at 30% 15%, rgba(255, 252, 240, 0.55), transparent 60%),
+    radial-gradient(ellipse at 75% 95%, rgba(130, 85, 25, 0.12), transparent 55%),
+    var(--card);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 9px;
   padding: 0 0.6rem 0.5rem;
-  box-shadow: 0 1px 2px var(--shadow), 0 3px 8px -4px var(--shadow);
+  box-shadow: 0 1px 2px var(--shadow), 0 4px 10px -4px var(--shadow);
   overflow: hidden;
+}
+
+/* the inner rule line of the card frame */
+.pcard-face::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--accent-line) 55%, transparent);
+  border-radius: 6px;
+  pointer-events: none;
 }
 
 .pcard-back {
@@ -301,12 +375,13 @@ button:not(:disabled):hover {
 
 .pcard-band {
   margin: 0 -0.6rem;
-  padding: 0.18rem 0.6rem 0.14rem;
+  padding: 0.2rem 0.6rem 0.16rem;
   border-bottom: 2px solid var(--line);
   font-size: 0.58rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--ink-soft);
+  background: color-mix(in srgb, currentColor 9%, transparent);
 }
 
 .kind-source .pcard-band { border-color: var(--kind-source); color: var(--kind-source); }
@@ -329,12 +404,32 @@ button:not(:disabled):hover {
   font-size: 0.82rem;
 }
 
+/* the sigil: engraved glyph inside a diamond seal */
 .pcard-art {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.55;
+  opacity: 0.6;
+}
+
+.pcard-art::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  opacity: 0.4;
+}
+
+.pcard-hand .pcard-art::before {
+  width: 44px;
+  height: 44px;
 }
 
 .kind-source .pcard-art { color: var(--kind-source); }
@@ -405,7 +500,7 @@ button:not(:disabled):hover {
   flex-direction: column;
 }
 
-/* parameter sliders on card backs */
+/* parameter sliders on card backs (the Workshop seed, M2) */
 .param {
   display: block;
   margin-bottom: 0.35rem;
@@ -428,7 +523,7 @@ button:not(:disabled):hover {
 input[type='range'] {
   width: 100%;
   margin: 0;
-  accent-color: var(--ink-soft);
+  accent-color: var(--accent-line);
 }
 
 .card-action {
@@ -441,29 +536,10 @@ input[type='range'] {
   margin-top: auto;
 }
 
-.param .mod-remove {
-  opacity: 1;
-}
-
-/* ---- stacks: base card + modifier cards tucked beneath ---- */
+/* ---- a card on the table: face + hover-revealed set-aside ---- */
 .stack {
   position: relative;
-  width: 168px;
-  flex-shrink: 0;
-  transform: rotate(var(--tilt, 0deg));
-  transition: transform 0.18s ease;
-}
-
-.stack:hover,
-.stack:focus-within {
-  transform: rotate(0deg) translateY(-6px);
-  z-index: 30;
-}
-
-.stack > .pcard:hover,
-.stack > .pcard:has(.pcard-inner:focus-within),
-.stack.pinned > .pcard {
-  z-index: 26;
+  width: 100%;
 }
 
 .mod-remove {
@@ -477,322 +553,265 @@ input[type='range'] {
   transition: opacity 0.15s;
 }
 
-.stack:hover .mod-remove,
-.hand-col:hover > .hand-head .mod-remove {
+.stack:hover .mod-remove {
   opacity: 1;
 }
 
-/* each hand announces its monthly net at the bottom of the column */
-.hand-net {
-  margin: 0.45rem 0.1rem 0;
-  font-size: 0.74rem;
-  text-align: right;
+.card-shelf {
+  position: absolute;
+  top: 4px;
+  right: 7px;
+  z-index: 30;
+  font-size: 0.95rem;
 }
 
-.hand-net.pos {
-  color: var(--money-pos);
-}
-
-.hand-net.neg {
-  color: var(--money-neg);
-}
-
-/* ---- the battle area: one main hand, played left→right, top→bottom ---- */
-.table-felt {
-  overflow: auto;
-  padding: 1rem 1rem 7.5rem;
-}
-
-.table-felt.accepts {
-  outline: 2px dashed var(--accent-line);
-  outline-offset: -6px;
-}
-
-.table-felt.over {
-  outline-color: var(--kind-source);
-}
-
-/* the main hand fans across; Cash catches the bottom line at the far end */
-.main-hand {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 0.2rem 0.4rem;
-}
-
-.cash-vessel {
-  flex-shrink: 0;
-  padding-top: 0.2rem;
-}
-
-/* a hand's children, laid along its axis: X fans across, Y cascades down.
-   The axis alternates by depth — main hand X, sub-hand Y, sub-sub-hand X … */
-.fan {
-  display: flex;
-}
-
-.fan-x {
-  flex-direction: row;
-  align-items: flex-start;
-}
-
-.fan-y {
-  flex-direction: column;
+/* ---- the fan: cards around a virtual circle ---- */
+.fan-anchor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
 }
 
 .fan-slot {
-  position: relative;
-  /* each slot is its own stacking context, so a card's grip only ever floats
-     above that card — never above a neighbour stacked on top of it, which
-     would otherwise show several grips on one expanded card. */
-  isolation: isolate;
+  position: absolute;
+  top: 0;
+  z-index: var(--z, 1);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.28s ease, opacity 0.2s ease;
 }
 
-/* X fan: cards overlap left→right so each shows its left strip; later cards sit
-   on top, so the strips (and their grips) march across. Hover lifts one clear. */
-.fan-slot-x {
-  margin-left: -58px;
+.fan-slot:hover {
+  z-index: 95;
 }
 
-.fan-slot-x:first-child {
-  margin-left: 0;
+.fan-slot.lifting {
+  transition: opacity 0.2s ease;
+  z-index: 100;
+  cursor: grabbing;
 }
 
-/* a nested hand fanned into an X row gets room instead of tucking under */
-.fan-slot-x.fan-hand,
-.fan-slot-x.fan-hand + .fan-slot-x {
-  margin-left: 0.8rem;
-}
-
-/* Y cascade: cards overlap so only their header strips show; hover lifts clear */
-.fan-slot-y {
-  margin-top: -158px;
-}
-
-.fan-slot-y:first-child {
-  margin-top: 0;
-}
-
-/* a nested hand sitting in a Y cascade gets room instead of overlapping */
-.fan-slot-y.fan-hand,
-.fan-slot-y.fan-hand + .fan-slot-y {
-  margin-top: 0.45rem;
-}
-
-/* the card lifted into the drag overlay leaves a quiet gap; siblings slide past
-   it (rectSortingStrategy uses their real spacing on either axis) */
-.fan-slot.dragging {
+.fan-slot.offstage {
   opacity: 0;
+  pointer-events: none;
 }
 
-.fan-slot:hover,
-.fan-slot:focus-within {
-  z-index: 25;
+/* the lift rides inside the rotated slot, so "up" means radially outward */
+.fan-item {
+  transition: transform 0.22s ease;
 }
 
-.hand-head {
+.fan-slot:hover > .fan-item {
+  transform: translateY(-28px);
+}
+
+.fan-slot.lifting > .fan-item {
+  transform: translateY(-34px) scale(1.04);
+  filter: drop-shadow(0 14px 22px rgb(15 7 0 / 0.4));
+}
+
+/* ---- the main hand: bottom of the screen, a wide gentle arc ---- */
+.hand-strip {
+  position: relative;
+  z-index: 5;
+}
+
+.hand-strip .zone-label {
+  position: absolute;
+  top: 0.35rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.hand-strip .fan-anchor {
+  top: 14px;
+}
+
+.hand-empty {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  color: var(--wood-ink-soft);
+  margin: 0;
+}
+
+/* ---- an opened hand in the arena: cards around the top of a circle ---- */
+.circle {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.circle .fan-anchor {
+  top: calc(96% - 320px);
+}
+
+.circle .hand-empty {
+  top: 45%;
+  color: var(--ink-soft);
+}
+
+.circle-hub {
+  position: absolute;
+  left: 50%;
+  top: 96%;
+  transform: translate(-50%, -100%);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  margin-bottom: 0.45rem;
+  gap: 0.3rem;
+  padding-bottom: 1.1rem;
+  text-align: center;
+  max-width: 260px;
 }
 
-.hand-name {
+.circle-hub .hand-name {
   border: none;
   background: none;
   padding: 0;
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 1.35rem;
+  letter-spacing: 0.03em;
   color: var(--ink);
   cursor: text;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .hand-name-input {
   font-family: var(--serif);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   color: var(--ink);
   background: var(--card);
   border: 1px solid var(--accent-line);
   border-radius: 4px;
   padding: 0 0.25rem;
-  width: 100%;
-  min-width: 0;
+  width: 12rem;
+  text-align: center;
 }
 
-.hand-count {
+.hub-count {
   font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   color: var(--ink-soft);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0 0.4rem;
 }
 
-.hand-fold {
-  border: none;
-  background: none;
-  color: var(--ink-soft);
-  padding: 0 0.15rem;
-  font-size: 0.75rem;
-}
-
-.hand-remove {
-  margin-left: auto;
-}
-
-/* a nested hand: a bordered block whose children run on the opposite axis */
-.hand-col.nested {
-  width: fit-content;
-  border: 1px dashed var(--accent-line);
-  border-radius: 12px;
-  padding: 0.3rem 0.6rem 0.55rem;
-}
-
-/* reserve room at the header's right for the slot's drag grip, so the grip
-   never sits on top of the set-aside × */
-.hand-col.nested > .hand-head {
-  padding-right: 1.5rem;
-}
-
-.hand-col.nested.over {
-  border-style: solid;
-  border-color: var(--kind-source);
-}
-
-/* the reorder handle: an always-visible grip on the card's header strip, so
-   it's obvious where to grab to drag a card to a new position in the hand */
-.drag-grip {
-  position: absolute;
-  top: 4px;
-  right: 5px;
-  z-index: 30;
-  border: none;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
-  padding: 0.05rem 0.28rem;
-  font-size: 0.82rem;
-  line-height: 1;
-  letter-spacing: -0.05em;
-  color: var(--ink-soft);
-  cursor: grab;
-  opacity: 0.6;
-  touch-action: none;
-  transition:
-    opacity 0.12s ease,
-    background 0.12s ease,
-    color 0.12s ease,
-    transform 0.18s ease;
-}
-
-.fan-slot:hover > .drag-grip,
-.fan-slot:focus-within > .drag-grip {
-  opacity: 1;
-}
-
-/* the card/pile lifts on hover; the grip lifts with it so it stays pinned to
-   the top corner instead of being left behind */
-.fan-slot > .stack:hover ~ .drag-grip,
-.fan-slot > .stack:focus-within ~ .drag-grip {
-  transform: translateY(-6px);
-}
-
-.fan-slot > .hand-pile:hover ~ .drag-grip {
-  transform: translateY(-3px);
-}
-
-.drag-grip:hover {
-  background: color-mix(in srgb, var(--ink) 14%, transparent);
-  color: var(--ink);
-}
-
-.drag-grip:active {
-  cursor: grabbing;
-}
-
-.drag-ghost-lift {
-  cursor: grabbing;
-  filter: drop-shadow(0 12px 20px rgb(0 0 0 / 0.28));
-}
-
-/* set-aside: send a card back to the draw pile (hover-revealed, top-left) */
-.card-shelf {
-  position: absolute;
-  top: 3px;
-  left: 5px;
-  z-index: 30;
+.hub-net {
   font-size: 0.95rem;
 }
 
-/* On the X fan a card shows its LEFT strip, so the always-visible grip lives
-   top-left there; the hover-only × moves to the right, clear of it; and the
-   kind band gets a little room so the grip doesn't sit on the kind label.
-   (Child combinators keep this off the Y-cascade cards nested in a sub-hand.) */
-.fan-slot-x:not(.fan-hand) > .drag-grip {
-  left: 5px;
-  right: auto;
-}
+.hub-net.pos { color: var(--money-pos); }
+.hub-net.neg { color: var(--money-neg); }
 
-.fan-slot-x:not(.fan-hand) > .stack > .card-shelf {
-  right: 6px;
-  left: auto;
-}
-
-.fan-slot-x:not(.fan-hand) > .stack .pcard-band {
-  padding-left: 1.5rem;
-}
-
-.hand-empty {
-  font-size: 0.72rem;
-  color: var(--ink-soft);
-  margin: 0.2rem 0.1rem;
-}
-
-/* a nested hand at rest: unmistakably a pile of several cards */
-.hand-pile {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.05rem;
-  width: 168px;
-  padding: 0.5rem 0.65rem 0.45rem;
-  background:
-    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--ink) 4%, transparent) 6px 7px),
-    var(--card);
-  border: 1px solid var(--accent-line);
-  border-radius: 9px;
-  box-shadow: 0 1px 0 var(--card), 0 2px 0 var(--line), 0 3px 0 var(--card), 0 4px 0 var(--line), 0 6px 8px -2px var(--shadow);
-  cursor: pointer;
-  text-align: left;
-  margin-bottom: 6px;
-}
-
-.hand-pile:hover {
-  transform: translateY(-3px);
-}
-
-.hand-pile-name {
-  font-family: var(--serif);
+.hub-delta {
+  font-size: 0.82rem;
   font-weight: 600;
-  font-size: 0.88rem;
+}
+
+.hub-delta.pos { color: var(--money-pos); }
+.hub-delta.neg { color: var(--money-neg); }
+
+.hub-remove {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+/* ---- a hand at rest: unmistakably a pile of several cards ---- */
+.hand-stack {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 63 / 88;
+  cursor: pointer;
   color: var(--ink);
 }
 
-.hand-pile-count {
+.hand-stack-under,
+.hand-stack-front {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--gold-deep) 7%, transparent) 6px 7px),
+    var(--card);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 10px;
+}
+
+.hand-stack-under.u1 {
+  transform: rotate(-2.4deg) translate(3px, 2px);
+}
+
+.hand-stack-under.u2 {
+  transform: rotate(3.2deg) translate(-3px, 5px);
+}
+
+.hand-stack-front {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.5rem 0.6rem 0.45rem;
+  box-shadow: 0 1px 2px var(--shadow), 0 4px 10px -4px var(--shadow);
+}
+
+.hand-stack-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.hand-stack-art {
+  flex: 1;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  color: var(--kind-hand);
+  opacity: 0.6;
+}
+
+.hand-stack-count {
   font-size: 0.68rem;
   color: var(--ink-soft);
 }
 
+.hand-stack-net {
+  align-self: flex-end;
+  font-size: 0.78rem;
+}
 
-/* ---- the draw pile ---- */
+.hand-stack-net.pos { color: var(--money-pos); }
+.hand-stack-net.neg { color: var(--money-neg); }
+
+/* the verdict: what this bundle costs, in time-to-goal */
+.hand-stack-delta {
+  align-self: flex-end;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.hand-stack-delta.pos { color: var(--money-pos); }
+.hand-stack-delta.neg { color: var(--money-neg); }
+
+/* ---- cash: the vessel at the bottom of the pipeline, pinned in the corner ---- */
+.cash-corner {
+  position: fixed;
+  left: 1.2rem;
+  bottom: 1rem;
+  z-index: 40;
+}
+
+/* ---- the draw pile: a leather-backed deck ---- */
 .pile {
   position: fixed;
   right: 1.4rem;
-  bottom: 1.2rem;
+  bottom: 1.6rem;
   z-index: 40;
   width: 96px;
   height: 130px;
@@ -808,11 +827,12 @@ input[type='range'] {
   width: 88px;
   height: 118px;
   background:
-    repeating-linear-gradient(45deg, transparent 0 5px, color-mix(in srgb, var(--ink) 5%, transparent) 5px 6px),
-    var(--card);
-  border: 1px solid var(--accent-line);
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
   border-radius: 9px;
-  box-shadow: 0 2px 5px var(--shadow);
+  box-shadow: 0 2px 6px var(--shadow);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -827,9 +847,9 @@ input[type='range'] {
 }
 
 .pile-top em {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 1.3rem;
-  color: var(--accent-line);
+  color: var(--gold);
 }
 
 .pile-label {
@@ -841,7 +861,7 @@ input[type='range'] {
   font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--ink-soft);
+  color: var(--wood-ink-soft);
 }
 
 .pile:hover .pile-top {
@@ -849,12 +869,12 @@ input[type='range'] {
   transition: transform 0.15s ease;
 }
 
-/* ---- the open drawer: the whole library, spread out ---- */
+/* ---- the open draw pile: everything not in play, spread out ---- */
 .drawer {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: color-mix(in srgb, var(--paper) 72%, transparent);
+  background: rgba(16, 8, 0, 0.55);
   backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
@@ -862,16 +882,14 @@ input[type='range'] {
   padding: 2rem;
 }
 
-.drawer-hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .drawer-panel {
-  background: var(--paper);
-  border: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse at 30% 10%, rgba(255, 252, 240, 0.5), transparent 55%),
+    var(--card-deep);
+  color: var(--ink);
+  border: 2px solid var(--gold-deep);
   border-radius: 14px;
-  box-shadow: 0 18px 50px -12px var(--shadow);
+  box-shadow: 0 22px 60px -12px rgba(0, 0, 0, 0.6);
   padding: 1.1rem 1.4rem 1.4rem;
   max-width: 1080px;
   width: 100%;
@@ -879,30 +897,62 @@ input[type='range'] {
   overflow-y: auto;
 }
 
-.drawer-head {
-  position: relative;
-  margin-bottom: 0.9rem;
+/* the header bar: title, hint, the Workshop diamond, close */
+.drawer-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 0.5rem 0.9rem;
+  margin-bottom: 0.6rem;
 }
 
-.drawer-head h2 {
-  font-family: var(--serif);
-  font-size: 1.15rem;
+.drawer-bar h2 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
   margin: 0;
 }
 
-.drawer-head p {
-  margin: 0.15rem 0 0;
+.drawer-hint {
+  flex: 1;
+  margin: 0;
   font-size: 0.78rem;
   color: var(--ink-soft);
 }
 
+.workshop {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  margin: 0 0.5rem;
+  transform: rotate(45deg);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 8px;
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.workshop span {
+  transform: rotate(-45deg);
+  font-size: 0.5rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
 .drawer-close {
-  position: absolute;
-  top: 0;
-  right: 0;
   border: none;
   background: none;
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   line-height: 1;
   color: var(--ink-soft);
   padding: 0 0.2rem;
@@ -912,7 +962,7 @@ input[type='range'] {
   font-family: var(--serif);
   font-size: 0.92rem;
   margin: 0.9rem 0 0.5rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--accent-line);
   padding-bottom: 0.2rem;
 }
 
@@ -936,9 +986,9 @@ input[type='range'] {
   width: 100%;
   padding: 0.6rem 0.7rem 0.55rem;
   background:
-    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--ink) 4%, transparent) 6px 7px),
+    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--gold-deep) 7%, transparent) 6px 7px),
     var(--card);
-  border: 1px solid var(--accent-line);
+  border: 1.5px solid var(--gold-deep);
   border-radius: 9px;
   box-shadow: 0 1px 0 var(--card), 0 2px 0 var(--line), 0 3px 0 var(--card), 0 4px 0 var(--line), 0 6px 8px -2px var(--shadow);
   cursor: pointer;
@@ -988,7 +1038,7 @@ input[type='range'] {
   border: none;
   background: none;
   padding: 0.22rem 0.2rem;
-  border-bottom: 1px dotted var(--line);
+  border-bottom: 1px dotted var(--accent-line);
   font-size: 0.72rem;
   color: var(--ink);
   text-align: left;
@@ -1019,8 +1069,10 @@ input[type='range'] {
 }
 
 .drawer-slot {
-  cursor: grab;
-  touch-action: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
   transition: transform 0.14s ease;
 }
 
@@ -1028,20 +1080,7 @@ input[type='range'] {
   transform: translateY(-6px) scale(1.04);
 }
 
-.drawer-slot.lifting {
-  opacity: 0.25;
-}
-
 .drawer-slot .pcard {
   pointer-events: none;
   --card-w: 140px;
-}
-
-/* the drag ghost follows the pointer with a lifted look */
-.drag-ghost .pcard {
-  transform: rotate(3.5deg) scale(1.04);
-}
-
-.drag-ghost .pcard-face {
-  box-shadow: 0 10px 26px -6px var(--shadow), 0 2px 5px var(--shadow);
 }
