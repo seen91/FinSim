@@ -1,23 +1,31 @@
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
+import { closestCenter, DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { findCard } from '@finsim/engine'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Card } from './components/Card'
+import { CardView } from './components/TableView'
 import { DrawPile } from './components/DrawPile'
 import { Readout } from './components/Readout'
 import { TableView } from './components/TableView'
 import { Timeline } from './components/Timeline'
 import { clearDoc, loadDoc, saveDoc } from './db'
-import { addCard, moveCard, removeCard } from './hands'
+import { addCard, findParentHand, removeCard, reorderCard } from './hands'
 import type { Blueprint } from './library'
 import { runSim, useDoc } from './model'
 import type { HandPreset, PresetCard } from './presets'
 import { starterDoc } from './starter'
+
+/** The drag-overlay card only shows its front, so its controls never fire. */
+const NO_HANDLERS = {
+  onRemoveCard: () => {},
+  onRenameHand: () => {},
+}
 
 export function App(): ReactElement {
   const store = useDoc(starterDoc())
   const { doc } = store
   const [scrubRaw, setScrub] = useState(doc.from)
   const [draggingBp, setDraggingBp] = useState<Blueprint | null>(null)
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const loaded = useRef(false)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
@@ -48,6 +56,10 @@ export function App(): ReactElement {
   const to = doc.from + doc.horizonMonths - 1
   const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
 
+  // the card lifted for reordering — rendered in the drag overlay so it slides
+  // out from the cascade and follows the pointer
+  const draggingCard = draggingCardId ? findCard(doc.table.root, draggingCardId) : null
+
   const playCard = (bp: Blueprint, intoHandId: string | null): void => {
     const uid = crypto.randomUUID().slice(0, 8)
     store.update(`play-${uid}`, (d) => addCard(d, intoHandId, bp.make(uid)))
@@ -72,21 +84,44 @@ export function App(): ReactElement {
 
   const handleDragStart = (e: DragStartEvent): void => {
     const bp = e.active.data.current?.['bp'] as Blueprint | undefined
-    setDraggingBp(bp ?? null)
+    if (bp) setDraggingBp(bp)
+    else setDraggingCardId(String(e.active.id))
   }
 
   const handleDragEnd = (e: DragEndEvent): void => {
     const bp = draggingBp
+    const cardId = draggingCardId
     setDraggingBp(null)
+    setDraggingCardId(null)
     setDrawerOpen(false)
-    if (!bp || !e.over) return
+    if (!e.over) return
     const overId = String(e.over.id)
-    if (overId === 'table') playCard(bp, null)
-    else if (overId.startsWith('hand:')) playCard(bp, overId.slice('hand:'.length))
+
+    if (bp) {
+      // playing a card from the library: onto the table, a hand, or another card
+      if (overId === 'table') playCard(bp, null)
+      else if (overId.startsWith('hand:')) playCard(bp, overId.slice('hand:'.length))
+      else playCard(bp, findParentHand(doc.table.root, overId)?.id ?? null)
+      return
+    }
+
+    if (cardId && overId !== cardId && !overId.startsWith('hand:') && overId !== 'table') {
+      store.update(`reorder-${cardId}`, (d) => reorderCard(d, cardId, overId))
+      store.commit()
+    }
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setDraggingBp(null)}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => {
+        setDraggingBp(null)
+        setDraggingCardId(null)
+      }}
+    >
       <div className="app">
         <header className="topbar">
           <h1>FinSim</h1>
@@ -129,26 +164,10 @@ export function App(): ReactElement {
           sim={sim}
           scrub={scrub}
           draggingBp={draggingBp}
-          onEditCard={(label, cardId, mutate) =>
-            store.update(label, (d) => {
-              const card = findCard(d.table.root, cardId)
-              if (card) mutate(card)
-            })
-          }
-          onMoveCard={(cardId, direction) => {
-            store.update(`move-${cardId}-${direction}`, (d) => moveCard(d, cardId, direction))
-            store.commit()
-          }}
           onRemoveCard={(cardId) => {
             store.update(`remove-${cardId}`, (d) => removeCard(d, cardId))
             store.commit()
           }}
-          onToggleHand={(handId, enabled) =>
-            store.update(`hand:${handId}:${enabled}`, (d) => {
-              const hand = findCard(d.table.root, handId)
-              if (hand?.kind === 'hand') hand.enabled = enabled
-            })
-          }
           onRenameHand={(handId, name) => {
             store.update(`rename-${handId}`, (d) => {
               const hand = findCard(d.table.root, handId)
@@ -156,7 +175,6 @@ export function App(): ReactElement {
             })
             store.commit()
           }}
-          onCommit={store.commit}
         />
 
         <DrawPile
@@ -185,6 +203,11 @@ export function App(): ReactElement {
                 headline: draggingBp.headline,
               }}
             />
+          </div>
+        )}
+        {draggingCard && (
+          <div className="drag-ghost drag-ghost-lift">
+            <CardView card={draggingCard} sim={sim} scrub={scrub} handlers={NO_HANDLERS} />
           </div>
         )}
       </DragOverlay>

@@ -15,8 +15,8 @@
   --accent-line: #b5ad9d;
   --shadow: rgba(60, 50, 30, 0.18);
 
-  --kind-source: #41648c;
-  --kind-drain: #58707a;
+  --kind-source: var(--money-pos);
+  --kind-drain: var(--money-neg);
   --kind-asset: #a67c2e;
   --kind-debt: #8a5a44;
   --kind-event: #6d5e80;
@@ -40,8 +40,8 @@
     --line: #38342a;
     --accent-line: #4c4739;
     --shadow: rgba(0, 0, 0, 0.5);
-    --kind-source: #7da2cc;
-    --kind-drain: #8fa7b0;
+    --kind-source: var(--money-pos);
+    --kind-drain: var(--money-neg);
     --kind-asset: #d0a758;
     --kind-debt: #c08a70;
     --kind-event: #a091b8;
@@ -482,20 +482,6 @@ input[type='range'] {
   opacity: 1;
 }
 
-/* reorder controls — order is the calculation */
-.card-move {
-  display: flex;
-  gap: 0.3rem;
-  margin-top: 0.25rem;
-}
-
-.card-move button {
-  flex: 1;
-  font-size: 0.6rem;
-  padding: 0.08rem 0;
-  color: var(--ink-soft);
-}
-
 /* each hand announces its monthly net at the bottom of the column */
 .hand-net {
   margin: 0.45rem 0.1rem 0;
@@ -511,9 +497,9 @@ input[type='range'] {
   color: var(--money-neg);
 }
 
-/* ---- the table: a loose spread of cards on the same paper as everything else ---- */
+/* ---- the battle area: one main hand, played left→right, top→bottom ---- */
 .table-felt {
-  overflow-y: auto;
+  overflow: auto;
   padding: 1rem 1rem 7.5rem;
 }
 
@@ -526,45 +512,82 @@ input[type='range'] {
   outline-color: var(--kind-source);
 }
 
-/* hands side by side on the X axis; cards cascade down the Y axis */
-.hands-row {
+/* the main hand fans across; Cash catches the bottom line at the far end */
+.main-hand {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1.2rem;
   align-items: flex-start;
+  gap: 1rem;
   padding: 0.2rem 0.4rem;
 }
 
-.hand-col {
-  width: 192px;
+.cash-vessel {
   flex-shrink: 0;
-  border: 1px dashed transparent;
-  border-radius: 12px;
-  padding: 0.35rem 0.55rem 0.7rem;
+  padding-top: 0.2rem;
 }
 
-.hand-col:not(.loose) {
-  border-color: var(--accent-line);
+/* a hand's children, laid along its axis: X fans across, Y cascades down.
+   The axis alternates by depth — main hand X, sub-hand Y, sub-sub-hand X … */
+.fan {
+  display: flex;
 }
 
-.hand-col.off {
-  border-color: var(--line);
+.fan-x {
+  flex-direction: row;
+  align-items: flex-start;
 }
 
-.hand-col.over {
-  border-style: solid;
-  border-color: var(--kind-source);
+.fan-y {
+  flex-direction: column;
 }
 
-.hand-col.nested {
-  width: 100%;
-  padding: 0.25rem 0 0.45rem 0.45rem;
-  border-left-style: solid;
+.fan-slot {
+  position: relative;
+  /* each slot is its own stacking context, so a card's grip only ever floats
+     above that card — never above a neighbour stacked on top of it, which
+     would otherwise show several grips on one expanded card. */
+  isolation: isolate;
 }
 
-.hand-col.loose {
-  border: none;
-  padding-top: 1.65rem;
+/* X fan: cards overlap left→right so each shows its left strip; later cards sit
+   on top, so the strips (and their grips) march across. Hover lifts one clear. */
+.fan-slot-x {
+  margin-left: -58px;
+}
+
+.fan-slot-x:first-child {
+  margin-left: 0;
+}
+
+/* a nested hand fanned into an X row gets room instead of tucking under */
+.fan-slot-x.fan-hand,
+.fan-slot-x.fan-hand + .fan-slot-x {
+  margin-left: 0.8rem;
+}
+
+/* Y cascade: cards overlap so only their header strips show; hover lifts clear */
+.fan-slot-y {
+  margin-top: -158px;
+}
+
+.fan-slot-y:first-child {
+  margin-top: 0;
+}
+
+/* a nested hand sitting in a Y cascade gets room instead of overlapping */
+.fan-slot-y.fan-hand,
+.fan-slot-y.fan-hand + .fan-slot-y {
+  margin-top: 0.45rem;
+}
+
+/* the card lifted into the drag overlay leaves a quiet gap; siblings slide past
+   it (rectSortingStrategy uses their real spacing on either axis) */
+.fan-slot.dragging {
+  opacity: 0;
+}
+
+.fan-slot:hover,
+.fan-slot:focus-within {
+  z-index: 25;
 }
 
 .hand-head {
@@ -572,11 +595,6 @@ input[type='range'] {
   align-items: center;
   gap: 0.35rem;
   margin-bottom: 0.45rem;
-}
-
-.hand-toggle {
-  display: flex;
-  cursor: pointer;
 }
 
 .hand-name {
@@ -626,43 +644,111 @@ input[type='range'] {
   margin-left: auto;
 }
 
-.hand-col:hover > .hand-head .hand-remove {
+/* a nested hand: a bordered block whose children run on the opposite axis */
+.hand-col.nested {
+  width: fit-content;
+  border: 1px dashed var(--accent-line);
+  border-radius: 12px;
+  padding: 0.3rem 0.6rem 0.55rem;
+}
+
+/* reserve room at the header's right for the slot's drag grip, so the grip
+   never sits on top of the set-aside × */
+.hand-col.nested > .hand-head {
+  padding-right: 1.5rem;
+}
+
+.hand-col.nested.over {
+  border-style: solid;
+  border-color: var(--kind-source);
+}
+
+/* the reorder handle: an always-visible grip on the card's header strip, so
+   it's obvious where to grab to drag a card to a new position in the hand */
+.drag-grip {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  z-index: 30;
+  border: none;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  padding: 0.05rem 0.28rem;
+  font-size: 0.82rem;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: var(--ink-soft);
+  cursor: grab;
+  opacity: 0.6;
+  touch-action: none;
+  transition:
+    opacity 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease,
+    transform 0.18s ease;
+}
+
+.fan-slot:hover > .drag-grip,
+.fan-slot:focus-within > .drag-grip {
   opacity: 1;
 }
 
-/* the Y cascade: each card shows its header strip; hover lifts it clear */
-.hand-cascade {
-  display: flex;
-  flex-direction: column;
+/* the card/pile lifts on hover; the grip lifts with it so it stays pinned to
+   the top corner instead of being left behind */
+.fan-slot > .stack:hover ~ .drag-grip,
+.fan-slot > .stack:focus-within ~ .drag-grip {
+  transform: translateY(-6px);
 }
 
-.cascade-slot {
-  position: relative;
-  margin-top: -158px;
+.fan-slot > .hand-pile:hover ~ .drag-grip {
+  transform: translateY(-3px);
 }
 
-.cascade-slot:first-child {
-  margin-top: 0;
+.drag-grip:hover {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  color: var(--ink);
 }
 
-.cascade-slot:hover,
-.cascade-slot:focus-within,
-.cascade-slot:has(.stack.pinned) {
-  z-index: 25;
+.drag-grip:active {
+  cursor: grabbing;
 }
 
-.cascade-slot.cascade-hand {
-  margin-top: 0.4rem;
+.drag-ghost-lift {
+  cursor: grabbing;
+  filter: drop-shadow(0 12px 20px rgb(0 0 0 / 0.28));
 }
 
-.cascade-slot.cascade-hand + .cascade-slot {
-  margin-top: 0.4rem;
+/* set-aside: send a card back to the draw pile (hover-revealed, top-left) */
+.card-shelf {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  z-index: 30;
+  font-size: 0.95rem;
+}
+
+/* On the X fan a card shows its LEFT strip, so the always-visible grip lives
+   top-left there; the hover-only × moves to the right, clear of it; and the
+   kind band gets a little room so the grip doesn't sit on the kind label.
+   (Child combinators keep this off the Y-cascade cards nested in a sub-hand.) */
+.fan-slot-x:not(.fan-hand) > .drag-grip {
+  left: 5px;
+  right: auto;
+}
+
+.fan-slot-x:not(.fan-hand) > .stack > .card-shelf {
+  right: 6px;
+  left: auto;
+}
+
+.fan-slot-x:not(.fan-hand) > .stack .pcard-band {
+  padding-left: 1.5rem;
 }
 
 .hand-empty {
   font-size: 0.72rem;
   color: var(--ink-soft);
-  margin: 0.2rem 0;
+  margin: 0.2rem 0.1rem;
 }
 
 /* a nested hand at rest: unmistakably a pile of several cards */
@@ -683,10 +769,6 @@ input[type='range'] {
   cursor: pointer;
   text-align: left;
   margin-bottom: 6px;
-}
-
-.hand-pile.off {
-  opacity: 0.55;
 }
 
 .hand-pile:hover {

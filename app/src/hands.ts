@@ -42,14 +42,17 @@ export function removeCard(doc: Doc, cardId: string): void {
   parent.children = parent.children.filter((c) => c.id !== cardId)
 }
 
-/** Move a card up or down within its hand — order is the calculation. */
-export function moveCard(doc: Doc, cardId: string, direction: -1 | 1): void {
-  const parent = findParentHand(doc.table.root, cardId)
-  if (!parent) return
-  const index = parent.children.findIndex((c) => c.id === cardId)
-  const target = index + direction
-  if (index < 0 || target < 0 || target >= parent.children.length) return
-  const tmp = parent.children[index]!
-  parent.children[index] = parent.children[target]!
-  parent.children[target] = tmp
+/**
+ * Drag-reorder: slot `activeId` where `overId` currently sits, within the hand
+ * they share. Cross-hand drops are ignored — reordering stays within a column.
+ */
+export function reorderCard(doc: Doc, activeId: string, overId: string): void {
+  if (activeId === overId) return
+  const parent = findParentHand(doc.table.root, activeId)
+  if (!parent || findParentHand(doc.table.root, overId) !== parent) return
+  const from = parent.children.findIndex((c) => c.id === activeId)
+  const to = parent.children.findIndex((c) => c.id === overId)
+  if (from < 0 || to < 0) return
+  const [moved] = parent.children.splice(from, 1)
+  parent.children.splice(to, 0, moved!)
 }

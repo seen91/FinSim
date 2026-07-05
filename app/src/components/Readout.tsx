@@ -39,7 +39,7 @@ export function Readout({ sim }: Props): ReactElement {
         <span className="readout-name">Your table</span>
       </p>
       {sim.compares.map((c, i) => (
-        <p key={c.handId} className={c.enabled ? '' : 'muted'} title={deltaTooltip(c)}>
+        <p key={c.handId} title={deltaTooltip(c)}>
           <Swatch dash={GHOST_DASHES[i % GHOST_DASHES.length]} />
           <span className="readout-name">{c.name}</span>
         </p>

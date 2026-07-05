@@ -20,6 +20,7 @@
 | Name | **FinSim.** |
 | Stream percent semantics | **Share of the pool remaining at the stream's turn.** Superseded by the pipeline model below, which generalizes exactly this rule to every card. |
 | Calculation model (v2, supersedes stacks/streams/modifiers) | **A hand is played top to bottom.** Every card acts on a running monthly total: sources add their curve, drains subtract (a fixed amount, or a % of the positive running total), assets and debts take their deposit/payment from it, and whatever reaches the bottom of the root lands in Cash. **A hand nested in a hand computes its own subtotal from zero and contributes its net at its position** — recursion is the scoping rule, so two salaries can carry different taxes without interference. The Modifier kind is removed: tax is a % drain (positional), a raise is the source card's own growth curve, a fee is an asset parameter. Order is load-bearing and visible — the column *is* the calculation. |
+| Simulator table layout (v2.1) | **One main hand (recursive).** The battle area holds a single main hand; everything else waits in the draw pile. Membership is **binary** — a card or bundle is *active* (in the main hand) or *in the draw pile* — with **no set-aside toggle**. The layout **alternates axis by depth**: the main hand fans across the X axis, a sub-hand stacks down the Y axis, a sub-sub-hand fans across X again, and so on. Cards are **static** on the table and in the pile; all parameter tuning lives in the Workshop (§3). **Compare is automatic:** every decision-bundle sub-hand played into the main hand auto-draws its own ghost = the plan *without* it, plus the time-to-goal delta — the killer feature, with no toggle. |
 
 ---
 
@@ -57,7 +58,7 @@ The old prototype's curve model was right about **consequences** but had no **de
 
 Every design choice below serves that question shape: model a life, toggle a decision, read its cost **in time-to-goal**, not just in kronor.
 
-One screen, no navigation for the core loop. A **table** of card stacks, a **timeline** that is the single source of truth, and a **hand/library** to play from.
+One screen, no navigation for the core loop. A **table** holding one main hand (recursive, axis-alternating), a **timeline** that is the single source of truth, and a **draw pile/library** to play from.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -77,11 +78,11 @@ One screen, no navigation for the core loop. A **table** of card stacks, a **tim
 - **Play:** drag a card from the library to the table. Valid drop targets glow (the kind system decides validity, §7); invalid targets are simply inert.
 - **Stack:** drop a modifier onto a stack — magnetic snap, and the chart *morphs* (animated transition, never a redraw flash). Stacks fan slightly on hover so every card's header strip stays readable.
 - **Stream:** drag the output chip on a flow stack onto a vessel or debt; a radial widget sets a fixed amount or a % of surplus. Streams render as soft lines on the table. A permanent **Checking** vessel catches all unrouted flow, so the model never leaks money.
-- **Flip to edit:** tap a card to flip it. The back shows the formula and each parameter as a **slider that live-updates the chart while dragging**. No modals.
+- **Edit in the Workshop:** on the table, cards are static — composing (drag to reorder, play, set aside) happens here; parameter tuning happens in the Workshop (§3), where a card flips to sliders that live-update the chart. (Flip-to-edit is deferred to the Workshop; the simulator table is compose-only.)
 - **Time scrub:** drag on the timeline to move a cursor; every stack annotates itself with its value at that moment (*"in 2041 this stack yields 31 200 kr/mo"*).
 - **Goals:** goal cards ("10 MSEK", "mortgage-free at 55") render as target lines annotated with **the date you cross them**. No confetti — an honest date and gap number.
-- **Decisions are bundles.** "Buy the car" is never one card — it's a cash outlay, a depreciating asset, running-cost flows (insurance, fuel, service, skatt), maybe a loan. Cards played together can be grouped into a **decision bundle** that toggles on/off as one unit.
-- **Compare:** toggle a bundle off (or pin any saved table) and the alternative renders as a **ghost curve** behind the active one. The readout speaks in the units that matter: **time-to-goal delta** per goal line — *"10 MSEK: 2034-06 → 2036-11. The car costs you 2 yr 5 mo."* — plus money-at-horizon. This is the simulator's killer feature and its v1 acceptance test.
+- **Decisions are bundles.** "Buy the car" is never one card — it's a cash outlay, a depreciating asset, running-cost flows (insurance, fuel, service, skatt), maybe a loan. A bundle is a **sub-hand** you play into the main hand as one unit, and set aside (back to the draw pile) as one unit.
+- **Compare (automatic):** every decision-bundle sub-hand in the main hand renders its own **ghost curve** = the plan *without* that bundle, behind the active one. The readout speaks in the units that matter: **time-to-goal delta** per goal line — *"10 MSEK: 2045-06 → 2046-09. The car costs you 1 yr 3 mo."* — plus money-at-horizon. This is the simulator's killer feature and its v1 acceptance test — and it needs no toggle: playing the car shows its cost, setting it aside removes it.
 - **Everything is undoable.** The table serializes to one small immutable document; every gesture is a diff.
 
 ---
@@ -179,7 +180,7 @@ Every card is exactly one kind; kind alone determines where it can be played. A 
 | **Drain** | subtracts a fixed curve, or a % of the positive running total | rent, living expenses, income tax (−30 %) |
 | **Asset** | a balance with a growth curve (and optional fee); takes its deposit from the running total | stocks (sampled curve), funds, property, savings |
 | **Debt** | a positive principal accruing interest; takes its payment from the running total, capped at payoff | mortgage, student loan |
-| **Hand** | a named, toggleable, nestable collection; computes its own subtotal and contributes its net | "Current budget", "Buy the car", "Financing" |
+| **Hand** | a named, nestable collection; computes its own subtotal and contributes its net. The battle area is one main hand; sub-hands are decision bundles (§2) | "Current budget", "Buy the car", "Financing" |
 | **Event** | a scripted world change (scenario-dealt, never drafted) | crash, rate hike, tax reform |
 
 ### The pipeline (one rule)

@@ -12,10 +12,9 @@ export interface Doc {
 export interface HandCompare {
   handId: string
   name: string
-  enabled: boolean
-  /** Simulation with this hand toggled the other way — the ghost curve. */
+  /** Simulation of the plan WITHOUT this bundle — the ghost curve. */
   flipped: SimResult
-  /** Time-to-goal comparison, always phrased as without → with the hand. */
+  /** Time-to-goal comparison, always phrased as without → with the bundle. */
   delta: GoalDelta
 }
 
@@ -24,25 +23,26 @@ export interface Sim {
   compares: HandCompare[]
 }
 
-/** Dash patterns for ghost curves — one per compared hand, shared by the timeline and its legend. */
+/** Dash patterns for ghost curves — one per compared bundle, shared by the timeline and its legend. */
 export const GHOST_DASHES = ['6 4', '2 3', '9 3', '2 2 6 2']
 
-/** No hidden state: ghosts and what-if diffs are just more simulate calls. */
+/**
+ * No hidden state: ghosts and what-if diffs are just more simulate calls.
+ * Every decision bundle (a hand played directly into the main hand) auto-draws
+ * its own ghost = the plan with that bundle removed, so the cost of the car is
+ * always on screen without a toggle.
+ */
 export function runSim(doc: Doc): Sim {
   const to = doc.from + doc.horizonMonths - 1
   const active = simulate(doc.table, {}, doc.from, to)
-  const topHands = doc.table.root.children.filter((c): c is HandCard => c.kind === 'hand')
-  const compares = topHands.map((hand) => {
-    const enabled = hand.enabled !== false
-    const flipped = simulate(setHandEnabled(doc.table, hand.id, !enabled), {}, doc.from, to)
-    const withOff = enabled ? flipped : active
-    const withOn = enabled ? active : flipped
+  const bundles = doc.table.root.children.filter((c): c is HandCard => c.kind === 'hand')
+  const compares = bundles.map((hand) => {
+    const withoutBundle = simulate(setHandEnabled(doc.table, hand.id, false), {}, doc.from, to)
     return {
       handId: hand.id,
       name: hand.name ?? hand.id,
-      enabled,
-      flipped,
-      delta: goalDelta(withOff, withOn, doc.goal),
+      flipped: withoutBundle,
+      delta: goalDelta(withoutBundle, active, doc.goal),
     }
   })
   return { active, compares }
