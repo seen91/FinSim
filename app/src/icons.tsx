@@ -19,6 +19,7 @@ export type GlyphName =
   | 'bank'
   | 'bundle'
   | 'cash'
+  | 'flame'
 
 const PATHS: Record<GlyphName, ReactElement> = {
   coins: (
@@ -110,6 +111,12 @@ const PATHS: Record<GlyphName, ReactElement> = {
       <rect x="3.5" y="7" width="17" height="10" rx="1.2" />
       <circle cx="12" cy="12" r="2.6" />
       <path d="M6.2 9.5v.01M17.8 14.5v.01" />
+    </>
+  ),
+  flame: (
+    <>
+      <path d="M12 3.5c2.8 3.6-1.6 4.8 1.2 7.8.9-.9 1.3-1.9 1.1-3.1 1.9 1.7 3.2 3.6 3.2 5.6a5.5 5.5 0 0 1-11 0c0-3.6 3.5-5.4 5.5-10.3Z" />
+      <path d="M12 19.5c-1.4-.6-2-1.7-1.7-3" opacity="0.5" />
     </>
   ),
 }

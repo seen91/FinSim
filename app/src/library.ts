@@ -13,7 +13,7 @@ export interface Blueprint {
   name: string
   kind: Card['kind']
   glyph: GlyphName
-  /** Static headline shown on the card in the drawer, e.g. "+40 000 kr/mo". */
+  /** Static headline shown on the card in the drawer, e.g. "+40 000 /mo". */
   headline: string
   description: string
   /** Instantiate a fresh engine card. */
@@ -26,8 +26,8 @@ export const LIBRARY: Blueprint[] = [
     name: 'Salary',
     kind: 'source',
     glyph: 'coins',
-    headline: '+40 000 kr/mo',
-    description: 'Gross monthly pay. Play a tax below it — nobody keeps the gross.',
+    headline: '+40 000 /mo',
+    description: 'Gross monthly pay. Play a tax after it — nobody keeps the gross.',
     make: (uid) => ({
       id: `salary-${uid}`,
       name: 'Salary',
@@ -41,7 +41,7 @@ export const LIBRARY: Blueprint[] = [
     name: 'Side hustle',
     kind: 'source',
     glyph: 'briefcase',
-    headline: '+6 000 kr/mo',
+    headline: '+6 000 /mo',
     description: 'Evenings and weekends, invoiced.',
     make: (uid) => ({
       id: `side-${uid}`,
@@ -65,7 +65,7 @@ export const LIBRARY: Blueprint[] = [
     name: 'Rent',
     kind: 'drain',
     glyph: 'home',
-    headline: '−12 000 kr/mo',
+    headline: '−12 000 /mo',
     description: 'A roof, monthly, first of the month.',
     make: (uid) => ({ id: `rent-${uid}`, name: 'Rent', kind: 'drain', amount: { type: 'constant', value: 12000 } }),
   },
@@ -74,7 +74,7 @@ export const LIBRARY: Blueprint[] = [
     name: 'Living expenses',
     kind: 'drain',
     glyph: 'receipt',
-    headline: '−18 000 kr/mo',
+    headline: '−18 000 /mo',
     description: 'Food, phone, gym, the works.',
     make: (uid) => ({ id: `expenses-${uid}`, name: 'Living expenses', kind: 'drain', amount: { type: 'constant', value: 18000 } }),
   },
@@ -99,7 +99,7 @@ export const LIBRARY: Blueprint[] = [
     name: 'Savings account',
     kind: 'asset',
     glyph: 'vault',
-    headline: '2,5 % /yr · 1 000 kr/mo',
+    headline: '2,5 % /yr · 1 000 /mo',
     description: 'Sleeps well at night.',
     make: (uid) => ({
       id: `savings-${uid}`,
@@ -110,12 +110,27 @@ export const LIBRARY: Blueprint[] = [
     }),
   },
   {
+    id: 'nest-egg',
+    name: 'Nest egg',
+    kind: 'asset',
+    glyph: 'vault',
+    headline: '100 000 up front',
+    description: 'Money you already have. Starts on the table at full value — no waiting for deposits.',
+    make: (uid) => ({
+      id: `nest-${uid}`,
+      name: 'Nest egg',
+      kind: 'asset',
+      initialBalance: 100_000,
+      growth: { expected: 0.025 },
+    }),
+  },
+  {
     id: 'empty-hand',
     name: 'New hand',
     kind: 'hand',
     glyph: 'bundle',
     headline: 'empty',
-    description: 'A named, toggleable column of cards. Hands can hold hands.',
+    description: 'A named bundle of cards. Hands can hold hands.',
     make: (uid) => ({ id: `hand-${uid}`, name: 'New hand', kind: 'hand', children: [] }),
   },
 ]

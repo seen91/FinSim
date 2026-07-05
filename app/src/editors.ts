@@ -1,5 +1,5 @@
 import type { Card } from '@finsim/engine'
-import { formatKr, formatKrPerMonth, formatPercent } from './format'
+import { formatAmount, formatPerMonth, formatPercent } from './format'
 
 /**
  * The back of a card: each editable parameter as a live slider (DESIGN.md §2,
@@ -32,7 +32,7 @@ export function cardEditors(card: Card): ParamEditor[] {
         max: 150000,
         step: 500,
         value: flow.type === 'constant' ? flow.value : flow.base,
-        format: formatKrPerMonth,
+        format: formatPerMonth,
         set: (c, v) => {
           if (c.kind !== 'source') return
           if (c.flow.type === 'constant') c.flow.value = v
@@ -78,7 +78,7 @@ export function cardEditors(card: Card): ParamEditor[] {
         max: 60000,
         step: 250,
         value: card.amount.value,
-        format: formatKrPerMonth,
+        format: formatPerMonth,
         set: (c, v) => {
           if (c.kind === 'drain' && c.amount?.type === 'constant') c.amount.value = v
         },
@@ -121,7 +121,7 @@ export function cardEditors(card: Card): ParamEditor[] {
         max: 6_000_000,
         step: 10000,
         value: card.initialBalance ?? 0,
-        format: formatKr,
+        format: formatAmount,
         set: (c, v) => {
           if (c.kind === 'asset') c.initialBalance = v
         },
@@ -149,7 +149,7 @@ export function cardEditors(card: Card): ParamEditor[] {
               max: 30000,
               step: 100,
               value: card.take.amountPerMonth,
-              format: formatKrPerMonth,
+              format: formatPerMonth,
               set: (c, v) => {
                 if (c.kind === 'asset' && c.take?.type === 'fixed') c.take.amountPerMonth = v
               },
@@ -167,7 +167,7 @@ export function cardEditors(card: Card): ParamEditor[] {
         max: 6_000_000,
         step: 10000,
         value: card.principal,
-        format: formatKr,
+        format: formatAmount,
         set: (c, v) => {
           if (c.kind === 'debt') c.principal = v
         },
@@ -195,7 +195,7 @@ export function cardEditors(card: Card): ParamEditor[] {
               max: 30000,
               step: 100,
               value: card.payment.amountPerMonth,
-              format: formatKrPerMonth,
+              format: formatPerMonth,
               set: (c, v) => {
                 if (c.kind === 'debt' && c.payment?.type === 'fixed') c.payment.amountPerMonth = v
               },

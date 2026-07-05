@@ -1,13 +1,14 @@
-import { findCard, valueAt, type HandCard } from '@finsim/engine'
+import { findCard, formatMonth, ym, type HandCard } from '@finsim/engine'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Arena } from './components/Arena'
-import { Card } from './components/Card'
 import { CardView } from './components/CardView'
+import { CashCard } from './components/CashCard'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
+import { FlowCard } from './components/FlowCard'
 import { HandStack } from './components/HandStack'
 import { clearDoc, loadDoc, saveDoc } from './db'
-import { formatKr } from './format'
+import { formatCompact, parseCompact } from './format'
 import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import type { Blueprint } from './library'
 import { runSim, useDoc } from './model'
@@ -16,6 +17,34 @@ import { starterDoc } from './starter'
 
 /** The main hand at the bottom of the screen: a wide, gentle arc. */
 const MAIN_FAN: FanGeometry = { radius: 1150, maxStep: 5, maxSpread: 40, visibleTo: 90, cardWidth: 168 }
+
+/** The goal in compact money ("10 M", "250 k"); accepts "1,5m", "10M", "250k" or a plain number. */
+function GoalInput({ goal, onCommit }: { goal: number; onCommit: (v: number) => void }): ReactElement {
+  const [draft, setDraft] = useState(() => formatCompact(goal))
+  useEffect(() => setDraft(formatCompact(goal)), [goal])
+  const commit = (): void => {
+    const parsed = parseCompact(draft)
+    if (parsed !== null && parsed > 0) {
+      onCommit(parsed)
+      setDraft(formatCompact(parsed))
+    } else {
+      setDraft(formatCompact(goal))
+    }
+  }
+  return (
+    <input
+      type="text"
+      className="num"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') setDraft(formatCompact(goal))
+      }}
+    />
+  )
+}
 
 export function App(): ReactElement {
   const store = useDoc(starterDoc())
@@ -106,15 +135,26 @@ export function App(): ReactElement {
         <h1>FinSim</h1>
         <label className="goal-input">
           Goal
-          <input
-            type="number"
-            min={0}
-            step={500000}
-            value={doc.goal}
-            onChange={(e) => store.update('goal', (d) => (d.goal = Number(e.target.value) || 0))}
-            onBlur={store.commit}
+          <GoalInput
+            goal={doc.goal}
+            onCommit={(v) => {
+              store.update('goal', (d) => (d.goal = v))
+              store.commit()
+            }}
           />
-          kr
+        </label>
+        <label className="goal-input">
+          Start
+          <input
+            type="month"
+            value={formatMonth(doc.from)}
+            onChange={(e) => {
+              const [y, m] = e.target.value.split('-').map(Number)
+              if (!y || !m) return
+              store.update('start', (d) => (d.from = ym(y, m)))
+              store.commit()
+            }}
+          />
         </label>
         <div className="topbar-actions">
           <button onClick={store.undo} disabled={!store.canUndo}>
@@ -154,7 +194,6 @@ export function App(): ReactElement {
       />
 
       <footer className="hand-strip">
-        <p className="zone-label">{root.name ?? 'Your plan'} · plays left to right</p>
         <Fan
           hand={root}
           geometry={MAIN_FAN}
@@ -164,7 +203,7 @@ export function App(): ReactElement {
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
-              <HandStack hand={card} sim={sim} scrub={scrub} compare={sim.compares.find((c) => c.handId === card.id)} />
+              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.handId === card.id)} />
             ) : (
               <CardView card={card} sim={sim} scrub={scrub} onRemove={handleRemoveCard} />
             )
@@ -174,17 +213,11 @@ export function App(): ReactElement {
       </footer>
 
       <div className="cash-corner">
-        <Card
-          size="hand"
-          face={{
-            kind: 'vessel',
-            name: 'Cash',
-            glyph: 'cash',
-            headline: formatKr(valueAt(sim.active.cash, scrub)),
-            stats: [{ label: 'In', value: 'whatever is left' }],
-            sparkline: sim.active.cash.points,
-          }}
-        />
+        <CashCard doc={doc} sim={sim} scrub={scrub} onEdit={store.update} onCommit={store.commit} />
+      </div>
+
+      <div className="flow-corner">
+        <FlowCard sim={sim} scrub={scrub} />
       </div>
 
       <DrawPile

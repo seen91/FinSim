@@ -1,7 +1,7 @@
 import { valueAt, type Card as EngineCard } from '@finsim/engine'
 import type { ReactElement } from 'react'
-import { formatKr, formatKrPerMonth, formatPercent } from '../format'
-import type { GlyphName } from '../icons'
+import { formatAmount, formatPerMonth, formatPercent } from '../format'
+import { Glyph, type GlyphName } from '../icons'
 import type { Sim } from '../model'
 import { Card, type CardStat } from './Card'
 
@@ -24,7 +24,7 @@ function glyphFor(card: EngineCard): GlyphName {
     case 'asset':
       if (name.includes('car')) return 'car'
       if (name.includes('apartment') || name.includes('flat')) return 'building'
-      if (name.includes('savings')) return 'vault'
+      if (name.includes('savings') || name.includes('nest')) return 'vault'
       return 'trend'
   }
 }
@@ -41,7 +41,7 @@ function frontStats(card: EngineCard): CardStat[] {
     if (card.take) {
       stats.push({
         label: 'Takes',
-        value: card.take.type === 'percent' ? `${formatPercent(card.take.percent, 0)} of subtotal` : formatKrPerMonth(card.take.amountPerMonth),
+        value: card.take.type === 'percent' ? `${formatPercent(card.take.percent, 0)} of subtotal` : formatPerMonth(card.take.amountPerMonth),
       })
     }
   } else if (card.kind === 'debt') {
@@ -49,7 +49,7 @@ function frontStats(card: EngineCard): CardStat[] {
     if (card.payment) {
       stats.push({
         label: 'Payment',
-        value: card.payment.type === 'percent' ? `${formatPercent(card.payment.percent, 0)} of subtotal` : formatKrPerMonth(card.payment.amountPerMonth),
+        value: card.payment.type === 'percent' ? `${formatPercent(card.payment.percent, 0)} of subtotal` : formatPerMonth(card.payment.amountPerMonth),
       })
     }
   }
@@ -83,14 +83,14 @@ export function CardView({
           kind: card.kind,
           name: card.name ?? card.id,
           glyph: glyphFor(card),
-          headline: isBalance ? formatKr(value) : formatKrPerMonth(value),
+          headline: isBalance ? formatAmount(value) : formatPerMonth(value),
           headlineClass: value > 0 ? 'pos' : value < 0 ? 'neg' : '',
           stats: frontStats(card),
           ...(sparkline ? { sparkline } : {}),
         }}
       />
-      <button className="card-shelf mod-remove" title="Set aside to the draw pile" aria-label="Set aside" onClick={() => onRemove(card.id)}>
-        ×
+      <button className="card-shelf mod-remove" title="Discard to the draw pile" aria-label="Discard" onClick={() => onRemove(card.id)}>
+        <Glyph name="flame" size={15} />
       </button>
     </div>
   )

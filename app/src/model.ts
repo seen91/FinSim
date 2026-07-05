@@ -1,4 +1,4 @@
-import { goalDelta, setHandEnabled, simulate, type GoalDelta, type HandCard, type SimResult, type Table } from '@finsim/engine'
+import { firstCrossing, goalDelta, setHandEnabled, simulate, type GoalDelta, type HandCard, type Series, type SimResult, type Table } from '@finsim/engine'
 import { useCallback, useState } from 'react'
 
 /** The one small immutable document the whole table serializes to (DESIGN.md §2). */
@@ -16,10 +16,20 @@ export interface HandCompare {
   flipped: SimResult
   /** Time-to-goal comparison, always phrased as without → with the bundle. */
   delta: GoalDelta
+  /**
+   * When this hand ALONE reaches the goal (null if never within the horizon).
+   * A property of the hand itself — nothing else on the table moves it.
+   */
+  soloGoalMonth: number | null
 }
 
 export interface Sim {
   active: SimResult
+  /**
+   * What fell off the bottom of the root each month — the flow into cash.
+   * Exactly the sum of the root's direct children's contributions.
+   */
+  remainder: Series
   compares: HandCompare[]
 }
 
@@ -32,17 +42,26 @@ export interface Sim {
 export function runSim(doc: Doc): Sim {
   const to = doc.from + doc.horizonMonths - 1
   const active = simulate(doc.table, {}, doc.from, to)
+  const points = new Array<number>(doc.horizonMonths).fill(0)
+  for (const child of doc.table.root.children) {
+    const s = active.contributions.find((c) => c.id === child.id)
+    if (!s) continue
+    for (let i = 0; i < points.length; i++) points[i] = points[i]! + (s.points[i] ?? 0)
+  }
+  const remainder: Series = { id: 'remainder', role: 'net', startMonth: doc.from, points }
   const bundles = doc.table.root.children.filter((c): c is HandCard => c.kind === 'hand')
   const compares = bundles.map((hand) => {
     const withoutBundle = simulate(setHandEnabled(doc.table, hand.id, false), {}, doc.from, to)
+    const alone = simulate({ root: { id: `solo-${hand.id}`, kind: 'hand', children: [hand] } }, {}, doc.from, to)
     return {
       handId: hand.id,
       name: hand.name ?? hand.id,
       flipped: withoutBundle,
       delta: goalDelta(withoutBundle, active, doc.goal),
+      soloGoalMonth: firstCrossing(alone, doc.goal),
     }
   })
-  return { active, compares }
+  return { active, remainder, compares }
 }
 
 interface History {

@@ -14,8 +14,9 @@ import { PRESETS } from './presets'
  */
 export function starterDoc(): Doc {
   const budget = PRESETS.find((p) => p.id === 'current-budget')!
+  const now = new Date() // app-side only: the engine never touches wall-clock time
   return {
-    from: ym(2026, 1),
+    from: ym(now.getFullYear(), now.getMonth() + 1),
     horizonMonths: 30 * 12,
     goal: 10_000_000,
     table: {

@@ -1,6 +1,6 @@
 import { firstCrossing, formatMonth, fromMonthIndex, valueAt } from '@finsim/engine'
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactElement, type RefObject } from 'react'
-import { formatKr } from '../format'
+import { formatAmount, formatCompact } from '../format'
 import type { Sim } from '../model'
 import { linePath, scaleLinear } from '../scale'
 
@@ -83,7 +83,7 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
         {/* goal line + crossing date */}
         <line className="goal-line" x1={MARGIN.left} x2={width - MARGIN.right} y1={y(goal)} y2={y(goal)} />
         <text className="goal-label" x={MARGIN.left + 2} y={y(goal) - 5}>
-          {formatKr(goal)}
+          {formatCompact(goal)}
           {activeCross !== null ? ` · reached ${formatMonth(activeCross)}` : ' · not reached in horizon'}
         </text>
 
@@ -100,7 +100,7 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
           y={MARGIN.top - 5}
           textAnchor={scrubX > width - 180 ? 'end' : scrubX < 120 ? 'start' : 'middle'}
         >
-          {formatMonth(scrub)} · {formatKr(scrubNw)}
+          {formatMonth(scrub)} · {formatAmount(scrubNw)}
         </text>
       </svg>
     </div>

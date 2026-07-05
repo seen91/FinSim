@@ -23,7 +23,7 @@ interface Props {
 
 function DrawerCard({ bp, onChoose }: { bp: Blueprint; onChoose: (bp: Blueprint) => void }): ReactElement {
   return (
-    <button className="drawer-slot" onClick={() => onChoose(bp)} title={`Draw — plays at the bottom of the open hand`}>
+    <button className="drawer-slot" onClick={() => onChoose(bp)} title="Draw — joins the right end of the open hand">
       <Card
         size="hand"
         face={{
@@ -98,7 +98,7 @@ export function DrawPile({ open, targetName, onOpen, onClose, onChoose, onImport
             <header className="drawer-bar">
               <h2>Draw pile</h2>
               <p className="drawer-hint">
-                click to draw into <strong>{targetName}</strong> · order matters — a hand plays top to bottom
+                click to draw into <strong>{targetName}</strong> · order matters — a hand plays left to right
               </p>
               <button className="workshop" disabled title="The Workshop — card authoring, coming in M2">
                 <span>

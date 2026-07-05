@@ -1,6 +1,7 @@
-import { valueAt, type HandCard } from '@finsim/engine'
+import { firstCrossing, formatMonth, formatMonthsDelta, valueAt, type HandCard } from '@finsim/engine'
 import { useState, type ReactElement } from 'react'
-import { formatKrPerMonth } from '../format'
+import { formatPerMonth } from '../format'
+import { Glyph } from '../icons'
 import type { Doc, Sim } from '../model'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
@@ -68,9 +69,23 @@ export function Arena(props: Props): ReactElement {
   const hand = trail[trail.length - 1]
 
   if (!hand) {
+    // the whole plan's verdict, in the same shape the hand stacks use —
+    // this one, of course, factors in every card and hand on the table
+    const cross = firstCrossing(sim.active, doc.goal)
     return (
       <section className="arena">
         <Timeline sim={sim} goal={doc.goal} from={doc.from} horizonMonths={doc.horizonMonths} scrub={scrub} onScrub={onScrub} />
+        <div className="chart-verdict">
+          {cross !== null ? (
+            <span className="chart-verdict-text num pos" title={`the whole table reaches the goal ${formatMonth(cross)}`}>
+              goal in {formatMonthsDelta(cross - doc.from)}
+            </span>
+          ) : (
+            <span className="chart-verdict-text num neg" title="the whole table never reaches the goal within the horizon">
+              goal out of reach
+            </span>
+          )}
+        </div>
       </section>
     )
   }
@@ -78,7 +93,7 @@ export function Arena(props: Props): ReactElement {
   const cards = countCards(hand)
   const net = sim.active.contributions.find((s) => s.id === hand.id)
   const compare = sim.compares.find((c) => c.handId === hand.id)
-  const verdict = compare ? deltaVerdict(compare) : null
+  const verdict = compare ? deltaVerdict(compare, doc.from) : null
   const parent = trail[trail.length - 2]
 
   return (
@@ -104,7 +119,7 @@ export function Arena(props: Props): ReactElement {
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
-              <HandStack hand={card} sim={sim} scrub={scrub} />
+              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} />
             ) : (
               <CardView card={card} sim={sim} scrub={scrub} size="hand" onRemove={onRemoveCard} />
             )
@@ -113,10 +128,10 @@ export function Arena(props: Props): ReactElement {
         <div className="circle-hub">
           <HandName name={hand.name ?? hand.id} onRename={(name) => onRenameHand(hand.id, name)} />
           <span className="hub-count num">
-            {cards} card{cards === 1 ? '' : 's'} · plays top to bottom
+            {cards} card{cards === 1 ? '' : 's'} · plays left to right
           </span>
           <span className={`hub-net num${net && valueAt(net, scrub) < 0 ? ' neg' : ' pos'}`}>
-            net {net ? formatKrPerMonth(valueAt(net, scrub)) : '—'}
+            {net ? formatPerMonth(valueAt(net, scrub)) : '—'}
           </span>
           {verdict && (
             <span className={`hub-delta num ${verdict.cls}`} title={verdict.tooltip}>
@@ -125,13 +140,13 @@ export function Arena(props: Props): ReactElement {
           )}
           <button
             className="hub-remove"
-            title="Set the whole hand aside to the draw pile"
+            title="Discard the whole hand to the draw pile"
             onClick={() => {
               onNavigate(parent?.id ?? null)
               onRemoveCard(hand.id)
             }}
           >
-            set aside hand
+            <Glyph name="flame" size={12} /> discard hand
           </button>
         </div>
         {hand.children.length === 0 && <p className="hand-empty">empty hand — draw a card into it</p>}

@@ -28,7 +28,7 @@ const salary: PresetCard = {
   key: 'salary',
   name: 'Salary',
   glyph: 'coins',
-  headline: '+65 000 kr/mo gross',
+  headline: '+65 000 /mo gross',
   make: (uid) => ({
     id: `salary-${uid}`,
     name: 'Salary',
@@ -50,7 +50,7 @@ const expenses: PresetCard = {
   key: 'expenses',
   name: 'Living expenses',
   glyph: 'receipt',
-  headline: '−20 500 kr/mo',
+  headline: '−20 500 /mo',
   make: (uid) => ({ id: `expenses-${uid}`, name: 'Living expenses', kind: 'drain', amount: { type: 'constant', value: 20500 } }),
 }
 
@@ -78,7 +78,7 @@ const carValue: PresetCard = {
   key: 'car-value',
   name: 'Car',
   glyph: 'car',
-  headline: '240 000 kr · −15 % /yr',
+  headline: '240 000 · −15 % /yr',
   make: (uid) => ({ id: `car-value-${uid}`, name: 'Car', kind: 'asset', initialBalance: 240000, growth: { expected: -0.15 } }),
 }
 
@@ -86,7 +86,7 @@ const carCosts: PresetCard = {
   key: 'car-costs',
   name: 'Running costs',
   glyph: 'receipt',
-  headline: '−3 500 kr/mo',
+  headline: '−3 500 /mo',
   make: (uid) => ({ id: `car-costs-${uid}`, name: 'Running costs', kind: 'drain', amount: { type: 'constant', value: 3500 } }),
 }
 
@@ -94,7 +94,7 @@ const carLoan: PresetCard = {
   key: 'car-loan',
   name: 'Car loan',
   glyph: 'bank',
-  headline: '240 000 kr @ 6 % · 4 300 kr/mo',
+  headline: '240 000 @ 6 % · 4 300 /mo',
   make: (uid) => ({
     id: `car-loan-${uid}`,
     name: 'Car loan',
@@ -109,7 +109,7 @@ const flatValue: PresetCard = {
   key: 'flat-value',
   name: 'Apartment',
   glyph: 'building',
-  headline: '3,5 MSEK · +3 % /yr',
+  headline: '3,5 M · +3 % /yr',
   make: (uid) => ({
     id: `flat-value-${uid}`,
     name: 'Apartment',
@@ -124,7 +124,7 @@ const flatOutlay: PresetCard = {
   key: 'flat-outlay',
   name: 'Down payment',
   glyph: 'cash',
-  headline: '−700 000 kr, once',
+  headline: '−700 000, once',
   make: (uid) => ({
     id: `flat-outlay-${uid}`,
     name: 'Down payment',
@@ -137,7 +137,7 @@ const flatAvgift: PresetCard = {
   key: 'flat-avgift',
   name: 'Avgift & drift',
   glyph: 'home',
-  headline: '−4 500 kr/mo',
+  headline: '−4 500 /mo',
   make: (uid) => ({ id: `flat-avgift-${uid}`, name: 'Avgift & drift', kind: 'drain', amount: { type: 'constant', value: 4500 } }),
 }
 
@@ -145,7 +145,7 @@ const mortgage: PresetCard = {
   key: 'mortgage',
   name: 'Mortgage',
   glyph: 'bank',
-  headline: '2,8 MSEK @ 4,5 % · 11 000 kr/mo',
+  headline: '2,8 M @ 4,5 % · 11 000 /mo',
   make: (uid) => ({
     id: `flat-loan-${uid}`,
     name: 'Mortgage',
@@ -161,7 +161,7 @@ export const PRESETS: HandPreset[] = [
     id: 'current-budget',
     name: 'Current budget',
     glyph: 'coins',
-    description: 'Salary → tax → expenses → five index funds taking 20 % each, top to bottom.',
+    description: 'Salary → tax → expenses → five index funds taking 20 % each, left to right.',
     cards: [salary, incomeTax, expenses, ...FUND_NAMES.map((_, i) => fundCard(i))],
     build: (uid) => ({
       id: `budget-${uid}`,

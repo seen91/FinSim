@@ -23,6 +23,8 @@
 
   --gold: #b08d3f;
   --gold-deep: #7a5f2e;
+  /* ember: the discard flame — not a money color, so it stays outside green/red */
+  --flame: #c05a1a;
   --shadow: rgba(28, 16, 4, 0.4);
 
   --kind-source: var(--money-pos);
@@ -31,6 +33,7 @@
   --kind-debt: #7c4a33;
   --kind-event: #5f4b85;
   --kind-vessel: #6f6250;
+  --kind-flow: #6f6250;
   --kind-hand: #5f4b85;
 
   --money-pos: #2e6b2e;
@@ -117,8 +120,11 @@ body {
   color: var(--wood-ink-soft);
 }
 
+.goal-input input[type='text'] {
+  width: 5.5rem;
+}
+
 .goal-input input {
-  width: 8.5rem;
   font: inherit;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
@@ -303,15 +309,28 @@ button:not(:disabled):hover {
   fill: var(--ink);
 }
 
-/* zone labels: what part of the game this is */
-.zone-label {
-  font-size: 0.62rem;
-  font-family: var(--sans);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--wood-ink-soft);
-  margin: 0;
+/* the plan's own verdict, top-left on the map — same shape as on the stacks */
+.chart-verdict {
+  position: absolute;
+  top: 0.8rem;
+  right: 1.2rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  text-align: right;
+  pointer-events: none;
 }
+
+.chart-verdict-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  pointer-events: auto;
+}
+
+.chart-verdict-text.pos { color: var(--money-pos); }
+.chart-verdict-text.neg { color: var(--money-neg); }
 
 /* ---- playing cards: parchment, gold frame, engraved sigil ---- */
 .pcard {
@@ -390,6 +409,7 @@ button:not(:disabled):hover {
 .kind-debt .pcard-band { border-color: var(--kind-debt); color: var(--kind-debt); }
 .kind-event .pcard-band { border-color: var(--kind-event); color: var(--kind-event); }
 .kind-vessel .pcard-band { border-color: var(--kind-vessel); color: var(--kind-vessel); }
+.kind-flow .pcard-band { border-color: var(--kind-flow); color: var(--kind-flow); }
 .kind-hand .pcard-band { border-color: var(--kind-hand); color: var(--kind-hand); }
 
 .pcard-name {
@@ -437,6 +457,7 @@ button:not(:disabled):hover {
 .kind-asset .pcard-art { color: var(--kind-asset); }
 .kind-debt .pcard-art { color: var(--kind-debt); }
 .kind-vessel .pcard-art { color: var(--kind-vessel); }
+.kind-flow .pcard-art { color: var(--kind-flow); }
 .kind-hand .pcard-art { color: var(--kind-hand); }
 
 .pcard-stats {
@@ -542,15 +563,19 @@ input[type='range'] {
   width: 100%;
 }
 
+/* discard: burn the card back to the draw pile (hover-revealed flame) */
 .mod-remove {
   border: none;
   background: none;
-  color: var(--ink-soft);
+  color: var(--flame);
   padding: 0 0.15rem;
-  font-size: 0.8rem;
   line-height: 1;
   opacity: 0;
   transition: opacity 0.15s;
+}
+
+.mod-remove:hover {
+  color: color-mix(in srgb, var(--flame) 75%, black);
 }
 
 .stack:hover .mod-remove {
@@ -560,9 +585,9 @@ input[type='range'] {
 .card-shelf {
   position: absolute;
   top: 4px;
-  right: 7px;
+  right: 5px;
   z-index: 30;
-  font-size: 0.95rem;
+  display: flex;
 }
 
 /* ---- the fan: cards around a virtual circle ---- */
@@ -617,14 +642,6 @@ input[type='range'] {
 .hand-strip {
   position: relative;
   z-index: 5;
-}
-
-.hand-strip .zone-label {
-  position: absolute;
-  top: 0.35rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 0;
 }
 
 .hand-strip .fan-anchor {
@@ -722,6 +739,17 @@ input[type='range'] {
   margin-top: 0.2rem;
   font-size: 0.7rem;
   color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.hub-remove .glyph {
+  color: var(--flame);
+}
+
+.hub-remove:not(:disabled):hover {
+  color: color-mix(in srgb, var(--flame) 80%, var(--ink));
 }
 
 /* ---- a hand at rest: unmistakably a pile of several cards ---- */
@@ -803,6 +831,14 @@ input[type='range'] {
 .cash-corner {
   position: fixed;
   left: 1.2rem;
+  bottom: 1rem;
+  z-index: 40;
+}
+
+/* ---- the spout: the monthly remainder exits at the right end of the hand ---- */
+.flow-corner {
+  position: fixed;
+  right: calc(2.8rem + 96px); /* clear of the draw pile */
   bottom: 1rem;
   z-index: 40;
 }
