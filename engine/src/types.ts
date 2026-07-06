@@ -4,7 +4,7 @@
  */
 
 /** Card kinds. Kind alone determines what a card does in the pipeline (DESIGN.md §7). */
-export type Kind = 'source' | 'drain' | 'asset' | 'debt' | 'hand' | 'event'
+export type Kind = 'source' | 'drain' | 'asset' | 'debt' | 'hand' | 'rule'
 
 /**
  * Growth is `(expected, volatility?)` from day one. The deterministic v1
@@ -98,26 +98,33 @@ export interface DebtCard extends CardBase {
 
 /**
  * A named, toggleable, nestable collection — the grouping AND scoping
- * construct. A hand computes its own subtotal from zero, top to bottom, and
- * contributes its net at its position in the parent (DESIGN.md §7).
+ * construct. A hand computes its own subtotal top to bottom and contributes
+ * its net at its position in the parent (DESIGN.md §7). The subtotal starts
+ * from zero, or — with a `take` — from what the hand draws out of the
+ * parent's running total at its position, so "invest the surplus" hands can
+ * hold percent-take cards that keep reading real money.
  */
 export interface HandCard extends CardBase {
   kind: 'hand'
   /** Toggled off, the hand and everything in it is set aside. Default true. */
   enabled?: boolean
+  /** Drawn from the parent's running total as this hand's starting subtotal. */
+  take?: Take
   children: Card[]
 }
 
-export type Card = SourceCard | DrainCard | AssetCard | DebtCard | HandCard | EventCard
+export type Card = SourceCard | DrainCard | AssetCard | DebtCard | HandCard | RuleCard
 
 /**
- * A rule carried by a card. Played into a hand, its scheduled effect applies
- * to matching cards in that hand (nested hands included) — the hand is the
- * scope, so an asset-class tax like ISK is just a card next to its funds.
- * Scenario events reuse the same shape through world rules instead.
+ * A scheduled rule played as a card. Like every other card it acts on what
+ * comes after it: its effect applies to matching cards *below* it in its
+ * hand (nested hands included), so an asset-class tax like ISK sits on top
+ * of its funds. Cards above it are out of reach — position is the scope,
+ * same as the rest of the pipeline. Scenario events reuse the same shape
+ * through world rules instead, which see the whole table.
  */
-export interface EventCard extends CardBase {
-  kind: 'event'
+export interface RuleCard extends CardBase {
+  kind: 'rule'
   rule: ScheduledRule
 }
 
@@ -133,7 +140,7 @@ export interface RuleTarget {
 }
 
 /**
- * Effects locale packs and events can wire into the engine's hooks.
+ * Effects locale packs and rule cards can wire into the engine's hooks.
  * Flow effects apply to matching source/drain amounts; balance effects apply
  * at the end of the month's tick.
  */

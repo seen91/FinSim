@@ -26,7 +26,7 @@ function glyphFor(card: EngineCard): GlyphName {
       if (name.includes('apartment') || name.includes('flat')) return 'building'
       if (name.includes('savings') || name.includes('nest')) return 'vault'
       return 'trend'
-    case 'event':
+    case 'rule':
       return 'percent'
   }
 }
@@ -67,12 +67,17 @@ function frontStats(card: EngineCard): CardStat[] {
         value: card.payment.type === 'percent' ? `${formatPercent(card.payment.percent, 0)} of subtotal` : formatPerMonth(card.payment.amountPerMonth),
       })
     }
-  } else if (card.kind === 'event') {
+  } else if (card.kind === 'hand' && card.take) {
+    stats.push({
+      label: 'Takes',
+      value: card.take.type === 'percent' ? `${formatPercent(card.take.percent, 0)} of subtotal` : formatPerMonth(card.take.amountPerMonth),
+    })
+  } else if (card.kind === 'rule') {
     const { schedule, target, effect } = card.rule
     if (effect.type === 'balanceTax') stats.push({ label: 'Drains', value: `${formatPercent(effect.rate, 2)} of balance`, cls: 'neg' })
     else if (effect.type === 'flowTax') stats.push({ label: 'Taxes', value: formatPercent(effect.rate, 0), cls: 'neg' })
     else stats.push({ label: 'Scales', value: `× ${effect.factor}` })
-    stats.push({ label: 'On', value: target.tags?.join(', ') ?? target.kinds?.join(', ') ?? 'this hand' })
+    stats.push({ label: 'On', value: `${target.tags?.join(', ') ?? target.kinds?.join(', ') ?? 'cards'} below` })
     stats.push({ label: 'When', value: scheduleLabel(schedule) })
   }
   return stats
@@ -94,10 +99,10 @@ export function CardView({
   const contribution = sim.active.contributions.find((s) => s.id === card.id)
   const balanceSeries = sim.active.balances.find((s) => s.id === card.id)
   const isBalance = card.kind === 'asset' || card.kind === 'debt'
-  // an event card moves no money of its own — its stats say what it does
-  const isEvent = card.kind === 'event'
+  // a rule card moves no money of its own — its stats say what it does
+  const isRule = card.kind === 'rule'
   const value = isBalance ? (balanceSeries ? valueAt(balanceSeries, scrub) : 0) : contribution ? valueAt(contribution, scrub) : 0
-  const sparkline = isEvent ? undefined : isBalance ? balanceSeries?.points : contribution?.points
+  const sparkline = isRule ? undefined : isBalance ? balanceSeries?.points : contribution?.points
 
   return (
     <div className="stack">
@@ -107,7 +112,7 @@ export function CardView({
           kind: card.kind,
           name: card.name ?? card.id,
           glyph: glyphFor(card),
-          ...(isEvent
+          ...(isRule
             ? {}
             : {
                 headline: isBalance ? formatAmount(value) : formatPerMonth(value),

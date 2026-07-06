@@ -65,9 +65,15 @@ function validateCard(card: Card, errors: string[]): void {
       }
       break
     case 'hand':
+      if (card.take?.type === 'percent' && (card.take.percent < 0 || card.take.percent > 1)) {
+        errors.push(`Card "${card.id}": take percent must be within 0..1`)
+      }
+      if (card.take?.type === 'fixed' && card.take.amountPerMonth < 0) {
+        errors.push(`Card "${card.id}": take amount must be ≥ 0`)
+      }
       for (const child of card.children) validateCard(child, errors)
       break
-    case 'event': {
+    case 'rule': {
       const { schedule, effect } = card.rule
       if (schedule.kind === 'yearly' && (schedule.monthOfYear < 1 || schedule.monthOfYear > 12)) {
         errors.push(`Card "${card.id}": rule monthOfYear must be within 1..12`)
@@ -85,6 +91,9 @@ export function validateTable(table: Table): string[] {
   if (table.root.kind !== 'hand') {
     errors.push('Table root must be a hand')
     return errors
+  }
+  if (table.root.take) {
+    errors.push('Table root cannot have a take — there is no parent hand to draw from')
   }
   const seen = new Set<string>([table.root.id])
   const walk = (hand: HandCard): void => {

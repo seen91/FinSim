@@ -12,7 +12,7 @@ import { deserializeDoc, serializeDoc } from './exchange'
 import { formatCompact, parseCompact } from './format'
 import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import type { Blueprint } from './library'
-import { runSim, useDoc } from './model'
+import { migrateDoc, runSim, useDoc } from './model'
 import type { HandPreset, PresetCard } from './presets'
 import { starterDoc } from './starter'
 
@@ -67,7 +67,7 @@ export function App(): ReactElement {
       if (saved) {
         // the removed Sweden-rules toggle was the only writer of world rules — lift any it left behind
         if (saved.world?.rules) delete saved.world.rules
-        store.replace(saved)
+        store.replace(migrateDoc(saved))
       }
       loaded.current = true
     })

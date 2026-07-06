@@ -1,11 +1,11 @@
 import { firstCrossing, formatMonth, formatMonthsDelta, valueAt, type HandCard } from '@finsim/engine'
 import { useState, type ReactElement } from 'react'
-import { formatPerMonth } from '../format'
+import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
 import type { Doc, Sim } from '../model'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
-import { HandStack, countCards, deltaVerdict } from './HandStack'
+import { HandStack, countCards, deltaVerdict, handHeld } from './HandStack'
 import { Timeline } from './Timeline'
 
 /**
@@ -92,6 +92,7 @@ export function Arena(props: Props): ReactElement {
 
   const cards = countCards(hand)
   const net = sim.active.contributions.find((s) => s.id === hand.id)
+  const held = handHeld(hand, sim, scrub)
   const compare = sim.compares.find((c) => c.handId === hand.id)
   const verdict = compare ? deltaVerdict(compare, doc.from) : null
   const parent = trail[trail.length - 2]
@@ -133,6 +134,11 @@ export function Arena(props: Props): ReactElement {
           <span className={`hub-net num${net && valueAt(net, scrub) < 0 ? ' neg' : ' pos'}`}>
             {net ? formatPerMonth(valueAt(net, scrub)) : '—'}
           </span>
+          {held !== null && (
+            <span className={`hub-held num${held < 0 ? ' neg' : ' pos'}`} title="what this hand's assets and debts hold, net, at the scrubbed month">
+              {formatAmount(held)} /total
+            </span>
+          )}
           {verdict && (
             <span className={`hub-delta num ${verdict.cls}`} title={verdict.tooltip}>
               {verdict.text}

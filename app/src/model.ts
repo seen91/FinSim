@@ -1,4 +1,4 @@
-import { firstCrossing, goalDelta, setHandEnabled, simulate, type GoalDelta, type HandCard, type Series, type SimResult, type Table, type World } from '@finsim/engine'
+import { firstCrossing, goalDelta, setHandEnabled, simulate, type Card, type GoalDelta, type HandCard, type Series, type SimResult, type Table, type World } from '@finsim/engine'
 import { useCallback, useState } from 'react'
 
 /** The one small immutable document the whole table serializes to (DESIGN.md §2). */
@@ -9,6 +9,19 @@ export interface Doc {
   goal: number
   from: number
   horizonMonths: number
+}
+
+/**
+ * Lift old vocabulary in saved/imported docs, in place: the playable 'event'
+ * kind became 'rule' when its scope turned positional (cards below it).
+ */
+export function migrateDoc(doc: Doc): Doc {
+  const lift = (card: Card): void => {
+    if ((card.kind as string) === 'event') (card as { kind: string }).kind = 'rule'
+    if (card.kind === 'hand') card.children.forEach(lift)
+  }
+  doc.table.root.children.forEach(lift)
+  return doc
 }
 
 export interface HandCompare {

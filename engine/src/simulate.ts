@@ -26,15 +26,16 @@ import { CASH_ID, validateTable } from './validate.js'
  *   - a drain subtracts a fixed curve, or a share of the positive total;
  *   - an asset grows (net of fee), then takes its deposit from the total;
  *   - a debt accrues interest, then takes its payment, capped at payoff;
- *   - a nested hand computes its own subtotal from zero and contributes its
+ *   - a nested hand computes its own subtotal — from zero, or from what its
+ *     `take` draws out of the parent's running total — and contributes its
  *     net at its position — recursion is the scoping rule;
- *   - an event card moves no money itself: its scheduled rule applies to
- *     matching cards in its own hand (nested hands included) — a tax played
- *     as a card, scoped like everything else.
+ *   - a rule card moves no money itself: its scheduled rule applies to
+ *     matching cards *below* it in its hand (nested hands included) — a tax
+ *     played as a card, positional like everything else.
  *
  * Whatever reaches the bottom of the root lands in cash. Then scheduled
- * balance rules (taxes, crashes) fire — world rules table-wide, event-card
- * rules within their hand. Conventions the closed-form tests rely on:
+ * balance rules (taxes, crashes) fire — world rules table-wide, rule-card
+ * rules below their card. Conventions the closed-form tests rely on:
  *
  *   - Series point `i` is the state at the *end* of month `from + i`.
  *   - On a card's start month its initial balance appears and it takes its
@@ -133,26 +134,26 @@ export function simulate(table: Table, world: World, from: number, to: number): 
     if (start < from) throw new Error(`Card "${card.id}" starts at ${start}, before the simulation start ${from}`)
   }
 
-  // A rule in play: world rules see the whole table (scope null); an event
-  // card's rule sees only its enclosing hand's subtree, from the card's start.
+  // A rule in play: world rules see the whole table (scope null); a rule
+  // card sees only the cards below it in its hand (nested hands included),
+  // from the card's start — positional, like the rest of the pipeline.
   interface ActiveRule {
     rule: ScheduledRule
     scope: Set<string> | null
     start: number
   }
   const activeRules: ActiveRule[] = (world.rules ?? []).map((rule) => ({ rule, scope: null, start: from }))
-  const collectEventRules = (hand: HandCard): void => {
-    let scope: Set<string> | null = null
-    for (const child of hand.children) {
-      if (child.kind === 'event') {
-        scope ??= new Set(allCards(hand).map((c) => c.id))
-        activeRules.push({ rule: child.rule, scope, start: child.startMonth ?? from })
+  const collectRuleCards = (hand: HandCard): void => {
+    for (const [index, child] of hand.children.entries()) {
+      if (child.kind === 'rule') {
+        const below = hand.children.slice(index + 1).flatMap((c) => (c.kind === 'hand' ? [c, ...allCards(c)] : [c]))
+        activeRules.push({ rule: child.rule, scope: new Set(below.map((c) => c.id)), start: child.startMonth ?? from })
       } else if (child.kind === 'hand' && child.enabled !== false) {
-        collectEventRules(child)
+        collectRuleCards(child)
       }
     }
   }
-  collectEventRules(table.root)
+  collectRuleCards(table.root)
   const isFlow = (r: ActiveRule): boolean => r.rule.effect.type === 'flowTax' || r.rule.effect.type === 'flowScale'
   const flowRules = activeRules.filter(isFlow)
   const balanceRules = activeRules.filter((r) => !isFlow(r))
@@ -201,9 +202,9 @@ export function simulate(table: Table, world: World, from: number, to: number): 
     return flow
   }
 
-  /** Play one hand for one month: children top to bottom over a fresh subtotal. */
-  const playHand = (hand: HandCard, month: number, i: number): number => {
-    let total = 0
+  /** Play one hand for one month: children top to bottom, starting from what the hand took from its parent (zero without a take). */
+  const playHand = (hand: HandCard, month: number, i: number, initial: number): number => {
+    let total = initial
     for (const card of hand.children) {
       const start = card.startMonth ?? from
       if (month < start && card.kind !== 'hand') continue
@@ -261,12 +262,16 @@ export function simulate(table: Table, world: World, from: number, to: number): 
         }
         case 'hand': {
           if (card.enabled === false) break
-          const net = playHand(card, month, i)
-          total += net
-          contributions.get(card.id)![i] = net
+          const taken = card.take ? takeAmount(card.take, total) : 0
+          total -= taken
+          const leftover = playHand(card, month, i, taken)
+          total += leftover
+          // its net effect at this position: what came back minus what it took
+          const net = leftover - taken
+          contributions.get(card.id)![i] = net === 0 ? 0 : net
           break
         }
-        case 'event':
+        case 'rule':
           break // moves no money — its rule fires with the balance rules
       }
     }
@@ -277,7 +282,7 @@ export function simulate(table: Table, world: World, from: number, to: number): 
     const i = month - from
 
     // 1.–2. Play the root hand; the remainder lands in cash.
-    const remainder = playHand(table.root, month, i)
+    const remainder = playHand(table.root, month, i, 0)
     if (month > from) cash *= cashFactor
     cash += remainder
 

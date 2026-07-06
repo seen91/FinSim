@@ -5,9 +5,9 @@ import type { GlyphName } from './icons'
  * The card library: single-card blueprints you can play from the draw pile
  * (whole hands live in presets.ts). Every card is an engine card verbatim —
  * a tax is a % drain, a raise is the salary's own curve parameter, a fee is
- * an asset parameter, and an asset-class tax is an event card whose rule is
- * scoped to the hand it is played into. No modifiers: everything plays into
- * the pipeline.
+ * an asset parameter, and an asset-class tax is a rule card that applies to
+ * the cards below it in the hand it is played into. No modifiers: everything
+ * plays into the pipeline.
  */
 export interface Blueprint {
   id: string
@@ -98,14 +98,14 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'isk-tax',
     name: 'ISK tax',
-    kind: 'event',
+    kind: 'rule',
     glyph: 'percent',
     headline: '−0,89 % of funds /yr',
-    description: 'Swedish ISK schablonskatt as a card: every December it drains a deemed-yield tax from every fund in this hand. Swap the rate for your own regime — or model tax by lowering a fund’s growth instead.',
+    description: 'Swedish ISK schablonskatt as a card: every December it drains a deemed-yield tax from every fund below it in its hand. Swap the rate for your own regime — or model tax by lowering a fund’s growth instead.',
     make: (uid) => ({
       id: `isk-${uid}`,
       name: 'ISK tax',
-      kind: 'event',
+      kind: 'rule',
       rule: {
         id: `isk-rule-${uid}`,
         schedule: { kind: 'yearly', monthOfYear: 12 },

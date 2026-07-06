@@ -1,5 +1,5 @@
 import { validateTable } from '@finsim/engine'
-import type { Doc } from './model'
+import { migrateDoc, type Doc } from './model'
 
 /**
  * JSON export/import of the table document — the local-first backup and
@@ -41,6 +41,7 @@ export function deserializeDoc(json: string): Doc {
   if (!Number.isInteger(doc.horizonMonths) || doc.horizonMonths < 1) throw new Error('table file has an invalid horizon')
   if (typeof doc.goal !== 'number' || !(doc.goal > 0)) throw new Error('table file has an invalid goal')
   if (typeof doc.table !== 'object' || doc.table === null) throw new Error('table file has no table')
+  migrateDoc(doc as Doc)
   const errors = validateTable(doc.table)
   if (errors.length > 0) throw new Error(`table file is invalid:\n- ${errors.join('\n- ')}`)
   return doc as Doc

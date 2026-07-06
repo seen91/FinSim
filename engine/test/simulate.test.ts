@@ -292,10 +292,10 @@ describe('jurisdiction hooks (rules as data — no if(sweden) anywhere)', () => 
   })
 })
 
-describe('event cards: a tax played as a card, scoped to its hand', () => {
+describe('rule cards: a tax played as a card, applying to the cards below it in its hand', () => {
   const iskCard = (id: string, rate = 0.01, startMonth?: number): Card => ({
     id,
-    kind: 'event',
+    kind: 'rule',
     ...(startMonth === undefined ? {} : { startMonth }),
     rule: {
       id: `${id}-rule`,
@@ -312,9 +312,9 @@ describe('event cards: a tax played as a card, scoped to its hand', () => {
     tags: ['fund'],
   })
 
-  it('a yearly balanceTax event drains tagged fund balances, and moves no money itself', () => {
+  it('a yearly balanceTax rule drains tagged fund balances below it, and moves no money itself', () => {
     const from = ym(2026, 1)
-    const r = simulate(table([taggedFund('f', 12000), iskCard('isk')]), {}, from, ym(2027, 1))
+    const r = simulate(table([iskCard('isk'), taggedFund('f', 12000)]), {}, from, ym(2027, 1))
     const f = balance(r, 'f')
     expect(f[10]).toBe(12000)
     expect(f[11]).toBeCloseTo(11880, 9)
@@ -323,57 +323,110 @@ describe('event cards: a tax played as a card, scoped to its hand', () => {
     expect(r.cash.points.every((v) => v === 0)).toBe(true)
   })
 
-  it('the hand is the scope: a sibling fund outside the event card’s hand is untouched', () => {
+  it('position is the scope: a matching fund above the rule card is untouched', () => {
     const from = ym(2026, 1)
-    const t = table([taggedFund('outside', 1000), hand('isk-hand', [taggedFund('inside', 1000), iskCard('isk')])])
+    const r = simulate(table([taggedFund('above', 1000), iskCard('isk'), taggedFund('below', 1000)]), {}, from, ym(2026, 12))
+    expect(balance(r, 'above')[11]).toBe(1000)
+    expect(balance(r, 'below')[11]).toBeCloseTo(990, 9)
+  })
+
+  it('the hand bounds the scope: a sibling fund outside the rule card’s hand is untouched', () => {
+    const from = ym(2026, 1)
+    const t = table([hand('isk-hand', [iskCard('isk'), taggedFund('inside', 1000)]), taggedFund('outside', 1000)])
     const r = simulate(t, {}, from, ym(2026, 12))
     expect(balance(r, 'inside')[11]).toBeCloseTo(990, 9)
     expect(balance(r, 'outside')[11]).toBe(1000)
   })
 
-  it('an event in the root reaches into nested hands — scope is the whole subtree', () => {
+  it('a rule card reaches into nested hands below it — scope is the subtree underneath', () => {
     const from = ym(2026, 1)
     const t = table([iskCard('isk'), hand('funds', [taggedFund('nested', 1000)])])
     const r = simulate(t, {}, from, ym(2026, 12))
     expect(balance(r, 'nested')[11]).toBeCloseTo(990, 9)
   })
 
-  it('a disabled hand takes its event rule off the table with it', () => {
+  it('a disabled hand takes its rule card off the table with it', () => {
     const from = ym(2026, 1)
-    const t = table([taggedFund('f', 1000), hand('paused', [iskCard('isk')], false)])
+    const t = table([hand('paused', [iskCard('isk')], false), taggedFund('f', 1000)])
     const r = simulate(t, {}, from, ym(2026, 12))
     expect(balance(r, 'f')[11]).toBe(1000)
   })
 
   it('startMonth gates the rule: no tax before the card enters play', () => {
     const from = ym(2026, 1)
-    const t = table([taggedFund('f', 1000), iskCard('isk', 0.01, ym(2027, 1))])
+    const t = table([iskCard('isk', 0.01, ym(2027, 1)), taggedFund('f', 1000)])
     const r = simulate(t, {}, from, ym(2027, 12))
     expect(balance(r, 'f')[11]).toBe(1000) // December 2026: card not in play yet
     expect(balance(r, 'f')[23]).toBeCloseTo(990, 9) // December 2027: it is
   })
 
-  it('an event card never reaches the cash vessel — cash lives outside every hand', () => {
+  it('a rule card never reaches the cash vessel — cash lives outside every hand', () => {
     const t: Table = { ...table([]), cash: { initialBalance: 1000 } }
     t.root.children.push({
       id: 'levy',
-      kind: 'event',
+      kind: 'rule',
       rule: { id: 'levy-rule', schedule: { kind: 'once', atMonth: 0 }, target: { cardIds: ['cash'] }, effect: { type: 'balanceTax', rate: 0.1 } },
     })
     expect(simulate(t, {}, 0, 0).cash.points[0]).toBe(1000)
   })
 
-  it('a scoped flowTax event taxes only the flows in its hand', () => {
+  it('a scoped flowTax rule taxes only the flows below it in its hand', () => {
     const gig: Card = { id: 'gig', kind: 'source', flow: { type: 'constant', value: 1000 }, tags: ['income'] }
     const salary: Card = { id: 'salary', kind: 'source', flow: { type: 'constant', value: 1000 }, tags: ['income'] }
     const flowTax: Card = {
       id: 'gig-tax',
-      kind: 'event',
+      kind: 'rule',
       rule: { id: 'gig-tax-rule', schedule: { kind: 'monthly' }, target: { tags: ['income'] }, effect: { type: 'flowTax', rate: 0.5 } },
     }
-    const r = simulate(table([salary, hand('side', [gig, flowTax])]), {}, 0, 0)
+    const r = simulate(table([salary, hand('side', [flowTax, gig])]), {}, 0, 0)
     expect(contribution(r, 'salary')[0]).toBe(1000)
     expect(contribution(r, 'gig')[0]).toBeCloseTo(500, 9)
+  })
+})
+
+describe('hand takes: a hand may draw its starting subtotal from its parent', () => {
+  const pctFund = (id: string, percent: number): Card => fund(id, 0, { type: 'percent', percent })
+
+  it('a 100 % take is numerically identical to playing the same cards flat', () => {
+    const budget = (): Card[] => [source('salary', 65000), taxDrain('tax', 0.3), drain('expenses', 20500)]
+    const funds = (): Card[] => [1, 2, 3, 4, 5].map((i) => fund(`f${i}`, 0.07, { type: 'percent', percent: 0.2 }))
+    const flat = simulate(table([...budget(), ...funds()]), {}, 0, 120)
+    const nested = simulate(
+      table([...budget(), { id: 'invest', kind: 'hand', take: { type: 'percent', percent: 1 }, children: funds() }]),
+      {},
+      0,
+      120,
+    )
+    expect(nested.cash.points).toEqual(flat.cash.points)
+    expect(nested.netWorth.points).toEqual(flat.netWorth.points)
+    for (let i = 1; i <= 5; i++) expect(balance(nested, `f${i}`)).toEqual(balance(flat, `f${i}`))
+  })
+
+  it('a fixed take draws in full; the hand contributes leftover minus taken', () => {
+    const t = table([
+      source('salary', 10000),
+      { id: 'invest', kind: 'hand', take: { type: 'fixed', amountPerMonth: 4000 }, children: [pctFund('f', 0.5)] },
+    ])
+    const r = simulate(t, {}, 0, 0)
+    expect(balance(r, 'f')[0]).toBe(2000) // 50 % of the 4 000 the hand took
+    expect(contribution(r, 'invest')[0]).toBe(-2000) // took 4 000, returned 2 000
+    expect(r.cash.points[0]).toBe(8000)
+  })
+
+  it('a percent take reads max(0, parent total): nothing to sweep from an overdraft', () => {
+    const t = table([
+      drain('bill', 500),
+      { id: 'invest', kind: 'hand', take: { type: 'percent', percent: 1 }, children: [pctFund('f', 1)] },
+    ])
+    const r = simulate(t, {}, 0, 0)
+    expect(balance(r, 'f')[0]).toBe(0)
+    expect(r.cash.points[0]).toBe(-500)
+  })
+
+  it('a take-less hand still starts from zero — recursion stays the scoping rule', () => {
+    const r = simulate(table([source('salary', 10000), hand('scoped', [pctFund('f', 0.5)])]), {}, 0, 0)
+    expect(balance(r, 'f')[0]).toBe(0)
+    expect(r.cash.points[0]).toBe(10000)
   })
 })
 

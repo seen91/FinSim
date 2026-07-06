@@ -13,7 +13,7 @@ A financial simulator where every instrument is a card and every card is a curve
 
 - The engine is a **pure, deterministic, dependency-free TypeScript package** (`/engine`): no framework imports, no `Date.now()`, seeded randomness only, monthly tick. Exhaustively tested.
 - Jurisdiction rules (Sweden pack: ISK, ränteavdrag, amorteringskrav) are **data wired into engine hooks** — never `if (sweden)` in engine code.
-- Pipeline grammar: one rule — a hand is played top to bottom; each card acts on a running monthly total; a nested hand computes its own subtotal from zero and contributes its net at its position (recursion = scoping). No Modifier kind: tax is a % drain, a raise is the source's own curve, a fee is an asset parameter. Cash catches whatever reaches the bottom of the root hand.
+- Pipeline grammar: one rule — a hand is played top to bottom; each card acts on a running monthly total; a nested hand computes its own subtotal — from zero, or from its optional `take` drawn out of the parent's total — and contributes its net at its position (recursion = scoping). A Rule card's scheduled effect applies only to cards below it in its hand. No Modifier kind: tax is a % drain, a raise is the source's own curve, a fee is an asset parameter. Cash catches whatever reaches the bottom of the root hand.
 - Growth parameters are `(expected, volatility?)` from day one; v1 ignores volatility (Monte Carlo comes later).
 - App stack: TypeScript + React + Vite, PWA, local-first (IndexedDB), DOM not canvas.
 - Numbers use tabular numerals; green/red strictly for money direction. "Boring is the goal."

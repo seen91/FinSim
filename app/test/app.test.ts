@@ -1,4 +1,4 @@
-import { firstCrossing, formatMonthsDelta, type ScheduledRule } from '@finsim/engine'
+import { firstCrossing, formatMonthsDelta, type HandCard, type ScheduledRule } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
 import { deserializeDoc, serializeDoc } from '../src/exchange'
 import { addCard } from '../src/hands'
@@ -14,10 +14,20 @@ import { starterDoc } from '../src/starter'
  * starter pack and the compare plumbing feed it the right table.
  */
 
-/** The starter table without the ISK card it now ships with — the hand-checked golden scenario predates it. */
+/** The starter's "Index fund investing" hand — funds behind a 100 % take, ISK rule card on top. */
+function investingHand(doc: Doc): HandCard {
+  return doc.table.root.children.find((c): c is HandCard => c.kind === 'hand')!
+}
+
+/**
+ * The starter table without the ISK card it now ships with — the hand-checked
+ * golden scenario predates it. The 100 % take makes the investing hand
+ * numerically identical to playing the funds flat, so the answer holds.
+ */
 function goldenDoc(): Doc {
   const doc = starterDoc()
-  doc.table.root.children = doc.table.root.children.filter((c) => c.kind !== 'event')
+  const invest = investingHand(doc)
+  invest.children = invest.children.filter((c) => c.kind !== 'rule')
   return doc
 }
 
@@ -32,9 +42,9 @@ describe('M1 acceptance through the app model', () => {
   it('playing the car preset reads off the golden answer: 1 yr 3 mo', () => {
     const doc = docWithCar()
     const sim = runSim(doc)
-    expect(sim.compares).toHaveLength(1)
-    const compare = sim.compares[0]!
-    expect(compare.name).toBe('Buy the car')
+    // two bundles on the table: the starter's investing hand and the car
+    expect(sim.compares).toHaveLength(2)
+    const compare = sim.compares.find((c) => c.name === 'Buy the car')!
     expect(compare.delta.deltaMonths).toBe(15)
     expect(formatMonthsDelta(compare.delta.deltaMonths!)).toBe('1 yr 3 mo')
     // same absolute offsets as the engine acceptance test, whatever the start month
@@ -55,6 +65,12 @@ describe('JSON export/import', () => {
     expect(() => deserializeDoc('not json')).toThrow('not a JSON file')
     expect(() => deserializeDoc('{"some":"json"}')).toThrow('not a FinSim table file')
     expect(() => deserializeDoc(JSON.stringify({ format: 'finsim-table', version: 99, doc: {} }))).toThrow('version 99')
+  })
+
+  it("lifts the old 'event' kind to 'rule' on import", () => {
+    const json = serializeDoc(starterDoc()).replaceAll('"kind": "rule"', '"kind": "event"')
+    const imported = deserializeDoc(json)
+    expect(investingHand(imported).children[0]!.kind).toBe('rule')
   })
 
   it('rejects a structurally invalid table via the engine validator', () => {
@@ -78,9 +94,13 @@ const DECEMBER_FUND_TAX: ScheduledRule = {
 }
 
 describe('taxes as cards', () => {
-  it('the default hand ships with the ISK tax card, draining every index fund each December', () => {
+  it('the investing hand ships with the ISK rule card on top, draining every index fund below it each December', () => {
     const doc = starterDoc()
-    expect(doc.table.root.children.filter((c) => c.kind === 'event')).toHaveLength(1)
+    const invest = investingHand(doc)
+    expect(invest.name).toBe('Index fund investing')
+    expect(invest.take).toEqual({ type: 'percent', percent: 1 })
+    expect(invest.children.filter((c) => c.kind === 'rule')).toHaveLength(1)
+    expect(invest.children[0]!.kind).toBe('rule') // on top — it only reaches the cards below it
     const bare = runSim(goldenDoc())
     const taxed = runSim(doc)
     // first December in the simulation: month % 12 === 11

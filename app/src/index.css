@@ -31,7 +31,7 @@
   --kind-drain: var(--money-neg);
   --kind-asset: #a67c2e;
   --kind-debt: #7c4a33;
-  --kind-event: #5f4b85;
+  --kind-rule: #5f4b85;
   --kind-vessel: #6f6250;
   --kind-flow: #6f6250;
   --kind-hand: #5f4b85;
@@ -414,7 +414,7 @@ button:not(:disabled):hover {
 .kind-drain .pcard-band { border-color: var(--kind-drain); color: var(--kind-drain); }
 .kind-asset .pcard-band { border-color: var(--kind-asset); color: var(--kind-asset); }
 .kind-debt .pcard-band { border-color: var(--kind-debt); color: var(--kind-debt); }
-.kind-event .pcard-band { border-color: var(--kind-event); color: var(--kind-event); }
+.kind-rule .pcard-band { border-color: var(--kind-rule); color: var(--kind-rule); }
 .kind-vessel .pcard-band { border-color: var(--kind-vessel); color: var(--kind-vessel); }
 .kind-flow .pcard-band { border-color: var(--kind-flow); color: var(--kind-flow); }
 .kind-hand .pcard-band { border-color: var(--kind-hand); color: var(--kind-hand); }
@@ -734,6 +734,14 @@ input[type='range'] {
 .hub-net.pos { color: var(--money-pos); }
 .hub-net.neg { color: var(--money-neg); }
 
+/* the stock the flow builds: what the hand's assets and debts hold, net */
+.hub-held {
+  font-size: 0.82rem;
+}
+
+.hub-held.pos { color: var(--money-pos); }
+.hub-held.neg { color: var(--money-neg); }
+
 .hub-delta {
   font-size: 0.82rem;
   font-weight: 600;
@@ -823,6 +831,15 @@ input[type='range'] {
 
 .hand-stack-net.pos { color: var(--money-pos); }
 .hand-stack-net.neg { color: var(--money-neg); }
+
+/* the stock the flow builds: what the hand's assets and debts hold, net */
+.hand-stack-held {
+  align-self: flex-end;
+  font-size: 0.74rem;
+}
+
+.hand-stack-held.pos { color: var(--money-pos); }
+.hand-stack-held.neg { color: var(--money-neg); }
 
 /* the verdict: what this bundle costs, in time-to-goal */
 .hand-stack-delta {

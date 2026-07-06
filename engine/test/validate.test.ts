@@ -59,12 +59,12 @@ describe('validateTable (the kind system)', () => {
     expect(validateTable(t)).toContainEqual(expect.stringContaining('strictly increasing'))
   })
 
-  it('rejects event cards with out-of-range rates or months', () => {
-    const event = (rule: Partial<{ rate: number; monthOfYear: number }>): ReturnType<typeof table> =>
+  it('rejects rule cards with out-of-range rates or months', () => {
+    const ruleCard = (rule: Partial<{ rate: number; monthOfYear: number }>): ReturnType<typeof table> =>
       table([
         {
           id: 'x',
-          kind: 'event',
+          kind: 'rule',
           rule: {
             id: 'x-rule',
             schedule: { kind: 'yearly', monthOfYear: rule.monthOfYear ?? 12 },
@@ -73,8 +73,20 @@ describe('validateTable (the kind system)', () => {
           },
         },
       ])
-    expect(validateTable(event({ rate: 1.5 }))).toContainEqual(expect.stringContaining('0..1'))
-    expect(validateTable(event({ monthOfYear: 13 }))).toContainEqual(expect.stringContaining('1..12'))
-    expect(validateTable(event({}))).toEqual([])
+    expect(validateTable(ruleCard({ rate: 1.5 }))).toContainEqual(expect.stringContaining('0..1'))
+    expect(validateTable(ruleCard({ monthOfYear: 13 }))).toContainEqual(expect.stringContaining('1..12'))
+    expect(validateTable(ruleCard({}))).toEqual([])
+  })
+
+  it('rejects out-of-range hand takes, and a take on the root', () => {
+    expect(validateTable(table([{ id: 'h', kind: 'hand', take: { type: 'percent', percent: 1.5 }, children: [] }]))).toContainEqual(
+      expect.stringContaining('0..1'),
+    )
+    expect(validateTable(table([{ id: 'h', kind: 'hand', take: { type: 'fixed', amountPerMonth: -1 }, children: [] }]))).toContainEqual(
+      expect.stringContaining('≥ 0'),
+    )
+    const rootTake: ReturnType<typeof table> = table([])
+    rootTake.root.take = { type: 'percent', percent: 1 }
+    expect(validateTable(rootTake)).toContainEqual(expect.stringContaining('root'))
   })
 })
