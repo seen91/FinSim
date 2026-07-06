@@ -7,7 +7,8 @@ import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
 import { FlowCard } from './components/FlowCard'
 import { HandStack } from './components/HandStack'
-import { clearDoc, loadDoc, saveDoc } from './db'
+import { loadDoc, saveDoc } from './db'
+import { deserializeDoc, serializeDoc } from './exchange'
 import { formatCompact, parseCompact } from './format'
 import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import type { Blueprint } from './library'
@@ -53,11 +54,21 @@ export function App(): ReactElement {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [openHandId, setOpenHandId] = useState<string | null>(null)
   const loaded = useRef(false)
+  const importInput = useRef<HTMLInputElement>(null)
 
-  // local-first: load once, then save (debounced) on every change
+  // local-first: load once, then save (debounced) on every change.
+  // ?fresh skips the saved table and deals the starter — the clean-slate path now that Reset is gone.
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('fresh')) {
+      loaded.current = true
+      return
+    }
     void loadDoc().then((saved) => {
-      if (saved) store.replace(saved)
+      if (saved) {
+        // the removed Sweden-rules toggle was the only writer of world rules — lift any it left behind
+        if (saved.world?.rules) delete saved.world.rules
+        store.replace(saved)
+      }
       loaded.current = true
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,7 +84,7 @@ export function App(): ReactElement {
   const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
   const root = doc.table.root
 
-  // the opened hand and the chain of hands above it (undo can vanish it — fall back to chart)
+  // the opened hand and the chain of hands above it (a removal or import can vanish it — fall back to chart)
   const opened = openHandId ? findCard(root, openHandId) : null
   const trail = useMemo(() => {
     const chain: HandCard[] = []
@@ -100,33 +111,51 @@ export function App(): ReactElement {
 
   const playCard = (bp: Blueprint): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update(`play-${uid}`, (d) => addCard(d, targetId, bp.make(uid)))
-    store.commit()
+    store.update((d) => addCard(d, targetId, bp.make(uid)))
     setDrawerOpen(false)
   }
 
   const handleImportHand = (preset: HandPreset): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update(`import-${uid}`, (d) => addCard(d, targetId, preset.build(uid)))
-    store.commit()
+    store.update((d) => addCard(d, targetId, preset.build(uid)))
     setDrawerOpen(false)
   }
 
   const handleImportCard = (card: PresetCard): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update(`import-card-${uid}`, (d) => addCard(d, targetId, card.make(uid)))
-    store.commit()
+    store.update((d) => addCard(d, targetId, card.make(uid)))
     setDrawerOpen(false)
   }
 
   const handleReorder = (cardId: string, toIndex: number): void => {
-    store.update(`reorder-${cardId}`, (d) => moveCard(d, cardId, toIndex))
-    store.commit()
+    store.update((d) => moveCard(d, cardId, toIndex))
   }
 
   const handleRemoveCard = (cardId: string): void => {
-    store.update(`remove-${cardId}`, (d) => removeCard(d, cardId))
-    store.commit()
+    store.update((d) => removeCard(d, cardId))
+  }
+
+  const handleExport = (): void => {
+    const blob = new Blob([serializeDoc(doc)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `finsim-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportFile = (file: File): void => {
+    void file.text().then((text) => {
+      try {
+        const imported = deserializeDoc(text)
+        store.replace(imported)
+        setOpenHandId(null)
+        setScrub(imported.from)
+      } catch (err) {
+        alert(`Could not import: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    })
   }
 
   return (
@@ -138,8 +167,7 @@ export function App(): ReactElement {
           <GoalInput
             goal={doc.goal}
             onCommit={(v) => {
-              store.update('goal', (d) => (d.goal = v))
-              store.commit()
+              store.update((d) => (d.goal = v))
             }}
           />
         </label>
@@ -151,27 +179,28 @@ export function App(): ReactElement {
             onChange={(e) => {
               const [y, m] = e.target.value.split('-').map(Number)
               if (!y || !m) return
-              store.update('start', (d) => (d.from = ym(y, m)))
-              store.commit()
+              store.update((d) => (d.from = ym(y, m)))
             }}
           />
         </label>
         <div className="topbar-actions">
-          <button onClick={store.undo} disabled={!store.canUndo}>
-            Undo
+          <button onClick={handleExport} title="download the whole table as a JSON file — the backup/share path">
+            Export
           </button>
-          <button onClick={store.redo} disabled={!store.canRedo}>
-            Redo
+          <button onClick={() => importInput.current?.click()} title="replace the table with a previously exported JSON file">
+            Import
           </button>
-          <button
-            onClick={() => {
-              void clearDoc()
-              store.replace(starterDoc())
-              setOpenHandId(null)
+          <input
+            ref={importInput}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleImportFile(file)
+              e.target.value = ''
             }}
-          >
-            Reset
-          </button>
+          />
         </div>
       </header>
 
@@ -185,11 +214,10 @@ export function App(): ReactElement {
         onReorder={handleReorder}
         onRemoveCard={handleRemoveCard}
         onRenameHand={(handId, name) => {
-          store.update(`rename-${handId}`, (d) => {
+          store.update((d) => {
             const hand = findCard(d.table.root, handId)
             if (hand?.kind === 'hand') hand.name = name
           })
-          store.commit()
         }}
       />
 
@@ -213,11 +241,14 @@ export function App(): ReactElement {
       </footer>
 
       <div className="cash-corner">
-        <CashCard doc={doc} sim={sim} scrub={scrub} onEdit={store.update} onCommit={store.commit} />
-      </div>
-
-      <div className="flow-corner">
-        <FlowCard sim={sim} scrub={scrub} />
+        <div className="corner-slot">
+          <span className="corner-caption">accumulated</span>
+          <CashCard doc={doc} sim={sim} scrub={scrub} onEdit={store.update} />
+        </div>
+        <div className="corner-slot">
+          <span className="corner-caption">monthly</span>
+          <FlowCard sim={sim} scrub={scrub} />
+        </div>
       </div>
 
       <DrawPile

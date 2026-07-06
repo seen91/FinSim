@@ -58,4 +58,23 @@ describe('validateTable (the kind system)', () => {
     ])
     expect(validateTable(t)).toContainEqual(expect.stringContaining('strictly increasing'))
   })
+
+  it('rejects event cards with out-of-range rates or months', () => {
+    const event = (rule: Partial<{ rate: number; monthOfYear: number }>): ReturnType<typeof table> =>
+      table([
+        {
+          id: 'x',
+          kind: 'event',
+          rule: {
+            id: 'x-rule',
+            schedule: { kind: 'yearly', monthOfYear: rule.monthOfYear ?? 12 },
+            target: { tags: ['fund'] },
+            effect: { type: 'balanceTax', rate: rule.rate ?? 0.01 },
+          },
+        },
+      ])
+    expect(validateTable(event({ rate: 1.5 }))).toContainEqual(expect.stringContaining('0..1'))
+    expect(validateTable(event({ monthOfYear: 13 }))).toContainEqual(expect.stringContaining('1..12'))
+    expect(validateTable(event({}))).toEqual([])
+  })
 })

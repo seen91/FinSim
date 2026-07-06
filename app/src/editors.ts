@@ -4,7 +4,7 @@ import { formatAmount, formatPerMonth, formatPercent } from './format'
 /**
  * The back of a card: each editable parameter as a live slider (DESIGN.md §2,
  * "flip to edit"). An editor mutates a *fresh clone* of its card — the app's
- * update cycle owns immutability and undo. Every card is self-contained:
+ * update cycle owns immutability. Every card is self-contained:
  * a salary's raise, an asset's fee and deposit, a debt's payment all live
  * here, not in separate panels.
  */

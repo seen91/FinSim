@@ -13,6 +13,9 @@ coverage/
 *.log
 npm-debug.log*
 
+# Claude Code local (per-machine) settings
+.claude/settings.local.json
+
 # Editor / OS
 .DS_Store
 .idea/

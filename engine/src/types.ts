@@ -108,11 +108,13 @@ export interface HandCard extends CardBase {
   children: Card[]
 }
 
-export type Card = SourceCard | DrainCard | AssetCard | DebtCard | HandCard
+export type Card = SourceCard | DrainCard | AssetCard | DebtCard | HandCard | EventCard
 
 /**
- * A scripted world change. Events are scenario-dealt, never drafted; the
- * engine applies them through the same scheduled-rule hooks as locale packs.
+ * A rule carried by a card. Played into a hand, its scheduled effect applies
+ * to matching cards in that hand (nested hands included) — the hand is the
+ * scope, so an asset-class tax like ISK is just a card next to its funds.
+ * Scenario events reuse the same shape through world rules instead.
  */
 export interface EventCard extends CardBase {
   kind: 'event'

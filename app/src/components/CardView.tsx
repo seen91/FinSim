@@ -1,4 +1,4 @@
-import { valueAt, type Card as EngineCard } from '@finsim/engine'
+import { formatMonth, valueAt, type Card as EngineCard, type RuleSchedule } from '@finsim/engine'
 import type { ReactElement } from 'react'
 import { formatAmount, formatPerMonth, formatPercent } from '../format'
 import { Glyph, type GlyphName } from '../icons'
@@ -26,6 +26,21 @@ function glyphFor(card: EngineCard): GlyphName {
       if (name.includes('apartment') || name.includes('flat')) return 'building'
       if (name.includes('savings') || name.includes('nest')) return 'vault'
       return 'trend'
+    case 'event':
+      return 'percent'
+  }
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+function scheduleLabel(schedule: RuleSchedule): string {
+  switch (schedule.kind) {
+    case 'monthly':
+      return 'every month'
+    case 'yearly':
+      return `every ${MONTH_NAMES[schedule.monthOfYear - 1]}`
+    case 'once':
+      return `once, ${formatMonth(schedule.atMonth)}`
   }
 }
 
@@ -52,6 +67,13 @@ function frontStats(card: EngineCard): CardStat[] {
         value: card.payment.type === 'percent' ? `${formatPercent(card.payment.percent, 0)} of subtotal` : formatPerMonth(card.payment.amountPerMonth),
       })
     }
+  } else if (card.kind === 'event') {
+    const { schedule, target, effect } = card.rule
+    if (effect.type === 'balanceTax') stats.push({ label: 'Drains', value: `${formatPercent(effect.rate, 2)} of balance`, cls: 'neg' })
+    else if (effect.type === 'flowTax') stats.push({ label: 'Taxes', value: formatPercent(effect.rate, 0), cls: 'neg' })
+    else stats.push({ label: 'Scales', value: `× ${effect.factor}` })
+    stats.push({ label: 'On', value: target.tags?.join(', ') ?? target.kinds?.join(', ') ?? 'this hand' })
+    stats.push({ label: 'When', value: scheduleLabel(schedule) })
   }
   return stats
 }
@@ -72,8 +94,10 @@ export function CardView({
   const contribution = sim.active.contributions.find((s) => s.id === card.id)
   const balanceSeries = sim.active.balances.find((s) => s.id === card.id)
   const isBalance = card.kind === 'asset' || card.kind === 'debt'
+  // an event card moves no money of its own — its stats say what it does
+  const isEvent = card.kind === 'event'
   const value = isBalance ? (balanceSeries ? valueAt(balanceSeries, scrub) : 0) : contribution ? valueAt(contribution, scrub) : 0
-  const sparkline = isBalance ? balanceSeries?.points : contribution?.points
+  const sparkline = isEvent ? undefined : isBalance ? balanceSeries?.points : contribution?.points
 
   return (
     <div className="stack">
@@ -83,8 +107,12 @@ export function CardView({
           kind: card.kind,
           name: card.name ?? card.id,
           glyph: glyphFor(card),
-          headline: isBalance ? formatAmount(value) : formatPerMonth(value),
-          headlineClass: value > 0 ? 'pos' : value < 0 ? 'neg' : '',
+          ...(isEvent
+            ? {}
+            : {
+                headline: isBalance ? formatAmount(value) : formatPerMonth(value),
+                headlineClass: value > 0 ? ('pos' as const) : value < 0 ? ('neg' as const) : ('' as const),
+              }),
           stats: frontStats(card),
           ...(sparkline ? { sparkline } : {}),
         }}

@@ -292,6 +292,91 @@ describe('jurisdiction hooks (rules as data — no if(sweden) anywhere)', () => 
   })
 })
 
+describe('event cards: a tax played as a card, scoped to its hand', () => {
+  const iskCard = (id: string, rate = 0.01, startMonth?: number): Card => ({
+    id,
+    kind: 'event',
+    ...(startMonth === undefined ? {} : { startMonth }),
+    rule: {
+      id: `${id}-rule`,
+      schedule: { kind: 'yearly', monthOfYear: 12 },
+      target: { tags: ['fund'] },
+      effect: { type: 'balanceTax', rate },
+    },
+  })
+  const taggedFund = (id: string, initialBalance: number): Card => ({
+    id,
+    kind: 'asset',
+    initialBalance,
+    growth: { expected: 0 },
+    tags: ['fund'],
+  })
+
+  it('a yearly balanceTax event drains tagged fund balances, and moves no money itself', () => {
+    const from = ym(2026, 1)
+    const r = simulate(table([taggedFund('f', 12000), iskCard('isk')]), {}, from, ym(2027, 1))
+    const f = balance(r, 'f')
+    expect(f[10]).toBe(12000)
+    expect(f[11]).toBeCloseTo(11880, 9)
+    expect(f[12]).toBeCloseTo(11880, 9)
+    expect(contribution(r, 'isk').every((v) => v === 0)).toBe(true)
+    expect(r.cash.points.every((v) => v === 0)).toBe(true)
+  })
+
+  it('the hand is the scope: a sibling fund outside the event card’s hand is untouched', () => {
+    const from = ym(2026, 1)
+    const t = table([taggedFund('outside', 1000), hand('isk-hand', [taggedFund('inside', 1000), iskCard('isk')])])
+    const r = simulate(t, {}, from, ym(2026, 12))
+    expect(balance(r, 'inside')[11]).toBeCloseTo(990, 9)
+    expect(balance(r, 'outside')[11]).toBe(1000)
+  })
+
+  it('an event in the root reaches into nested hands — scope is the whole subtree', () => {
+    const from = ym(2026, 1)
+    const t = table([iskCard('isk'), hand('funds', [taggedFund('nested', 1000)])])
+    const r = simulate(t, {}, from, ym(2026, 12))
+    expect(balance(r, 'nested')[11]).toBeCloseTo(990, 9)
+  })
+
+  it('a disabled hand takes its event rule off the table with it', () => {
+    const from = ym(2026, 1)
+    const t = table([taggedFund('f', 1000), hand('paused', [iskCard('isk')], false)])
+    const r = simulate(t, {}, from, ym(2026, 12))
+    expect(balance(r, 'f')[11]).toBe(1000)
+  })
+
+  it('startMonth gates the rule: no tax before the card enters play', () => {
+    const from = ym(2026, 1)
+    const t = table([taggedFund('f', 1000), iskCard('isk', 0.01, ym(2027, 1))])
+    const r = simulate(t, {}, from, ym(2027, 12))
+    expect(balance(r, 'f')[11]).toBe(1000) // December 2026: card not in play yet
+    expect(balance(r, 'f')[23]).toBeCloseTo(990, 9) // December 2027: it is
+  })
+
+  it('an event card never reaches the cash vessel — cash lives outside every hand', () => {
+    const t: Table = { ...table([]), cash: { initialBalance: 1000 } }
+    t.root.children.push({
+      id: 'levy',
+      kind: 'event',
+      rule: { id: 'levy-rule', schedule: { kind: 'once', atMonth: 0 }, target: { cardIds: ['cash'] }, effect: { type: 'balanceTax', rate: 0.1 } },
+    })
+    expect(simulate(t, {}, 0, 0).cash.points[0]).toBe(1000)
+  })
+
+  it('a scoped flowTax event taxes only the flows in its hand', () => {
+    const gig: Card = { id: 'gig', kind: 'source', flow: { type: 'constant', value: 1000 }, tags: ['income'] }
+    const salary: Card = { id: 'salary', kind: 'source', flow: { type: 'constant', value: 1000 }, tags: ['income'] }
+    const flowTax: Card = {
+      id: 'gig-tax',
+      kind: 'event',
+      rule: { id: 'gig-tax-rule', schedule: { kind: 'monthly' }, target: { tags: ['income'] }, effect: { type: 'flowTax', rate: 0.5 } },
+    }
+    const r = simulate(table([salary, hand('side', [gig, flowTax])]), {}, 0, 0)
+    expect(contribution(r, 'salary')[0]).toBe(1000)
+    expect(contribution(r, 'gig')[0]).toBeCloseTo(500, 9)
+  })
+})
+
 describe('determinism', () => {
   it('the same inputs produce byte-identical output — no hidden state', () => {
     const t = table([

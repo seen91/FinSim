@@ -5,9 +5,9 @@ import type { Sim } from '../model'
 import { Card } from './Card'
 
 /**
- * The spout at the right end of the hand: whatever is left after the root
- * plays left to right exits here, month by month, and pours into the cash
- * vessel on the far left. Flow, where the cash card is stock.
+ * The spout under the cash vessel: whatever is left after the root plays top
+ * to bottom exits here, month by month, and pours into the vessel above it.
+ * Flow, where the cash card is stock.
  */
 export function FlowCard({ sim, scrub }: { sim: Sim; scrub: number }): ReactElement {
   const value = valueAt(sim.remainder, scrub)
@@ -16,7 +16,7 @@ export function FlowCard({ sim, scrub }: { sim: Sim; scrub: number }): ReactElem
       size="hand"
       face={{
         kind: 'flow',
-        name: 'This month',
+        name: 'Monthly flow',
         glyph: 'coins',
         headline: formatPerMonth(value),
         headlineClass: value > 0 ? 'pos' : value < 0 ? 'neg' : '',

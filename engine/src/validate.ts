@@ -67,6 +67,16 @@ function validateCard(card: Card, errors: string[]): void {
     case 'hand':
       for (const child of card.children) validateCard(child, errors)
       break
+    case 'event': {
+      const { schedule, effect } = card.rule
+      if (schedule.kind === 'yearly' && (schedule.monthOfYear < 1 || schedule.monthOfYear > 12)) {
+        errors.push(`Card "${card.id}": rule monthOfYear must be within 1..12`)
+      }
+      if ((effect.type === 'flowTax' || effect.type === 'balanceTax') && (effect.rate < 0 || effect.rate > 1)) {
+        errors.push(`Card "${card.id}": rule tax rate must be within 0..1`)
+      }
+      break
+    }
   }
 }
 

@@ -9,6 +9,7 @@ import type {
   RuleSchedule,
   RuleTarget,
   SampledData,
+  ScheduledRule,
   Series,
   SimResult,
   Table,
@@ -26,11 +27,14 @@ import { CASH_ID, validateTable } from './validate.js'
  *   - an asset grows (net of fee), then takes its deposit from the total;
  *   - a debt accrues interest, then takes its payment, capped at payoff;
  *   - a nested hand computes its own subtotal from zero and contributes its
- *     net at its position — recursion is the scoping rule.
+ *     net at its position — recursion is the scoping rule;
+ *   - an event card moves no money itself: its scheduled rule applies to
+ *     matching cards in its own hand (nested hands included) — a tax played
+ *     as a card, scoped like everything else.
  *
  * Whatever reaches the bottom of the root lands in cash. Then scheduled
- * balance rules (taxes, crashes) fire. Conventions the closed-form tests
- * rely on:
+ * balance rules (taxes, crashes) fire — world rules table-wide, event-card
+ * rules within their hand. Conventions the closed-form tests rely on:
  *
  *   - Series point `i` is the state at the *end* of month `from + i`.
  *   - On a card's start month its initial balance appears and it takes its
@@ -129,9 +133,31 @@ export function simulate(table: Table, world: World, from: number, to: number): 
     if (start < from) throw new Error(`Card "${card.id}" starts at ${start}, before the simulation start ${from}`)
   }
 
-  const rules = world.rules ?? []
-  const flowRules = rules.filter((r) => r.effect.type === 'flowTax' || r.effect.type === 'flowScale')
-  const balanceRules = rules.filter((r) => r.effect.type === 'balanceScale' || r.effect.type === 'balanceTax')
+  // A rule in play: world rules see the whole table (scope null); an event
+  // card's rule sees only its enclosing hand's subtree, from the card's start.
+  interface ActiveRule {
+    rule: ScheduledRule
+    scope: Set<string> | null
+    start: number
+  }
+  const activeRules: ActiveRule[] = (world.rules ?? []).map((rule) => ({ rule, scope: null, start: from }))
+  const collectEventRules = (hand: HandCard): void => {
+    let scope: Set<string> | null = null
+    for (const child of hand.children) {
+      if (child.kind === 'event') {
+        scope ??= new Set(allCards(hand).map((c) => c.id))
+        activeRules.push({ rule: child.rule, scope, start: child.startMonth ?? from })
+      } else if (child.kind === 'hand' && child.enabled !== false) {
+        collectEventRules(child)
+      }
+    }
+  }
+  collectEventRules(table.root)
+  const isFlow = (r: ActiveRule): boolean => r.rule.effect.type === 'flowTax' || r.rule.effect.type === 'flowScale'
+  const flowRules = activeRules.filter(isFlow)
+  const balanceRules = activeRules.filter((r) => !isFlow(r))
+  const ruleApplies = (r: ActiveRule, card: Card, month: number): boolean =>
+    month >= r.start && (r.scope === null || r.scope.has(card.id)) && targetMatches(r.rule.target, card)
 
   const assetStates = new Map<string, AssetState>()
   const debtStates = new Map<string, DebtState>()
@@ -167,9 +193,9 @@ export function simulate(table: Table, world: World, from: number, to: number): 
   const netWorthPoints = new Array<number>(n).fill(0)
 
   const applyFlowRules = (card: Card, flow: number, month: number): number => {
-    for (const rule of flowRules) {
-      if (scheduleMatches(rule.schedule, month) && targetMatches(rule.target, card)) {
-        flow = applyFlowEffect(rule.effect, flow, rule.id)
+    for (const r of flowRules) {
+      if (scheduleMatches(r.rule.schedule, month) && ruleApplies(r, card, month)) {
+        flow = applyFlowEffect(r.rule.effect, flow, r.rule.id)
       }
     }
     return flow
@@ -240,6 +266,8 @@ export function simulate(table: Table, world: World, from: number, to: number): 
           contributions.get(card.id)![i] = net
           break
         }
+        case 'event':
+          break // moves no money — its rule fires with the balance rules
       }
     }
     return total
@@ -254,10 +282,11 @@ export function simulate(table: Table, world: World, from: number, to: number): 
     cash += remainder
 
     // 3. Scheduled balance rules (taxes, crashes) at end of tick.
-    for (const rule of balanceRules) {
+    for (const r of balanceRules) {
+      const { rule } = r
       if (!scheduleMatches(rule.schedule, month)) continue
       for (const state of assetStates.values()) {
-        if (month >= state.start && targetMatches(rule.target, state.card)) {
+        if (month >= state.start && ruleApplies(r, state.card, month)) {
           if (state.data) {
             state.units = applyBalanceEffect(rule.effect, state.units, rule.id)
             state.balance = state.units * sampleAt(state.data, month, `Asset "${state.card.id}" price`)
@@ -268,12 +297,13 @@ export function simulate(table: Table, world: World, from: number, to: number): 
         }
       }
       for (const state of debtStates.values()) {
-        if (month >= state.start && targetMatches(rule.target, state.card)) {
+        if (month >= state.start && ruleApplies(r, state.card, month)) {
           state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
           balancePoints.get(state.card.id)![i] = state.balance === 0 ? 0 : -state.balance
         }
       }
-      if (targetsCash(rule.target)) {
+      // the cash vessel lives outside every hand — only world rules reach it
+      if (r.scope === null && targetsCash(rule.target)) {
         cash = applyBalanceEffect(rule.effect, cash, rule.id)
       }
     }

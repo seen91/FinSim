@@ -1,6 +1,6 @@
 import { firstCrossing, formatMonth, fromMonthIndex, valueAt } from '@finsim/engine'
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactElement, type RefObject } from 'react'
-import { formatAmount, formatCompact } from '../format'
+import { formatCompact } from '../format'
 import type { Sim } from '../model'
 import { linePath, scaleLinear } from '../scale'
 
@@ -100,7 +100,7 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
           y={MARGIN.top - 5}
           textAnchor={scrubX > width - 180 ? 'end' : scrubX < 120 ? 'start' : 'middle'}
         >
-          {formatMonth(scrub)} · {formatAmount(scrubNw)}
+          {formatMonth(scrub)} · {formatCompact(scrubNw)}
         </text>
       </svg>
     </div>

@@ -171,6 +171,13 @@ button:not(:disabled):hover {
   border-color: var(--gold);
 }
 
+/* a lit toggle: brass pressed into the rail */
+.topbar button.toggle.on {
+  color: var(--ink);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
 /* ---- the arena: a parchment map pinned to the table ---- */
 .arena {
   position: relative;
@@ -827,20 +834,29 @@ input[type='range'] {
 .hand-stack-delta.pos { color: var(--money-pos); }
 .hand-stack-delta.neg { color: var(--money-neg); }
 
-/* ---- cash: the vessel at the bottom of the pipeline, pinned in the corner ---- */
+/* ---- the pipeline's mouth, pinned in the corner: vessel (stock) over spout (flow) ---- */
 .cash-corner {
   position: fixed;
   left: 1.2rem;
   bottom: 1rem;
   z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
 }
 
-/* ---- the spout: the monthly remainder exits at the right end of the hand ---- */
-.flow-corner {
-  position: fixed;
-  right: calc(2.8rem + 96px); /* clear of the draw pile */
-  bottom: 1rem;
-  z-index: 40;
+.corner-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.corner-caption {
+  font-size: 0.66rem;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  padding-left: 0.2rem;
 }
 
 /* ---- the draw pile: a leather-backed deck ---- */

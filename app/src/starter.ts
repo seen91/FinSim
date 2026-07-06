@@ -1,4 +1,5 @@
 import { ym } from '@finsim/engine'
+import { LIBRARY } from './library'
 import type { Doc } from './model'
 import { PRESETS } from './presets'
 
@@ -14,6 +15,7 @@ import { PRESETS } from './presets'
  */
 export function starterDoc(): Doc {
   const budget = PRESETS.find((p) => p.id === 'current-budget')!
+  const isk = LIBRARY.find((b) => b.id === 'isk-tax')!
   const now = new Date() // app-side only: the engine never touches wall-clock time
   return {
     from: ym(now.getFullYear(), now.getMonth() + 1),
@@ -24,7 +26,8 @@ export function starterDoc(): Doc {
         id: 'root',
         name: 'Your plan',
         kind: 'hand',
-        children: budget.cards.map((c) => c.make('start')),
+        // the budget plus the ISK tax card — tax-as-a-card on show from the first render
+        children: [...budget.cards.map((c) => c.make('start')), isk.make('start')],
       },
     },
   }

@@ -48,16 +48,3 @@ export async function saveDoc(doc: Doc): Promise<void> {
   }
 }
 
-export async function clearDoc(): Promise<void> {
-  try {
-    const db = await openDb()
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite')
-      tx.objectStore(STORE).delete(KEY)
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
-  } catch {
-    // best-effort
-  }
-}

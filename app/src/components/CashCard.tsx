@@ -15,14 +15,12 @@ export function CashCard({
   sim,
   scrub,
   onEdit,
-  onCommit,
 }: {
   doc: Doc
   sim: Sim
   scrub: number
-  /** Coalescing doc update, same contract as DocStore.update. */
-  onEdit: (label: string, mutate: (doc: Doc) => void) => void
-  onCommit: () => void
+  /** Doc update, same contract as DocStore.update. */
+  onEdit: (mutate: (doc: Doc) => void) => void
 }): ReactElement {
   const [flipped, setFlipped] = useState(false)
   const initial = doc.table.cash?.initialBalance ?? 0
@@ -60,12 +58,10 @@ export function CashCard({
               value={initial}
               onChange={(e) => {
                 const v = Number(e.target.value)
-                onEdit('cash-initial', (d) => {
+                onEdit((d) => {
                   d.table.cash = { ...d.table.cash, initialBalance: v }
                 })
               }}
-              onPointerUp={onCommit}
-              onKeyUp={onCommit}
             />
           </label>
           <label className="param">
@@ -80,12 +76,10 @@ export function CashCard({
               value={interest}
               onChange={(e) => {
                 const v = Number(e.target.value)
-                onEdit('cash-interest', (d) => {
+                onEdit((d) => {
                   d.table.cash = { ...d.table.cash, growth: { ...d.table.cash?.growth, expected: v } }
                 })
               }}
-              onPointerUp={onCommit}
-              onKeyUp={onCommit}
             />
           </label>
         </>

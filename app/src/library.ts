@@ -5,8 +5,9 @@ import type { GlyphName } from './icons'
  * The card library: single-card blueprints you can play from the draw pile
  * (whole hands live in presets.ts). Every card is an engine card verbatim —
  * a tax is a % drain, a raise is the salary's own curve parameter, a fee is
- * an asset parameter. No modifiers, no targets: everything plays into the
- * pipeline.
+ * an asset parameter, and an asset-class tax is an event card whose rule is
+ * scoped to the hand it is played into. No modifiers: everything plays into
+ * the pipeline.
  */
 export interface Blueprint {
   id: string
@@ -92,6 +93,26 @@ export const LIBRARY: Blueprint[] = [
       growth: { expected: 0.07, volatility: 0.15 },
       take: { type: 'percent', percent: 0.1 },
       tags: ['equity', 'fund'],
+    }),
+  },
+  {
+    id: 'isk-tax',
+    name: 'ISK tax',
+    kind: 'event',
+    glyph: 'percent',
+    headline: '−0,89 % of funds /yr',
+    description: 'Swedish ISK schablonskatt as a card: every December it drains a deemed-yield tax from every fund in this hand. Swap the rate for your own regime — or model tax by lowering a fund’s growth instead.',
+    make: (uid) => ({
+      id: `isk-${uid}`,
+      name: 'ISK tax',
+      kind: 'event',
+      rule: {
+        id: `isk-rule-${uid}`,
+        schedule: { kind: 'yearly', monthOfYear: 12 },
+        target: { tags: ['fund'] },
+        // 30 % on a deemed yield of statslåneränta (1.96 % as of 2024-11-30) + 1 pp
+        effect: { type: 'balanceTax', rate: 0.3 * (0.0196 + 0.01) },
+      },
     }),
   },
   {
