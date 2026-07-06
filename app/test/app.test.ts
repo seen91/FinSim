@@ -1,4 +1,4 @@
-import { firstCrossing, formatMonthsDelta, type HandCard, type ScheduledRule } from '@finsim/engine'
+import { allCards, firstCrossing, formatMonthsDelta, type HandCard, type ScheduledRule } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
 import { deserializeDoc, serializeDoc } from '../src/exchange'
 import { addCard } from '../src/hands'
@@ -42,8 +42,8 @@ describe('M1 acceptance through the app model', () => {
   it('playing the car preset reads off the golden answer: 1 yr 3 mo', () => {
     const doc = docWithCar()
     const sim = runSim(doc)
-    // two bundles on the table: the starter's investing hand and the car
-    expect(sim.compares).toHaveLength(2)
+    // every card on the table carries a compare, nested ones included
+    expect(sim.compares).toHaveLength(allCards(doc.table.root).length)
     const compare = sim.compares.find((c) => c.name === 'Buy the car')!
     expect(compare.delta.deltaMonths).toBe(15)
     expect(formatMonthsDelta(compare.delta.deltaMonths!)).toBe('1 yr 3 mo')
@@ -51,6 +51,27 @@ describe('M1 acceptance through the app model', () => {
     expect(compare.delta.baseMonth).toBe(doc.from + 233)
     expect(compare.delta.variantMonth).toBe(doc.from + 248)
     expect(firstCrossing(sim.active, doc.goal)).toBe(doc.from + 248)
+  })
+})
+
+describe('per-card compares', () => {
+  it('the salary alone reaches the goal — its solo verdict is its own number', () => {
+    const sim = runSim(goldenDoc())
+    const salary = sim.compares.find((c) => c.name === 'Salary')!
+    expect(salary.soloGoalMonth).not.toBeNull()
+  })
+
+  it('living expenses cost time: the plan without them reaches the goal sooner', () => {
+    const sim = runSim(goldenDoc())
+    const expenses = sim.compares.find((c) => c.name === 'Living expenses')!
+    expect(expenses.soloGoalMonth).toBeNull() // a drain never reaches a goal alone
+    expect(expenses.delta.deltaMonths).toBeGreaterThan(0)
+  })
+
+  it('a nested card compares too: the ISK rule card inside the investing hand costs time', () => {
+    const sim = runSim(starterDoc())
+    const isk = sim.compares.find((c) => c.cardId.startsWith('isk-'))!
+    expect(isk.delta.deltaMonths).toBeGreaterThan(0)
   })
 })
 

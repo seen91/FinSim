@@ -3,9 +3,10 @@ import { useState, type ReactElement } from 'react'
 import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
 import type { Doc, Sim } from '../model'
+import { deltaVerdict } from '../verdict'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
-import { HandStack, countCards, deltaVerdict, handHeld } from './HandStack'
+import { HandStack, countCards, handHeld } from './HandStack'
 import { Timeline } from './Timeline'
 
 /**
@@ -93,7 +94,7 @@ export function Arena(props: Props): ReactElement {
   const cards = countCards(hand)
   const net = sim.active.contributions.find((s) => s.id === hand.id)
   const held = handHeld(hand, sim, scrub)
-  const compare = sim.compares.find((c) => c.handId === hand.id)
+  const compare = sim.compares.find((c) => c.cardId === hand.id)
   const verdict = compare ? deltaVerdict(compare, doc.from) : null
   const parent = trail[trail.length - 2]
 
@@ -120,9 +121,9 @@ export function Arena(props: Props): ReactElement {
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
-              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} />
+              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} />
             ) : (
-              <CardView card={card} sim={sim} scrub={scrub} size="hand" onRemove={onRemoveCard} />
+              <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} size="hand" onRemove={onRemoveCard} />
             )
           }
         />

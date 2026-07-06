@@ -23,6 +23,8 @@ export interface CardFace {
   sparkline?: number[]
   /** Front-of-card stat rows: the numbers that matter, at a glance. */
   stats?: CardStat[]
+  /** The card's time-to-goal verdict, same shape the hand stacks carry. */
+  verdict?: { text: string; cls: 'pos' | 'neg'; tooltip: string }
 }
 
 interface Props {
@@ -58,6 +60,11 @@ export function Card({ face, size = 'table', flipped = false, onFlip, back, mute
             </dl>
           )}
           {face.headline !== undefined && <p className={`pcard-headline num ${face.headlineClass ?? ''}`}>{face.headline}</p>}
+          {face.verdict && (
+            <p className={`pcard-delta num ${face.verdict.cls}`} title={face.verdict.tooltip}>
+              {face.verdict.text}
+            </p>
+          )}
           {face.sparkline && (
             <div className="pcard-spark">
               <Sparkline points={face.sparkline} />

@@ -1,4 +1,4 @@
-import { firstCrossing, goalDelta, setHandEnabled, simulate, type Card, type GoalDelta, type HandCard, type Series, type SimResult, type Table, type World } from '@finsim/engine'
+import { allCards, firstCrossing, goalDelta, simulate, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
 import { useCallback, useState } from 'react'
 
 /** The one small immutable document the whole table serializes to (DESIGN.md §2). */
@@ -24,16 +24,14 @@ export function migrateDoc(doc: Doc): Doc {
   return doc
 }
 
-export interface HandCompare {
-  handId: string
+export interface CardCompare {
+  cardId: string
   name: string
-  /** Simulation of the plan WITHOUT this bundle — the ghost curve. */
-  flipped: SimResult
-  /** Time-to-goal comparison, always phrased as without → with the bundle. */
+  /** Time-to-goal comparison, always phrased as without → with the card. */
   delta: GoalDelta
   /**
-   * When this hand ALONE reaches the goal (null if never within the horizon).
-   * A property of the hand itself — nothing else on the table moves it.
+   * When this card ALONE reaches the goal (null if never within the horizon).
+   * A property of the card itself — nothing else on the table moves it.
    */
   soloGoalMonth: number | null
 }
@@ -45,14 +43,14 @@ export interface Sim {
    * Exactly the sum of the root's direct children's contributions.
    */
   remainder: Series
-  compares: HandCompare[]
+  compares: CardCompare[]
 }
 
 /**
- * No hidden state: what-if diffs are just more simulate calls. Every decision
- * bundle (a hand played directly into the main hand) auto-computes the plan
- * without itself, so its time-to-goal cost sits on the bundle's own stack —
- * no toggle, no extra curves on the chart.
+ * No hidden state: what-if diffs are just more simulate calls. EVERY card on
+ * the table (hands included, wherever they sit) auto-computes the plan
+ * without itself and itself alone, so its time-to-goal verdict sits on the
+ * card's own face — no toggle, no extra curves on the chart.
  *
  * Everything is nominal: inflation and taxes are modeled on the cards
  * themselves (an explicit % drain, or a lowered expected return), not as
@@ -69,15 +67,14 @@ export function runSim(doc: Doc): Sim {
     for (let i = 0; i < points.length; i++) points[i] = points[i]! + (s.points[i] ?? 0)
   }
   const remainder: Series = { id: 'remainder', role: 'net', startMonth: doc.from, points }
-  const bundles = doc.table.root.children.filter((c): c is HandCard => c.kind === 'hand')
-  const compares = bundles.map((hand) => {
-    const withoutBundle = simulate(setHandEnabled(doc.table, hand.id, false), world, doc.from, to)
-    const alone = simulate({ root: { id: `solo-${hand.id}`, kind: 'hand', children: [hand] } }, world, doc.from, to)
+  const compares = allCards(doc.table.root).map((card) => {
+    const ghost = simulate(withoutCard(doc.table, card.id), world, doc.from, to)
+    // solo intentionally starts from nothing — no cash config, no siblings
+    const alone = simulate({ root: { id: `solo-${card.id}`, kind: 'hand', children: [card] } }, world, doc.from, to)
     return {
-      handId: hand.id,
-      name: hand.name ?? hand.id,
-      flipped: withoutBundle,
-      delta: goalDelta(withoutBundle, active, doc.goal),
+      cardId: card.id,
+      name: card.name ?? card.id,
+      delta: goalDelta(ghost, active, doc.goal),
       soloGoalMonth: firstCrossing(alone, doc.goal),
     }
   })

@@ -2,7 +2,8 @@ import { formatMonth, valueAt, type Card as EngineCard, type RuleSchedule } from
 import type { ReactElement } from 'react'
 import { formatAmount, formatPerMonth, formatPercent } from '../format'
 import { Glyph, type GlyphName } from '../icons'
-import type { Sim } from '../model'
+import type { CardCompare, Sim } from '../model'
+import { deltaVerdict } from '../verdict'
 import { Card, type CardStat } from './Card'
 
 /** An engine card dressed for the table: glyph, live headline, stat rows. */
@@ -87,12 +88,16 @@ export function CardView({
   card,
   sim,
   scrub,
+  from,
+  compare,
   size = 'table',
   onRemove,
 }: {
   card: EngineCard
   sim: Sim
   scrub: number
+  from: number
+  compare?: CardCompare
   size?: 'hand' | 'table'
   onRemove: (cardId: string) => void
 }): ReactElement {
@@ -103,6 +108,7 @@ export function CardView({
   const isRule = card.kind === 'rule'
   const value = isBalance ? (balanceSeries ? valueAt(balanceSeries, scrub) : 0) : contribution ? valueAt(contribution, scrub) : 0
   const sparkline = isRule ? undefined : isBalance ? balanceSeries?.points : contribution?.points
+  const verdict = compare ? deltaVerdict(compare, from) : null
 
   return (
     <div className="stack">
@@ -120,6 +126,7 @@ export function CardView({
               }),
           stats: frontStats(card),
           ...(sparkline ? { sparkline } : {}),
+          ...(verdict ? { verdict } : {}),
         }}
       />
       <button className="card-shelf mod-remove" title="Discard to the draw pile" aria-label="Discard" onClick={() => onRemove(card.id)}>

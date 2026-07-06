@@ -506,6 +506,17 @@ button:not(:disabled):hover {
 .pcard-headline.pos { color: var(--money-pos); }
 .pcard-headline.neg { color: var(--money-neg); }
 
+/* the verdict: what this card costs (or earns), in time-to-goal */
+.pcard-delta {
+  font-size: 0.68rem;
+  font-weight: 600;
+  margin: 0;
+  text-align: right;
+}
+
+.pcard-delta.pos { color: var(--money-pos); }
+.pcard-delta.neg { color: var(--money-neg); }
+
 .pcard-spark {
   color: var(--ink-soft);
   text-align: right;
