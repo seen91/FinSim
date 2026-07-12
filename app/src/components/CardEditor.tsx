@@ -454,8 +454,9 @@ function curveOfType(type: Curve['type'], from: Curve): Curve {
     case 'linear':
       return { type, base, slopePerMonth: 0 }
     case 'compound':
-      // flows reprice like raises and rent hikes — once a year, not a monthly creep
-      return { type, base, annualRate: { expected: 0.02 }, holdMonths: 12 }
+      // no holdMonths: a fresh compound lands smooth, "(mo)" — the fund
+      // convention; a raise is written explicitly ("/yr", "(jan)")
+      return { type, base, annualRate: { expected: 0.02 } }
     case 'step':
       return { type, initial: base, steps: [{ atMonth: 12, value: base }] }
     case 'sinusoidal':
