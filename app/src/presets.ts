@@ -47,7 +47,7 @@ const salary: PresetCard = stamped({
     id: `salary-${uid}`,
     name: 'Salary',
     kind: 'source',
-    flow: { type: 'compound', base: 65000, annualRate: { expected: 0 } },
+    flow: { type: 'compound', base: 65000, annualRate: { expected: 0 }, holdMonths: 12 },
     tags: ['income'],
   }),
 })

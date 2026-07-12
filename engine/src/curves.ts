@@ -83,13 +83,31 @@ export function periodsPerMonth(cadence: Cadence = 'monthly'): number {
 }
 
 export function evalCurve(curve: Curve, ctx: CurveContext): number {
+  // sample-and-hold: with holdMonths the curve only re-evaluates on its own
+  // anniversaries and holds in between — a yearly raise instead of a creep.
+  // holdAnchor pins the landings to a calendar month instead: t becomes
+  // holdMonths × (landings since the card started), so a January-anchored
+  // raise pays the full year's step in January no matter when the card
+  // entered play.
+  const hold = 'holdMonths' in curve ? curve.holdMonths : undefined
+  const anchor = 'holdAnchor' in curve ? curve.holdAnchor : undefined
+  let t = ctx.t
+  if (hold !== undefined && hold > 1) {
+    if (anchor !== undefined) {
+      const phase = anchor - 1 // absolute month index of the anchor within a year (index % 12 = month − 1)
+      const start = ctx.month - ctx.t
+      t = hold * (Math.floor((ctx.month - phase) / hold) - Math.floor((start - phase) / hold))
+    } else {
+      t = Math.floor(ctx.t / hold) * hold
+    }
+  }
   switch (curve.type) {
     case 'constant':
       return curve.value
     case 'linear':
-      return curve.base + curve.slopePerMonth * ctx.t
+      return curve.base + curve.slopePerMonth * t
     case 'compound':
-      return curve.base * Math.pow(monthlyFactor(curve.annualRate.expected), ctx.t)
+      return curve.base * Math.pow(monthlyFactor(curve.annualRate.expected), t)
     case 'step': {
       let value = curve.initial
       for (const step of curve.steps) {
@@ -99,7 +117,7 @@ export function evalCurve(curve: Curve, ctx: CurveContext): number {
     }
     case 'sinusoidal': {
       const phase = curve.phaseMonths ?? 0
-      return curve.base + curve.amplitude * Math.sin((2 * Math.PI * (ctx.t - phase)) / curve.periodMonths)
+      return curve.base + curve.amplitude * Math.sin((2 * Math.PI * (t - phase)) / curve.periodMonths)
     }
     case 'sampled': {
       const data = resolveSampled(curve, ctx.world, 'sampled curve')
@@ -109,6 +127,6 @@ export function evalCurve(curve: Curve, ctx: CurveContext): number {
       return sampleAt(data, ctx.month, 'sampled curve')
     }
     case 'expression':
-      return compiledCurveExpr(curve.expr)({ t: ctx.t, month: ctx.month })
+      return compiledCurveExpr(curve.expr)({ t, month: ctx.month })
   }
 }

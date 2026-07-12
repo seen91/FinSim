@@ -62,6 +62,29 @@ describe('validateTable (the kind system)', () => {
     ).toContainEqual(expect.stringContaining('≥ 0'))
   })
 
+  it('holdMonths must be a whole month count ≥ 1', () => {
+    const withHold = (holdMonths: number): Table =>
+      table([{ id: 'x', kind: 'source', flow: { type: 'compound', base: 52_000, annualRate: { expected: 0.035 }, holdMonths } }])
+    expect(validateTable(withHold(12))).toEqual([])
+    expect(validateTable(withHold(0))).toContainEqual(expect.stringContaining('holdMonths'))
+    expect(validateTable(withHold(2.5))).toContainEqual(expect.stringContaining('holdMonths'))
+  })
+
+  it('holdAnchor is a calendar month 1..12 and needs holdMonths to anchor', () => {
+    const withAnchor = (holdAnchor: number, holdMonths?: number): Table =>
+      table([
+        {
+          id: 'x',
+          kind: 'source',
+          flow: { type: 'compound', base: 52_000, annualRate: { expected: 0.035 }, ...(holdMonths !== undefined ? { holdMonths } : {}), holdAnchor },
+        },
+      ])
+    expect(validateTable(withAnchor(1, 12))).toEqual([])
+    expect(validateTable(withAnchor(0, 12))).toContainEqual(expect.stringContaining('1..12'))
+    expect(validateTable(withAnchor(13, 12))).toContainEqual(expect.stringContaining('1..12'))
+    expect(validateTable(withAnchor(1))).toContainEqual(expect.stringContaining('requires holdMonths'))
+  })
+
   it('rejects unordered step curves', () => {
     const t = table([
       { id: 'y', kind: 'source', flow: { type: 'step', initial: 0, steps: [{ atMonth: 5, value: 1 }, { atMonth: 5, value: 2 }] } },

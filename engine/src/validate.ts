@@ -31,6 +31,17 @@ function validateCurveShape(curve: Curve, where: string, errors: string[]): void
       }
     }
   }
+  if ('holdMonths' in curve && curve.holdMonths !== undefined && (!Number.isInteger(curve.holdMonths) || curve.holdMonths < 1)) {
+    errors.push(`${where}: holdMonths must be a whole number of months ≥ 1`)
+  }
+  if ('holdAnchor' in curve && curve.holdAnchor !== undefined) {
+    if (!Number.isInteger(curve.holdAnchor) || curve.holdAnchor < 1 || curve.holdAnchor > 12) {
+      errors.push(`${where}: holdAnchor must be a calendar month 1..12`)
+    }
+    if (!('holdMonths' in curve) || curve.holdMonths === undefined) {
+      errors.push(`${where}: holdAnchor requires holdMonths — an anchor needs a landing interval`)
+    }
+  }
 }
 
 function validateGrowth(growth: GrowthParam | undefined, where: string, errors: string[]): void {

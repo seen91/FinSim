@@ -80,6 +80,81 @@ function parseRate(text: string): number | null {
   return n === 1 ? r : Math.pow(1 + r, n) - 1
 }
 
+/** Months a landing token means: "yr" → 12, "q" → 3, "mo" → 1, "6mo" → 6. */
+function landMonths(token: string): number | null {
+  const counted = /^(\d+)mo?$/.exec(token)
+  if (counted) return Math.max(1, Number(counted[1]))
+  const cadence = UNIT_TOKENS[token]
+  if (!cadence) return null
+  // sub-monthly landings collapse to the tick
+  return Math.max(1, Math.round(12 / PERIODS_PER_YEAR[cadence]))
+}
+
+/** "jan" or "january" → 1, … — the calendar month a landing is anchored to. */
+const MONTH_TOKENS: Record<string, number> = Object.fromEntries(
+  MONTH_NAMES.flatMap((name, i) => [
+    [name.toLowerCase(), i + 1],
+    [name.slice(0, 3).toLowerCase(), i + 1],
+  ]),
+)
+
+interface Landing {
+  holdMonths: number | undefined
+  holdAnchor: number | undefined
+}
+
+/**
+ * A landing token: "mo" | "qtr" | "yr" | "6mo" (interval, anniversary-based),
+ * "jan" (yearly, anchored to January), or "qtr-jan" (interval-anchor).
+ */
+function parseLanding(token: string): Landing | null {
+  const [head, tail] = token.split('-') as [string, string?]
+  if (tail !== undefined) {
+    const hold = landMonths(head)
+    const anchor = MONTH_TOKENS[tail]
+    if (hold === null || anchor === undefined) return null
+    // an anchor on a monthly landing has nothing to pin — every month lands
+    return hold > 1 ? { holdMonths: hold, holdAnchor: anchor } : { holdMonths: undefined, holdAnchor: undefined }
+  }
+  const anchor = MONTH_TOKENS[token]
+  if (anchor !== undefined) return { holdMonths: 12, holdAnchor: anchor }
+  const hold = landMonths(token)
+  if (hold === null) return null
+  return hold > 1 ? { holdMonths: hold, holdAnchor: undefined } : { holdMonths: undefined, holdAnchor: undefined }
+}
+
+/**
+ * A growth rate on a flow states two periods: the unit it is quoted in and —
+ * in parens — when it lands. "3,5 %/yr" is a yearly raise on the card's
+ * anniversary; "3,5 %/yr(apr)" is that raise landing every April; "7 %/yr(mo)"
+ * is quoted per year but lands every month, smooth — how a fund is quoted.
+ * The parens default to the quote unit; a bare number keeps the current
+ * landing and anchor.
+ */
+function parseHoldRate(text: string, current: Landing): ({ annual: number } & Landing) | null {
+  const cleaned = text.replace(/\s+/g, '').replace(',', '.').replace('%', '').toLowerCase()
+  const m = /^(-?\d+(?:\.\d+)?)(?:\/([a-z0-9]+))?(?:\(([a-z0-9-]+)\))?$/.exec(cleaned)
+  if (!m) return null
+  const r = Number(m[1]) / 100
+  if (!Number.isFinite(r)) return null
+  const cadence = m[2] === undefined ? 'yearly' : UNIT_TOKENS[m[2]]
+  if (!cadence) return null
+  const n = PERIODS_PER_YEAR[cadence]
+  const annual = n === 1 ? r : Math.pow(1 + r, n) - 1
+  const landing = m[3] !== undefined ? parseLanding(m[3]) : m[2] !== undefined ? parseLanding(m[2]) : current
+  if (landing === null) return null
+  return { annual, ...landing }
+}
+
+/** The landing parens of the canonical rate text: a bare "%/yr" is the anniversary raise, "(mo)" is smooth. */
+function holdSuffix({ holdMonths, holdAnchor }: Landing): string {
+  if (holdMonths === undefined || holdMonths <= 1) return '(mo)'
+  const interval = holdMonths === 12 ? '' : holdMonths === 3 ? 'qtr' : `${String(holdMonths)}mo`
+  const anchor = holdAnchor !== undefined ? MONTH_NAMES[holdAnchor - 1]!.slice(0, 3).toLowerCase() : ''
+  if (!interval && !anchor) return ''
+  return `(${interval && anchor ? `${interval}-${anchor}` : interval || anchor})`
+}
+
 function round(v: number): number {
   return Math.round(v * 1000) / 1000
 }
@@ -225,6 +300,47 @@ function RateField({ label, path, value, onCommit }: { label: string; path: stri
   )
 }
 
+/**
+ * The rate of a compound flow: quote unit and landing in one text —
+ * "3,5 %/yr" (a raise), "3,5 %/yr(apr)" (the raise lands each April),
+ * "7 %/yr(mo)" (smooth, fund-style). Commits the annual rate the engine
+ * keeps plus the curve's holdMonths/holdAnchor.
+ */
+function HoldRateField({
+  label,
+  path,
+  value,
+  landing,
+  onCommit,
+}: {
+  label: string
+  path: string
+  value: number
+  landing: Landing
+  onCommit: (annual: number, landing: Landing) => void
+}): ReactElement {
+  const suffix = holdSuffix(landing)
+  const canonical = `${round(value * 100)} %/yr${suffix}`
+  const { draft, setDraft, onFocus, onBlur } = useDraft(canonical)
+  const commit = (text: string): void => {
+    setDraft(text)
+    const parsed = parseHoldRate(text, landing)
+    if (parsed) onCommit(parsed.annual, { holdMonths: parsed.holdMonths, holdAnchor: parsed.holdAnchor })
+  }
+  return (
+    <label className="param">
+      <span className="param-label">
+        <span>{label}</span>
+        <span className="param-value">
+          <input className="num" type="text" inputMode="decimal" value={draft} onChange={(e) => commit(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
+        </span>
+      </span>
+      <Slide path={path} />
+      <TuneNote path={path} base={value} format={(v) => `${round(v * 100)} %/yr${suffix}`} />
+    </label>
+  )
+}
+
 interface NumProps {
   label: string
   path: string
@@ -338,7 +454,8 @@ function curveOfType(type: Curve['type'], from: Curve): Curve {
     case 'linear':
       return { type, base, slopePerMonth: 0 }
     case 'compound':
-      return { type, base, annualRate: { expected: 0.02 } }
+      // flows reprice like raises and rent hikes — once a year, not a monthly creep
+      return { type, base, annualRate: { expected: 0.02 }, holdMonths: 12 }
     case 'step':
       return { type, initial: base, steps: [{ atMonth: 12, value: base }] }
     case 'sinusoidal':
@@ -417,7 +534,20 @@ function CurveField({
       {curve.type === 'compound' && (
         <>
           <AmountField label="Starts at" path={`${path}.base`} value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
-          <RateField label="Grows" path={`${path}.annualRate.expected`} value={curve.annualRate.expected} onCommit={(expected) => commit({ ...curve, annualRate: { ...curve.annualRate, expected } })} />
+          <HoldRateField
+            label="Grows"
+            path={`${path}.annualRate.expected`}
+            value={curve.annualRate.expected}
+            landing={{ holdMonths: curve.holdMonths, holdAnchor: curve.holdAnchor }}
+            onCommit={(expected, landing) => {
+              const next = { ...curve, annualRate: { ...curve.annualRate, expected } }
+              if (landing.holdMonths === undefined) delete next.holdMonths
+              else next.holdMonths = landing.holdMonths
+              if (landing.holdAnchor === undefined) delete next.holdAnchor
+              else next.holdAnchor = landing.holdAnchor
+              commit(next)
+            }}
+          />
         </>
       )}
       {curve.type === 'step' && (

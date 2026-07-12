@@ -24,7 +24,8 @@ function scheduleLabel(schedule: RuleSchedule): string {
 function frontStats(card: EngineCard): CardStat[] {
   const stats: CardStat[] = []
   if (card.kind === 'source' && card.flow.type === 'compound' && card.flow.annualRate.expected > 0) {
-    stats.push({ label: 'Raise', value: `${formatPercent(card.flow.annualRate.expected)} /yr` })
+    const anchor = card.flow.holdAnchor !== undefined ? ` each ${MONTH_NAMES[card.flow.holdAnchor - 1]!.slice(0, 3)}` : ''
+    stats.push({ label: 'Raise', value: `${formatPercent(card.flow.annualRate.expected)} /yr${anchor}` })
   } else if (card.kind === 'drain' && card.percent !== undefined) {
     stats.push({ label: 'Takes', value: `${formatPercent(card.percent, 0)} of subtotal` })
   } else if (card.kind === 'asset') {

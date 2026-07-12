@@ -22,6 +22,62 @@ describe('curve primitives', () => {
     expect(at(c, 24)).toBeCloseTo(100 * 1.07 * 1.07, 10)
   })
 
+  it('holdMonths makes compound a yearly raise: flat all year, stepping on the anniversary', () => {
+    const c: Curve = { type: 'compound', base: 52_000, annualRate: { expected: 0.035 }, holdMonths: 12 }
+    expect(at(c, 0)).toBe(52_000)
+    expect(at(c, 1)).toBe(52_000) // no monthly creep — the bug that motivated the knob
+    expect(at(c, 11)).toBe(52_000)
+    expect(at(c, 12)).toBeCloseTo(52_000 * 1.035, 8)
+    expect(at(c, 23)).toBeCloseTo(52_000 * 1.035, 8)
+    expect(at(c, 24)).toBeCloseTo(52_000 * 1.035 ** 2, 8)
+  })
+
+  it('holdMonths is sample-and-hold on any parametric curve, not just compound', () => {
+    const linear: Curve = { type: 'linear', base: 1000, slopePerMonth: 10, holdMonths: 6 }
+    expect(at(linear, 5)).toBe(1000)
+    expect(at(linear, 6)).toBe(1060)
+    expect(at(linear, 11)).toBe(1060)
+    const expr: Curve = { type: 'expression', expr: '100 + t', holdMonths: 3 }
+    expect(at(expr, 2)).toBe(100)
+    expect(at(expr, 3)).toBe(103)
+  })
+
+  it('holdAnchor pins the raise to a calendar month: a July card raises every January', () => {
+    const c: Curve = { type: 'compound', base: 52_000, annualRate: { expected: 0.035 }, holdMonths: 12, holdAnchor: 1 }
+    const start = ym(2026, 7)
+    const at2 = (t: number): number => at(c, t, start + t)
+    expect(at2(0)).toBe(52_000) // Jul 2026
+    expect(at2(5)).toBe(52_000) // Dec 2026
+    expect(at2(6)).toBeCloseTo(52_000 * 1.035, 8) // Jan 2027 — the full year's raise lands
+    expect(at2(17)).toBeCloseTo(52_000 * 1.035, 8) // Dec 2027
+    expect(at2(18)).toBeCloseTo(52_000 * 1.035 ** 2, 8) // Jan 2028
+  })
+
+  it('a card that starts on its anchor month raises on the NEXT landing, not day one', () => {
+    const c: Curve = { type: 'compound', base: 100, annualRate: { expected: 0.1 }, holdMonths: 12, holdAnchor: 1 }
+    const start = ym(2026, 1)
+    expect(at(c, 0, start)).toBe(100) // Jan 2026 — starting month is not a raise
+    expect(at(c, 11, start + 11)).toBe(100)
+    expect(at(c, 12, start + 12)).toBeCloseTo(110, 10) // Jan 2027
+  })
+
+  it('an anchor composes with sub-yearly holds: quarterly anchored to January lands Jan/Apr/Jul/Oct', () => {
+    const c: Curve = { type: 'compound', base: 100, annualRate: { expected: 0.04 }, holdMonths: 3, holdAnchor: 1 }
+    const start = ym(2026, 8) // August: next landing is October
+    const q = Math.pow(1.04, 3 / 12)
+    expect(at(c, 0, start)).toBe(100)
+    expect(at(c, 1, start + 1)).toBe(100) // Sep
+    expect(at(c, 2, start + 2)).toBeCloseTo(100 * q, 8) // Oct
+    expect(at(c, 4, start + 4)).toBeCloseTo(100 * q, 8) // Dec
+    expect(at(c, 5, start + 5)).toBeCloseTo(100 * q * q, 8) // Jan
+  })
+
+  it('holdMonths 1 (or absent) is the smooth monthly behavior', () => {
+    const smooth: Curve = { type: 'compound', base: 100, annualRate: { expected: 0.07 } }
+    const held: Curve = { type: 'compound', base: 100, annualRate: { expected: 0.07 }, holdMonths: 1 }
+    expect(at(held, 7)).toBe(at(smooth, 7))
+  })
+
   it('compound carries volatility without using it (deterministic v1)', () => {
     const flat: Curve = { type: 'compound', base: 100, annualRate: { expected: 0.07 } }
     const vol: Curve = { type: 'compound', base: 100, annualRate: { expected: 0.07, volatility: 0.15 } }

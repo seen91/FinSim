@@ -45,15 +45,27 @@ export interface SampledRef {
  * Curve primitives — every card is a curve f(t) built from these.
  * `t` below is months since the card's start; sampled data is indexed by
  * absolute month, because history has dates.
+ *
+ * `holdMonths` is a sample-and-hold on `t`: the curve re-evaluates only every
+ * `holdMonths` months and holds in between (t quantized to ⌊t/hold⌋·hold), so
+ * a 3.5 %/yr compound salary with holdMonths 12 pays flat for a year and
+ * steps on its anniversary — a raise, not a monthly creep. Absent = smooth
+ * (every tick). It separates *when the number changes* from cadence (*how
+ * often it pays*) and from the engine tick, which stays monthly. Steps land
+ * on card anniversaries (local t) — unless `holdAnchor` (a calendar month
+ * 1..12, requires holdMonths) pins them: anchor 1 lands every January (every
+ * month ≡ January mod holdMonths), and the anchor month is when the new
+ * value first applies. Not on `step` (its schedule is already explicit) or
+ * `sampled` (history has its own dates).
  */
 export type Curve =
   | { type: 'constant'; value: number }
-  | { type: 'linear'; base: number; slopePerMonth: number }
-  | { type: 'compound'; base: number; annualRate: GrowthParam }
+  | { type: 'linear'; base: number; slopePerMonth: number; holdMonths?: number; holdAnchor?: number }
+  | { type: 'compound'; base: number; annualRate: GrowthParam; holdMonths?: number; holdAnchor?: number }
   | { type: 'step'; initial: number; steps: { atMonth: number; value: number }[] } // atMonth: months since card start
-  | { type: 'sinusoidal'; base: number; amplitude: number; periodMonths: number; phaseMonths?: number }
+  | { type: 'sinusoidal'; base: number; amplitude: number; periodMonths: number; phaseMonths?: number; holdMonths?: number; holdAnchor?: number }
   | ({ type: 'sampled' } & SampledRef)
-  | { type: 'expression'; expr: string } // variables: t (local months), month (absolute)
+  | { type: 'expression'; expr: string; holdMonths?: number; holdAnchor?: number } // variables: t (local months), month (absolute)
 
 export interface CardBase {
   id: string
