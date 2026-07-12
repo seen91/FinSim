@@ -86,6 +86,8 @@ goal" — before any game work. Two kinds of confidence, in order:
 
 **(c) Simulator polish pass:** whatever daily use surfaces once (a) and (b) exist — open, by design; it accrues from Sebastian using the table.
 
+- [x] **Backtesting: historical cards + replay-from-date** (decision "Backtesting" in DESIGN.md §0, 2026-07-12): import historical monthly data in the Workshop's **Data bench** (paste/file, bare values or `YYYY-MM,value` rows, consecutive-month validation, total-return + currency hints) → series lands in `world.series` and mints a priced-asset design in the library; series list with coverage + delete-only-when-unworn; pack export carries worn series. Replay is **re-anchoring**: `doc.replayFrom` (additive doc field, no version bump), topbar picker offered only anchors from `replayCoverage`, applied at the sim boundary (`playedTable` in `model.ts`, like tuning dials — the authored doc never moves) via the pure engine helper `reanchor` (`engine/src/replay.ts`); chart wears a quiet "replaying 1999-03 →" caption; a table that outruns its data shows a readable banner instead of crashing. Fan stays growth-cards-only ("one real past, not a fan of futures" — Rulebook section added). Tested: `engine/test/replay.test.ts` (shift math, coverage edges, hand-checked golden priced scenario, re-anchored identical shape), `app/test/replay.test.ts` (parser, mint, sim boundary purity, doc/pack round-trips), headless Chrome pass (import → mint → percent take → play → banner → pick date → chart moves → reload persistence → clear; golden baseline "goal in 20 yr 6 mo" intact)
+
 ## M4 — Game prototype, hot-seat ❌ not started
 
 Spec: DESIGN §4–5. Purpose: find out if the game is fun before building sync.
@@ -110,4 +112,4 @@ Epilogues, replays, sound (paper slides, monthly tick, year stamp), compare ghos
 
 ## Later (explicitly deferred)
 
-Stress tests beyond Monte Carlo (sequence-of-returns, historical replay of your plan through 2008), solo bots, pack registry/sharing, more eras (1929, 1970s, 2008, Japan 1989, Argentina).
+Stress tests beyond Monte Carlo — the *all-start-dates fan of pasts*: a sequence-of-returns distribution reusing `MonteCarloRun` + the futures report (single-date historical replay shipped with M3c; natural sequels also include named-era ghost overlays and offering imported series as `sampled`-curve source cards). Solo bots, pack registry/sharing, more eras (1929, 1970s, 2008, Japan 1989, Argentina).

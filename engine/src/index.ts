@@ -25,4 +25,5 @@ export {
   type MonteCarloRun,
 } from './montecarlo.js'
 export { firstCrossing, firstTouch, goalDelta, type GoalDelta } from './goals.js'
+export { reanchor, replayCoverage, type ReplayCoverage, type SeriesCoverage } from './replay.js'
 export { toReal, valueAt } from './series.js'

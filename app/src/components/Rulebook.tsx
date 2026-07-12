@@ -132,6 +132,10 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
               genuinely march to their own drum.
             </p>
             <p>
+              Only growth-rate assets are ever shocked. A card <strong>priced by historical data</strong> follows its series exactly, in every future — its
+              past already happened, so the dice never touch it. Flows, debts and cash stay deterministic too.
+            </p>
+            <p>
               Verdicts speak the same language: the plan&rsquo;s goal date gains <em>&ldquo;in NN % of futures&rdquo;</em>, and a bundle&rsquo;s
               time-to-goal cost becomes a range — &ldquo;+1 yr – 2 yr 6 mo in 80 % of futures&rdquo; — measured under identical market draws with and
               without the bundle, so the range is the decision&rsquo;s, not the dice&rsquo;s.
@@ -140,6 +144,32 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
               And the fan unfolds: <strong>click the &ldquo;in NN % of futures&rdquo; odds under the chart</strong> to open the futures report — when the
               goal tends to land year by year, how the horizon can close from the unlucky tenth to the lucky one, and what each bundle costs across
               futures, all read from the same dealt set.
+            </p>
+          </section>
+
+          <section>
+            <h3>Replays: one real past, not a fan of futures</h3>
+            <p>
+              Import historical monthly data in the Workshop (the <strong>Data</strong> bench) and it becomes a card priced by the real series — deposits
+              buy units at each month&rsquo;s actual price. Play one and a <strong>Replay</strong> picker appears beside the start date: pick a past month
+              and every historical series on the table shifts <em>together</em> so that month lines up with your start — &ldquo;the next 20 years play out
+              like 1999 onward did.&rdquo; Your goal, dates, ghosts and verdicts stay on the present timeline; only the data&rsquo;s past is borrowed. The
+              picker only offers months the data can cover for your whole horizon.
+            </p>
+            <p>
+              A replay is <strong>one real past</strong> — it answers &ldquo;what would this plan have done through that stretch of history,&rdquo; not
+              &ldquo;what might happen.&rdquo; The fan keeps coming from growth-rate cards with volatility only: a table of only historical cards draws a
+              single deterministic line, and the futures report keeps speaking about simulated futures, never about the replayed past.
+            </p>
+            <p>
+              The anchor is part of the table: it saves, exports and imports with everything else. Clear it (the <strong>×</strong> beside the picker) and
+              the authored world returns exactly — the replay never rewrote a number. And if a historical card is asked for a month its data does not
+              cover — played before a date is picked, or a horizon longer than the series — the table says so in plain words above the chart instead of
+              guessing: pick a replay date the data covers, or move the table&rsquo;s start.
+            </p>
+            <p>
+              Two data traps: use <strong>total-return</strong> series (a price-only index understates returns by leaving out dividends), and amounts are
+              in whatever currency the series is denominated in — FX is not modeled, so keep the table and its data in one currency.
             </p>
           </section>
 

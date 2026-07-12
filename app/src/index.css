@@ -1876,3 +1876,150 @@ input[type='range'].tuned {
   background: var(--card-deep);
   color: var(--ink);
 }
+
+/* ---- backtesting: the replay control, its chart caption, the data bench ---- */
+
+/* the quiet mode caption above the plan's verdict — the ledger notes it is reading a real past */
+.chart-replay {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  pointer-events: auto;
+}
+
+.replay-input {
+  position: relative;
+}
+
+.replay-input .replay-none {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.replay-input .replay-clear {
+  padding: 0 0.3rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  background: none;
+  border-color: transparent;
+}
+
+/* when the table cannot play, the last good chart stays and the reason hangs over it */
+.sim-error {
+  position: absolute;
+  top: 3.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: min(46rem, 90vw);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.74rem;
+  color: var(--money-neg);
+  background: var(--card-deep);
+  border: 1.5px solid var(--money-neg);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px var(--shadow);
+}
+
+/* the Workshop's data bench: import form beside the series shelf */
+.data-bench {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.6rem;
+  padding: 0.65rem 0.2rem 0.85rem;
+}
+
+.data-bench h3 {
+  margin: 0 0 0.3rem;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+}
+
+.data-import {
+  flex: 1 1 22rem;
+  max-width: 30rem;
+}
+
+.data-import .drawer-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.data-import .param > input,
+.data-import .param > textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.74rem;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card-deep) 60%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.15rem 0.3rem;
+}
+
+.data-import .param > textarea {
+  resize: vertical;
+  font-family: var(--sans);
+}
+
+.data-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.data-tools button {
+  font-size: 0.74rem;
+  padding: 0.15rem 0.55rem;
+}
+
+.data-mint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.data-list {
+  flex: 1 1 20rem;
+}
+
+.data-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0;
+  border-top: 1px dotted var(--line);
+  font-size: 0.74rem;
+}
+
+.data-row:last-child {
+  border-bottom: 1px dotted var(--line);
+}
+
+.data-row .data-name {
+  font-weight: 600;
+}
+
+.data-row .data-span {
+  margin-left: auto;
+  color: var(--ink-soft);
+}
+
+.data-row .work-burn {
+  color: var(--flame);
+  background: none;
+  border-color: transparent;
+  padding: 0 0.2rem;
+}
+
+.data-row .work-burn:disabled {
+  color: var(--ink-soft);
+  opacity: 0.45;
+}

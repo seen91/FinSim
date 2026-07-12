@@ -1,4 +1,4 @@
-import { findCard, formatMonth, ym, type HandCard } from '@finsim/engine'
+import { findCard, formatMonth, formatMonthsDelta, replayCoverage, ym, type HandCard } from '@finsim/engine'
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { instantiate, type AuthoredCard } from './authored'
 import { Arena } from './components/Arena'
@@ -18,7 +18,7 @@ import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import { Glyph } from './icons'
 import type { Blueprint } from './library'
 import { runMc } from './mc'
-import { cardFocusSeries, migrateDoc, runSim, useDoc } from './model'
+import { cardFocusSeries, migrateDoc, runSim, useDoc, type Doc, type Sim } from './model'
 import type { HandPreset, PresetCard } from './presets'
 import { starterDoc } from './starter'
 
@@ -50,6 +50,55 @@ function GoalInput({ goal, onCommit }: { goal: number; onCommit: (v: number) => 
         if (e.key === 'Escape') setDraft(formatCompact(goal))
       }}
     />
+  )
+}
+
+/**
+ * The replay control (DESIGN.md §0 "Backtesting"), beside the start-date
+ * editing — both are statements about time. Only there when the table
+ * references historical data; only offers months the data can cover.
+ */
+function ReplayControl({ doc, onSet }: { doc: Doc; onSet: (month: number | undefined) => void }): ReactElement | null {
+  const to = doc.from + doc.horizonMonths - 1
+  const coverage = useMemo(() => replayCoverage(doc.world ?? {}, doc.table, doc.from, to), [doc, to])
+  if (coverage.series.length === 0) return null
+  const spans = coverage.series.map((s) => `${s.seriesId} ${formatMonth(s.first)} … ${formatMonth(s.last)}`).join(' · ')
+  const { anchors } = coverage
+  if (!anchors) {
+    return (
+      <label className="goal-input replay-input" title={`data covers ${spans} — too short for a ${formatMonthsDelta(doc.horizonMonths)} horizon`}>
+        Replay
+        <span className="replay-none">data shorter than horizon</span>
+      </label>
+    )
+  }
+  const hint =
+    `the next ${formatMonthsDelta(doc.horizonMonths)} play out like this month onward did. ` +
+    `Data covers ${spans}; a ${formatMonthsDelta(doc.horizonMonths)} horizon can start ${formatMonth(anchors.first)} … ${formatMonth(anchors.last)}`
+  return (
+    <label className="goal-input replay-input" title={hint}>
+      Replay
+      <input
+        type="month"
+        min={formatMonth(anchors.first)}
+        max={formatMonth(anchors.last)}
+        value={doc.replayFrom !== undefined ? formatMonth(doc.replayFrom) : ''}
+        onChange={(e) => {
+          if (!e.target.value) {
+            onSet(undefined)
+            return
+          }
+          const [y, m] = e.target.value.split('-').map(Number)
+          if (!y || !m) return
+          onSet(Math.max(anchors.first, Math.min(anchors.last, ym(y, m))))
+        }}
+      />
+      {doc.replayFrom !== undefined && (
+        <button className="replay-clear" title="Clear the replay — back to the authored world" onClick={() => onSet(undefined)}>
+          ×
+        </button>
+      )}
+    </label>
   )
 }
 
@@ -104,11 +153,29 @@ export function App(): ReactElement {
     return () => clearTimeout(timer)
   }, [library])
 
-  const sim = useMemo(() => runSim(doc), [doc])
+  // a table can outrun its data — a priced card played before a replay date
+  // is picked, a bogus series id: keep the last good sim on screen and say why
+  const simState = useMemo(() => {
+    try {
+      return { sim: runSim(doc), error: null as string | null }
+    } catch (err) {
+      return { sim: null, error: err instanceof Error ? err.message : String(err) }
+    }
+  }, [doc])
+  const lastGoodSim = useRef<Sim | null>(null)
+  if (simState.sim) lastGoodSim.current = simState.sim
+  const sim =
+    simState.sim ?? lastGoodSim.current ?? runSim({ goal: doc.goal, from: doc.from, horizonMonths: doc.horizonMonths, table: { root: { id: 'root', kind: 'hand', children: [] } } })
   // the Monte Carlo pass rides a deferred value: the deterministic line
   // answers every gesture instantly, the fan follows a beat later
   const deferredDoc = useDeferredValue(doc)
-  const mc = useMemo(() => runMc(deferredDoc), [deferredDoc])
+  const mc = useMemo(() => {
+    try {
+      return runMc(deferredDoc)
+    } catch {
+      return null // the deterministic pass already carries the readable error
+    }
+  }, [deferredDoc])
   const to = doc.from + doc.horizonMonths - 1
   const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
   const root = doc.table.root
@@ -140,8 +207,12 @@ export function App(): ReactElement {
     }
     const authored = library.find((a) => a.id === workshopFocus.id)
     if (!authored) return null
-    const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } })
-    return { name: authored.card.name ?? authored.id, note: 'played alone on an empty table', series: solo.active.netWorth }
+    try {
+      const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } })
+      return { name: authored.card.name ?? authored.id, note: 'played alone on an empty table', series: solo.active.netWorth }
+    } catch {
+      return null // a design can outrun its data (no replay on an unpicked date) — no curve, not a crash
+    }
   }, [workshopOpen, workshopFocus, root, sim, library, doc])
 
   useEffect(() => {
@@ -251,6 +322,15 @@ export function App(): ReactElement {
             }}
           />
         </label>
+        <ReplayControl
+          doc={doc}
+          onSet={(month) => {
+            store.update((d) => {
+              if (month === undefined) delete d.replayFrom
+              else d.replayFrom = month
+            })
+          }}
+        />
         <div className="topbar-actions">
           {/* planked wooden boards on the rail, kin to the Workshop's sign */}
           <button className="sign" onClick={() => setRulebookOpen(true)} title="how the table plays — the rules, written down">
@@ -278,6 +358,13 @@ export function App(): ReactElement {
           />
         </div>
       </header>
+
+      {simState.error && (
+        <div className="sim-error" role="alert">
+          the table cannot play: {simState.error}
+          {simState.error.includes('no data for') && ' — pick a replay date the data covers, or move the table’s start'}
+        </div>
+      )}
 
       <Arena
         doc={doc}

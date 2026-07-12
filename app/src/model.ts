@@ -1,4 +1,4 @@
-import { allCards, firstCrossing, goalDelta, simulate, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
+import { allCards, firstCrossing, goalDelta, reanchor, simulate, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
 import { useCallback, useState } from 'react'
 import { applyTuneTable } from './tune'
 
@@ -10,6 +10,23 @@ export interface Doc {
   goal: number
   from: number
   horizonMonths: number
+  /**
+   * Historical replay anchor (DESIGN.md §0 "Backtesting"): the past month
+   * that lines up with `from`, shifting every historical series together at
+   * the sim boundary. Absent = the authored world, untouched.
+   */
+  replayFrom?: number
+}
+
+/**
+ * What the sim actually plays: the tuned table (dials applied, stripped) and,
+ * under a replay anchor, the re-anchored world — both applied at the boundary
+ * so the authored doc never moves.
+ */
+export function playedTable(doc: Doc): { table: Table; world: World } {
+  const table = applyTuneTable(doc.table)
+  const world = doc.world ?? {}
+  return doc.replayFrom === undefined ? { table, world } : reanchor(world, table, doc.replayFrom, doc.from)
 }
 
 /**
@@ -59,9 +76,8 @@ export interface Sim {
  */
 export function runSim(doc: Doc): Sim {
   const to = doc.from + doc.horizonMonths - 1
-  const world = doc.world ?? {}
-  // the sim plays the tuned table: every dial applied, dials stripped
-  const table = applyTuneTable(doc.table)
+  // the sim plays the tuned, re-anchored table: dials applied and stripped, series shifted under a replay
+  const { table, world } = playedTable(doc)
   const active = simulate(table, world, doc.from, to)
   const points = new Array<number>(doc.horizonMonths).fill(0)
   for (const child of table.root.children) {

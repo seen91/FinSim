@@ -5,9 +5,11 @@ import { Glyph } from '../icons'
 import type { Doc } from '../model'
 import { deserializePack, serializePack, type Pack } from '../packs'
 import { replaceCard } from '../hands'
+import { seriesIdsIn } from '../seriesImport'
 import { Card } from './Card'
 import { CardMathEditor, FrontMatterEditor } from './CardEditor'
 import { glyphFor } from './CardView'
+import { DataBench } from './DataBench'
 
 /**
  * The Workshop (DESIGN.md §3), in two stages so each holds one thought:
@@ -37,6 +39,7 @@ interface Props {
 
 export function Workshop({ open, onClose, doc, update, library, onLibraryChange, onPlay, focus, onFocus }: Props): ReactElement | null {
   const [picking, setPicking] = useState(false)
+  const [dataOpen, setDataOpen] = useState(false)
   const importInput = useRef<HTMLInputElement>(null)
 
   if (!open) return null
@@ -64,7 +67,10 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
   const handleExport = (): void => {
     const name = window.prompt('Pack name', 'My cards')
     if (!name) return
-    const pack: Pack = { name, cards: library }
+    // a design priced by a series is broken without it — the pack carries what its cards wear
+    const worn = new Set(library.flatMap((a) => seriesIdsIn(a.card)))
+    const series = Object.fromEntries(Object.entries(doc.world?.series ?? {}).filter(([id]) => worn.has(id)))
+    const pack: Pack = { name, cards: library, ...(Object.keys(series).length > 0 ? { series } : {}) }
     const blob = new Blob([serializePack(pack)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -187,6 +193,9 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
       <header className="workbench-bar">
         <h2>The Workshop</h2>
         <p className="drawer-hint">pick a card up to work on it — ‘in play’ cards edit the live table · packs carry your designs between tables</p>
+        <button className={dataOpen ? 'data-open' : undefined} onClick={() => setDataOpen(!dataOpen)} title="Import historical data and manage the table's series">
+          {dataOpen ? '← cards' : 'Data'}
+        </button>
         <button onClick={handleExport} disabled={library.length === 0} title="Bundle your designs into a pack file to share">
           Export pack
         </button>
@@ -209,32 +218,45 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
         </button>
       </header>
 
-      <div className="work-grid">
-        {picking ? (
-          <div className="kind-pick">
-            <p>a blank…</p>
-            {AUTHORABLE_KINDS.map((kind) => (
-              <button key={kind} className={`kind-pick-btn kind-${kind}`} onClick={() => handleNew(kind)}>
-                {kind}
+      {dataOpen ? (
+        <DataBench
+          doc={doc}
+          update={update}
+          library={library}
+          onLibraryChange={onLibraryChange}
+          onFocus={(f) => {
+            setDataOpen(false)
+            onFocus(f)
+          }}
+        />
+      ) : (
+        <div className="work-grid">
+          {picking ? (
+            <div className="kind-pick">
+              <p>a blank…</p>
+              {AUTHORABLE_KINDS.map((kind) => (
+                <button key={kind} className={`kind-pick-btn kind-${kind}`} onClick={() => handleNew(kind)}>
+                  {kind}
+                </button>
+              ))}
+              <button className="kind-pick-cancel" onClick={() => setPicking(false)}>
+                never mind
               </button>
-            ))}
-            <button className="kind-pick-cancel" onClick={() => setPicking(false)}>
-              never mind
+            </div>
+          ) : (
+            <button className="blank-card" onClick={() => setPicking(true)} title="Author a new card from a blank">
+              <span className="blank-plus">＋</span>
+              <span>Blank card</span>
             </button>
-          </div>
-        ) : (
-          <button className="blank-card" onClick={() => setPicking(true)} title="Author a new card from a blank">
-            <span className="blank-plus">＋</span>
-            <span>Blank card</span>
-          </button>
-        )}
-        {shelf.map((item) => (
-          <button key={item.key} className="drawer-slot work-item" onClick={item.pick} title="Pick up — only this card on the bench and the chart">
-            <Card size="hand" face={item.face} />
-            {item.inPlay && <span className="work-flag">in play</span>}
-          </button>
-        ))}
-      </div>
+          )}
+          {shelf.map((item) => (
+            <button key={item.key} className="drawer-slot work-item" onClick={item.pick} title="Pick up — only this card on the bench and the chart">
+              <Card size="hand" face={item.face} />
+              {item.inPlay && <span className="work-flag">in play</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
