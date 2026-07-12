@@ -46,20 +46,34 @@ export interface CardBase {
   enabled?: boolean
 }
 
-/** Adds its flow (kr/month) to the running total. A raise is the curve's own growth. */
+/**
+ * The period a flow amount is expressed in (DESIGN.md §0 "Card cadence").
+ * The engine's base tick stays monthly: a cadence only states the unit of
+ * the card's amount, which the tick normalizes to kr/month with a fixed
+ * average factor (weekly ×52/12, biweekly ×26/12, quarterly ×1/3, yearly
+ * ×1/12). A yearly amount is smoothed across the year — a lump landing in a
+ * specific month is a step/expression curve or a rule, not a cadence.
+ */
+export type Cadence = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+
+/** Adds its flow to the running total. A raise is the curve's own growth. */
 export interface SourceCard extends CardBase {
   kind: 'source'
+  /** kr per cadence period (kr/month unless a cadence says otherwise). */
   flow: Curve
+  cadence?: Cadence
 }
 
 /**
- * Subtracts from the running total: either a fixed curve (kr/month, stored
- * positive), or a share of the positive running total at its position —
- * which is how income tax is a card.
+ * Subtracts from the running total: either a fixed curve (kr per cadence
+ * period, stored positive), or a share of the positive running total at its
+ * position — which is how income tax is a card.
  */
 export interface DrainCard extends CardBase {
   kind: 'drain'
   amount?: Curve
+  /** Period `amount` is expressed in. A percent drain is a per-tick share and carries no cadence. */
+  cadence?: Cadence
   percent?: number
 }
 

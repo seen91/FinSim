@@ -1,6 +1,6 @@
 import { compileExpression, type CompiledExpr } from './expression.js'
 import { formatMonth } from './month.js'
-import type { Curve, SampledData, World } from './types.js'
+import type { Cadence, Curve, SampledData, World } from './types.js'
 
 /**
  * Curve evaluation. Curves are evaluated at a *local* time `t` (months since
@@ -58,6 +58,28 @@ export function monthlyFactor(annualRate: number): number {
   const f = 1 + annualRate
   if (f <= 0) throw new Error(`Annual rate ${annualRate} implies a non-positive factor; total loss is a balanceScale event, not a rate`)
   return Math.pow(f, 1 / 12)
+}
+
+/**
+ * Periods per month for a flow cadence — how the monthly tick normalizes a
+ * per-cadence amount to kr/month (fixed average factors; the base tick never
+ * changes — DESIGN.md §0 "Card cadence").
+ */
+export function periodsPerMonth(cadence: Cadence = 'monthly'): number {
+  switch (cadence) {
+    case 'weekly':
+      return 52 / 12
+    case 'biweekly':
+      return 26 / 12
+    case 'monthly':
+      return 1
+    case 'quarterly':
+      return 1 / 3
+    case 'yearly':
+      return 1 / 12
+    default:
+      throw new Error(`Unknown cadence "${String(cadence)}"`)
+  }
 }
 
 export function evalCurve(curve: Curve, ctx: CurveContext): number {

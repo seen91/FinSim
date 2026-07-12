@@ -1,4 +1,4 @@
-import { evalCurve, monthlyFactor, resolveSampled, sampleAt } from './curves.js'
+import { evalCurve, monthlyFactor, periodsPerMonth, resolveSampled, sampleAt } from './curves.js'
 import { allCards } from './tree.js'
 import type {
   AssetCard,
@@ -22,8 +22,10 @@ import { CASH_ID, validateTable } from './validate.js'
  * The monthly tick (DESIGN.md §7–8): play the root hand top to bottom.
  * Each card acts on a running monthly total —
  *
- *   - a source adds its curve (after jurisdiction flow rules);
- *   - a drain subtracts a fixed curve, or a share of the positive total;
+ *   - a source adds its curve — normalized from its cadence to kr/month —
+ *     (after jurisdiction flow rules);
+ *   - a drain subtracts a fixed curve (normalized the same way), or a share
+ *     of the positive total;
  *   - an asset grows (net of fee), then takes its deposit from the total;
  *   - a debt accrues interest, then takes its payment, capped at payoff;
  *   - a nested hand computes its own subtotal — from zero, or from what its
@@ -213,7 +215,7 @@ export function simulate(table: Table, world: World, from: number, to: number): 
       const t = month - start
       switch (card.kind) {
         case 'source': {
-          const flow = applyFlowRules(card, evalCurve(card.flow, { t, month, world }), month)
+          const flow = applyFlowRules(card, evalCurve(card.flow, { t, month, world }) * periodsPerMonth(card.cadence), month)
           total += flow
           contributions.get(card.id)![i] = flow
           break
@@ -222,7 +224,7 @@ export function simulate(table: Table, world: World, from: number, to: number): 
           const drawn =
             card.percent !== undefined
               ? card.percent * Math.max(0, total)
-              : applyFlowRules(card, evalCurve(card.amount!, { t, month, world }), month)
+              : applyFlowRules(card, evalCurve(card.amount!, { t, month, world }) * periodsPerMonth(card.cadence), month)
           total -= drawn
           contributions.get(card.id)![i] = neg(drawn)
           break

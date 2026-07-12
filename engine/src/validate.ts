@@ -8,6 +8,8 @@ import type { Card, Curve, HandCard, Table } from './types.js'
 
 export const CASH_ID = 'cash'
 
+const CADENCES = new Set(['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'])
+
 function validateCurveShape(curve: Curve, where: string, errors: string[]): void {
   if (curve.type === 'step') {
     for (let i = 1; i < curve.steps.length; i++) {
@@ -23,12 +25,21 @@ function validateCard(card: Card, errors: string[]): void {
   switch (card.kind) {
     case 'source':
       validateCurveShape(card.flow, `Card "${card.id}"`, errors)
+      if (card.cadence !== undefined && !CADENCES.has(card.cadence)) {
+        errors.push(`Card "${card.id}": unknown cadence "${String(card.cadence)}"`)
+      }
       break
     case 'drain': {
       const hasAmount = card.amount !== undefined
       const hasPercent = card.percent !== undefined
       if (hasAmount === hasPercent) {
         errors.push(`Card "${card.id}": a drain has exactly one of amount or percent`)
+      }
+      if (card.cadence !== undefined && !CADENCES.has(card.cadence)) {
+        errors.push(`Card "${card.id}": unknown cadence "${String(card.cadence)}"`)
+      }
+      if (card.cadence !== undefined && hasPercent) {
+        errors.push(`Card "${card.id}": a percent drain is a per-tick share and cannot have a cadence`)
       }
       if (card.amount) validateCurveShape(card.amount, `Card "${card.id}"`, errors)
       if (card.percent !== undefined && (card.percent < 0 || card.percent > 1)) {

@@ -456,6 +456,54 @@ describe('hand takes: a hand may draw its starting subtotal from its parent', ()
   })
 })
 
+describe('cadence: flow amounts normalize into the monthly tick — the base tick never changes', () => {
+  const weekly = (id: string, value: number): Card => ({ id, kind: 'source', cadence: 'weekly', flow: { type: 'constant', value } })
+
+  it('a weekly wage pays 52/12 weeks per month', () => {
+    const r = simulate(table([weekly('wage', 3000)]), {}, 0, 1)
+    expect(r.cash.points[0]).toBeCloseTo(3000 * (52 / 12), 9)
+    expect(contribution(r, 'wage')[0]).toBeCloseTo(13000, 9)
+  })
+
+  it('a yearly drain is smoothed across the months, not fired in one', () => {
+    const t = table([
+      source('salary', 10000),
+      { id: 'insurance', kind: 'drain', cadence: 'yearly', amount: { type: 'constant', value: 12000 } },
+    ])
+    const r = simulate(t, {}, 0, 11)
+    expect(contribution(r, 'insurance')).toEqual(new Array(12).fill(-1000))
+    expect(r.cash.points[11]).toBeCloseTo(12 * 9000, 9)
+  })
+
+  it('biweekly and quarterly factors', () => {
+    const t = table([
+      { id: 'pay', kind: 'source', cadence: 'biweekly', flow: { type: 'constant', value: 1200 } },
+      { id: 'fee', kind: 'drain', cadence: 'quarterly', amount: { type: 'constant', value: 900 } },
+    ])
+    const r = simulate(t, {}, 0, 0)
+    expect(contribution(r, 'pay')[0]).toBeCloseTo(1200 * (26 / 12), 9)
+    expect(contribution(r, 'fee')[0]).toBeCloseTo(-300, 9)
+  })
+
+  it('cadence is a unit, progression stays in the curve: a weekly wage with a raise', () => {
+    const t = table([
+      { id: 'wage', kind: 'source', cadence: 'weekly', flow: { type: 'compound', base: 1000, annualRate: { expected: 0.07 } } },
+    ])
+    const r = simulate(t, {}, 0, 12)
+    expect(contribution(r, 'wage')[12]).toBeCloseTo(1000 * Math.pow(g, 12) * (52 / 12), 9)
+  })
+
+  it('flow rules tax the normalized monthly flow', () => {
+    const world: World = {
+      rules: [
+        { id: 'tax', schedule: { kind: 'monthly' }, target: { kinds: ['source'] }, effect: { type: 'flowTax', rate: 0.3 } },
+      ],
+    }
+    const r = simulate(table([weekly('wage', 3000)]), world, 0, 0)
+    expect(r.cash.points[0]).toBeCloseTo(3000 * (52 / 12) * 0.7, 9)
+  })
+})
+
 describe('determinism', () => {
   it('the same inputs produce byte-identical output — no hidden state', () => {
     const t = table([

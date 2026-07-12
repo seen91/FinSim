@@ -15,6 +15,10 @@ Update it when a milestone item lands or a new gap is discovered.
 - [x] Validation (`validate.ts`), test suite ending in the M1 acceptance scenario with the golden answer **"1 yr 3 mo"** (`test/acceptance.car.test.ts`)
 - [x] `(expected, volatility?)` growth params, volatility ignored by v1
 
+Gaps discovered later:
+
+- [x] **Multiple tick resolutions** → **card cadence** (decision "Card cadence" recorded in DESIGN.md §0, 2026-07-12): sources and fixed-amount drains may declare `cadence: weekly | biweekly | quarterly | yearly` (default monthly) — the period their amount is expressed in; the tick normalizes it to kr/month with fixed average factors (weekly ×52⁄12, biweekly ×26⁄12, quarterly ×⅓, yearly ×1⁄12). The base tick stays monthly; percent drains/takes are per-tick shares and carry no cadence; yearly amounts are smoothed, not fired in one month. (`types.ts` `Cadence`, `curves.ts` `periodsPerMonth`, validated in `validate.ts`, tested in `simulate.test.ts`/`validate.test.ts`. The Workshop card editor is where cadence gets a UI — M2.)
+
 ## M1 — Simulator v1 ✅ done
 
 Done:

@@ -33,6 +33,16 @@ describe('validateTable (the kind system)', () => {
     expect(validateTable(table([{ id: 'x', kind: 'drain', percent: 1.2 }]))).toContainEqual(expect.stringContaining('0..1'))
   })
 
+  it('cadence must be a known period, and never sits on a percent drain', () => {
+    const badSource = { id: 'x', kind: 'source', cadence: 'fortnightly', flow: { type: 'constant', value: 1 } } as unknown as Card
+    expect(validateTable(table([badSource]))).toContainEqual(expect.stringContaining('unknown cadence'))
+    expect(validateTable(table([{ id: 'x', kind: 'drain', cadence: 'weekly', percent: 0.3 }]))).toContainEqual(
+      expect.stringContaining('cannot have a cadence'),
+    )
+    const ok = table([{ id: 'x', kind: 'source', cadence: 'weekly', flow: { type: 'constant', value: 1 } }])
+    expect(validateTable(ok)).toEqual([])
+  })
+
   it('rejects an asset with both growth and a price curve, and bad takes', () => {
     const both = table([{ id: 'x', kind: 'asset', growth: { expected: 0.07 }, price: { data: { startMonth: 0, values: [1] } } }])
     expect(validateTable(both)).toContainEqual(expect.stringContaining('not both'))
