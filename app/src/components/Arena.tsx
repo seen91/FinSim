@@ -25,6 +25,7 @@ interface Props {
   onNavigate: (handId: string | null) => void
   onReorder: (cardId: string, toIndex: number) => void
   onRemoveCard: (cardId: string) => void
+  onToggleCard: (cardId: string) => void
   onRenameHand: (handId: string, name: string) => void
 }
 
@@ -66,7 +67,7 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
 }
 
 export function Arena(props: Props): ReactElement {
-  const { doc, sim, scrub, onScrub, trail, onNavigate, onReorder, onRemoveCard, onRenameHand } = props
+  const { doc, sim, scrub, onScrub, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, onRenameHand } = props
   const hand = trail[trail.length - 1]
 
   if (!hand) {
@@ -123,7 +124,7 @@ export function Arena(props: Props): ReactElement {
             card.kind === 'hand' ? (
               <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} />
             ) : (
-              <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} size="hand" onRemove={onRemoveCard} />
+              <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} size="hand" onRemove={onRemoveCard} onToggle={onToggleCard} />
             )
           }
         />
@@ -145,6 +146,13 @@ export function Arena(props: Props): ReactElement {
               {verdict.text}
             </span>
           )}
+          <button
+            className="hub-toggle"
+            title={hand.enabled === false ? 'Bring this hand back into play' : 'Set aside — the table plays as if this hand were not there'}
+            onClick={() => onToggleCard(hand.id)}
+          >
+            <Glyph name={hand.enabled === false ? 'play' : 'pause'} size={12} /> {hand.enabled === false ? 'bring back' : 'set aside'}
+          </button>
           <button
             className="hub-remove"
             title="Discard the whole hand to the draw pile"

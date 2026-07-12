@@ -41,7 +41,7 @@ export function HandStack({ hand, sim, scrub, from, compare }: { hand: HandCard;
   const held = handHeld(hand, sim, scrub)
   const verdict = compare ? deltaVerdict(compare, from) : null
   return (
-    <div className="hand-stack" title="Open this hand">
+    <div className={`hand-stack${hand.enabled === false ? ' muted' : ''}`} title="Open this hand">
       <span className="hand-stack-under u2" />
       <span className="hand-stack-under u1" />
       <div className="hand-stack-front">

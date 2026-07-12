@@ -134,6 +134,16 @@ export function App(): ReactElement {
     store.update((d) => removeCard(d, cardId))
   }
 
+  // set aside / bring back: the card stays on the table, the sim plays without it
+  const handleToggleCard = (cardId: string): void => {
+    store.update((d) => {
+      const card = findCard(d.table.root, cardId)
+      if (!card) return
+      if (card.enabled === false) delete card.enabled
+      else card.enabled = false
+    })
+  }
+
   const handleExport = (): void => {
     const blob = new Blob([serializeDoc(doc)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -212,6 +222,7 @@ export function App(): ReactElement {
         onNavigate={setOpenHandId}
         onReorder={handleReorder}
         onRemoveCard={handleRemoveCard}
+        onToggleCard={handleToggleCard}
         onRenameHand={(handId, name) => {
           store.update((d) => {
             const hand = findCard(d.table.root, handId)
@@ -232,7 +243,7 @@ export function App(): ReactElement {
             card.kind === 'hand' ? (
               <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} />
             ) : (
-              <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} onRemove={handleRemoveCard} />
+              <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} onRemove={handleRemoveCard} onToggle={handleToggleCard} />
             )
           }
         />

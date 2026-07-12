@@ -33,15 +33,14 @@ export function withoutCard(table: Table, cardId: string): Table {
   return next
 }
 
-/** Returns a copy of the table with one hand toggled — ghost compares are just two `simulate` calls. */
-export function setHandEnabled(table: Table, handId: string, enabled: boolean): Table {
-  const found = findCard(table.root, handId)
-  if (!found || found.kind !== 'hand') {
-    throw new Error(`setHandEnabled: unknown hand "${handId}"`)
+/** Returns a copy of the table with one card set aside or brought back — ghost compares are just two `simulate` calls. */
+export function setCardEnabled(table: Table, cardId: string, enabled: boolean): Table {
+  if (!findCard(table.root, cardId)) {
+    throw new Error(`setCardEnabled: unknown card "${cardId}"`)
   }
   // tables are plain JSON by design (DESIGN.md §3); JSON round-trip is a faithful clone
   const next = JSON.parse(JSON.stringify(table)) as Table
-  const hand = findCard(next.root, handId) as HandCard
-  hand.enabled = enabled
+  const card = findCard(next.root, cardId)!
+  card.enabled = enabled
   return next
 }

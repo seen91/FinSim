@@ -92,6 +92,7 @@ export function CardView({
   compare,
   size = 'table',
   onRemove,
+  onToggle,
 }: {
   card: EngineCard
   sim: Sim
@@ -100,7 +101,9 @@ export function CardView({
   compare?: CardCompare
   size?: 'hand' | 'table'
   onRemove: (cardId: string) => void
+  onToggle: (cardId: string) => void
 }): ReactElement {
+  const setAside = card.enabled === false
   const contribution = sim.active.contributions.find((s) => s.id === card.id)
   const balanceSeries = sim.active.balances.find((s) => s.id === card.id)
   const isBalance = card.kind === 'asset' || card.kind === 'debt'
@@ -111,9 +114,10 @@ export function CardView({
   const verdict = compare ? deltaVerdict(compare, from) : null
 
   return (
-    <div className="stack">
+    <div className={`stack${setAside ? ' set-aside' : ''}`}>
       <Card
         size={size}
+        muted={setAside}
         face={{
           kind: card.kind,
           name: card.name ?? card.id,
@@ -129,9 +133,19 @@ export function CardView({
           ...(verdict ? { verdict } : {}),
         }}
       />
-      <button className="card-shelf mod-remove" title="Discard to the draw pile" aria-label="Discard" onClick={() => onRemove(card.id)}>
-        <Glyph name="flame" size={15} />
-      </button>
+      <div className="card-shelf">
+        <button
+          className="mod-toggle"
+          title={setAside ? 'Bring back into play' : 'Set aside — the table plays as if this card were not there'}
+          aria-label={setAside ? 'Bring back into play' : 'Set aside'}
+          onClick={() => onToggle(card.id)}
+        >
+          <Glyph name={setAside ? 'play' : 'pause'} size={15} />
+        </button>
+        <button className="mod-remove" title="Discard to the draw pile" aria-label="Discard" onClick={() => onRemove(card.id)}>
+          <Glyph name="flame" size={15} />
+        </button>
+      </div>
     </div>
   )
 }

@@ -145,10 +145,11 @@ export function simulate(table: Table, world: World, from: number, to: number): 
   const activeRules: ActiveRule[] = (world.rules ?? []).map((rule) => ({ rule, scope: null, start: from }))
   const collectRuleCards = (hand: HandCard): void => {
     for (const [index, child] of hand.children.entries()) {
+      if (child.enabled === false) continue
       if (child.kind === 'rule') {
         const below = hand.children.slice(index + 1).flatMap((c) => (c.kind === 'hand' ? [c, ...allCards(c)] : [c]))
         activeRules.push({ rule: child.rule, scope: new Set(below.map((c) => c.id)), start: child.startMonth ?? from })
-      } else if (child.kind === 'hand' && child.enabled !== false) {
+      } else if (child.kind === 'hand') {
         collectRuleCards(child)
       }
     }
@@ -206,6 +207,7 @@ export function simulate(table: Table, world: World, from: number, to: number): 
   const playHand = (hand: HandCard, month: number, i: number, initial: number): number => {
     let total = initial
     for (const card of hand.children) {
+      if (card.enabled === false) continue
       const start = card.startMonth ?? from
       if (month < start && card.kind !== 'hand') continue
       const t = month - start
@@ -261,7 +263,6 @@ export function simulate(table: Table, world: World, from: number, to: number): 
           break
         }
         case 'hand': {
-          if (card.enabled === false) break
           const taken = card.take ? takeAmount(card.take, total) : 0
           total -= taken
           const leftover = playHand(card, month, i, taken)
@@ -318,8 +319,9 @@ export function simulate(table: Table, world: World, from: number, to: number): 
     let net = cash
     const sumEnabled = (hand: HandCard): void => {
       for (const card of hand.children) {
+        if (card.enabled === false) continue
         if (card.kind === 'hand') {
-          if (card.enabled !== false) sumEnabled(card)
+          sumEnabled(card)
         } else if (card.kind === 'asset' || card.kind === 'debt') {
           net += balancePoints.get(card.id)![i]!
         }

@@ -42,6 +42,8 @@ export interface CardBase {
   tags?: string[]
   /** Absolute month the card enters play. Defaults to the simulation start. */
   startMonth?: number
+  /** Set aside (toggled off), the card — and everything under it — is skipped. Default true. */
+  enabled?: boolean
 }
 
 /** Adds its flow (kr/month) to the running total. A raise is the curve's own growth. */
@@ -106,8 +108,6 @@ export interface DebtCard extends CardBase {
  */
 export interface HandCard extends CardBase {
   kind: 'hand'
-  /** Toggled off, the hand and everything in it is set aside. Default true. */
-  enabled?: boolean
   /** Drawn from the parent's running total as this hand's starting subtotal. */
   take?: Take
   children: Card[]
@@ -202,8 +202,8 @@ export interface SimResult {
   cash: Series
   /**
    * One series per card: what it did to the running total each month
-   * (sources positive, drains/takes negative, hands their net). Disabled
-   * subtrees are all zero.
+   * (sources positive, drains/takes negative, hands their net). Set-aside
+   * cards and subtrees are all zero.
    */
   contributions: Series[]
   /** One series per asset/debt: its balance (debts negative). */

@@ -590,7 +590,24 @@ input[type='range'] {
   color: color-mix(in srgb, var(--flame) 75%, black);
 }
 
-.stack:hover .mod-remove {
+/* set aside: pause the card in place — the sim plays as if it were not there */
+.mod-toggle {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  padding: 0 0.15rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mod-toggle:hover {
+  color: var(--ink);
+}
+
+.stack:hover .mod-remove,
+.stack:hover .mod-toggle,
+.stack.set-aside .mod-toggle {
   opacity: 1;
 }
 
@@ -755,7 +772,8 @@ input[type='range'] {
 .hub-delta.pos { color: var(--money-pos); }
 .hub-delta.neg { color: var(--money-neg); }
 
-.hub-remove {
+.hub-remove,
+.hub-toggle {
   margin-top: 0.2rem;
   font-size: 0.7rem;
   color: var(--ink-soft);
@@ -770,6 +788,10 @@ input[type='range'] {
 
 .hub-remove:not(:disabled):hover {
   color: color-mix(in srgb, var(--flame) 80%, var(--ink));
+}
+
+.hub-toggle:hover {
+  color: var(--ink);
 }
 
 /* ---- a hand at rest: unmistakably a pile of several cards ---- */

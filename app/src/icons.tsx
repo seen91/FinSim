@@ -20,6 +20,8 @@ export type GlyphName =
   | 'bundle'
   | 'cash'
   | 'flame'
+  | 'pause'
+  | 'play'
 
 const PATHS: Record<GlyphName, ReactElement> = {
   coins: (
@@ -117,6 +119,16 @@ const PATHS: Record<GlyphName, ReactElement> = {
     <>
       <path d="M12 3.5c2.8 3.6-1.6 4.8 1.2 7.8.9-.9 1.3-1.9 1.1-3.1 1.9 1.7 3.2 3.6 3.2 5.6a5.5 5.5 0 0 1-11 0c0-3.6 3.5-5.4 5.5-10.3Z" />
       <path d="M12 19.5c-1.4-.6-2-1.7-1.7-3" opacity="0.5" />
+    </>
+  ),
+  pause: (
+    <>
+      <path d="M9 6.5v11M15 6.5v11" />
+    </>
+  ),
+  play: (
+    <>
+      <path d="M8.5 6 17 12l-8.5 6Z" />
     </>
   ),
 }

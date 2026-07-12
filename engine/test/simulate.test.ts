@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { setHandEnabled, simulate, ym, type Card, type Series, type Table, type Take, type World } from '../src/index.js'
+import { setCardEnabled, simulate, ym, type Card, type Series, type Table, type Take, type World } from '../src/index.js'
 
 const g = Math.pow(1.07, 1 / 12)
 
@@ -222,7 +222,7 @@ describe('hands scope: a nested hand computes its own subtotal', () => {
     expect(contribution(r, 'outer')[0]).toBe(700)
     expect(r.cash.points[0]).toBe(700)
 
-    const off = setHandEnabled(t, 'inner', false)
+    const off = setCardEnabled(t, 'inner', false)
     const r2 = simulate(off, {}, 0, 0)
     expect(contribution(r2, 'inner')[0]).toBe(0)
     expect(contribution(r2, 'innermost')[0]).toBe(0)
@@ -232,16 +232,35 @@ describe('hands scope: a nested hand computes its own subtotal', () => {
   it("a disabled hand's balances leave net worth", () => {
     const t = table([hand('h', [{ id: 'f', kind: 'asset', initialBalance: 5000, growth: { expected: 0 } }])])
     expect(simulate(t, {}, 0, 0).netWorth.points[0]).toBe(5000)
-    expect(simulate(setHandEnabled(t, 'h', false), {}, 0, 0).netWorth.points[0]).toBe(0)
+    expect(simulate(setCardEnabled(t, 'h', false), {}, 0, 0).netWorth.points[0]).toBe(0)
   })
 
-  it('setHandEnabled does not mutate and rejects unknown hands', () => {
+  it('any card can be set aside: it moves no money, holds nothing, contributes zero', () => {
+    const t = table([source('salary', 10000), drain('rent', 3000), fund('f', 0, { type: 'percent', percent: 0.5 })])
+    expect(simulate(t, {}, 0, 0).cash.points[0]).toBe(3500)
+
+    const noRent = simulate(setCardEnabled(t, 'rent', false), {}, 0, 0)
+    expect(contribution(noRent, 'rent')[0]).toBe(0)
+    expect(noRent.cash.points[0]).toBe(5000)
+
+    const noFund = simulate(setCardEnabled(t, 'f', false), {}, 0, 0)
+    expect(balance(noFund, 'f')[0]).toBe(0)
+    expect(noFund.cash.points[0]).toBe(7000)
+    expect(noFund.netWorth.points[0]).toBe(7000)
+  })
+
+  it("a set-aside asset's initial balance leaves net worth", () => {
+    const t = table([{ id: 'f', kind: 'asset', initialBalance: 5000, growth: { expected: 0 } } as Card])
+    expect(simulate(setCardEnabled(t, 'f', false), {}, 0, 0).netWorth.points[0]).toBe(0)
+  })
+
+  it('setCardEnabled does not mutate and rejects unknown cards', () => {
     const t = table([hand('h', [source('s', 1)])])
-    const off = setHandEnabled(t, 'h', false)
+    const off = setCardEnabled(t, 'h', false)
     expect((t.root.children[0] as { enabled?: boolean }).enabled).toBeUndefined()
     expect((off.root.children[0] as { enabled?: boolean }).enabled).toBe(false)
-    expect(() => setHandEnabled(t, 'nope', false)).toThrow(/unknown hand/)
-    expect(() => setHandEnabled(t, 's', false)).toThrow(/unknown hand/)
+    expect(() => setCardEnabled(t, 'nope', false)).toThrow(/unknown card/)
+    expect(simulate(setCardEnabled(t, 's', false), {}, 0, 0).cash.points[0]).toBe(0)
   })
 })
 
@@ -348,6 +367,13 @@ describe('rule cards: a tax played as a card, applying to the cards below it in 
   it('a disabled hand takes its rule card off the table with it', () => {
     const from = ym(2026, 1)
     const t = table([hand('paused', [iskCard('isk')], false), taggedFund('f', 1000)])
+    const r = simulate(t, {}, from, ym(2026, 12))
+    expect(balance(r, 'f')[11]).toBe(1000)
+  })
+
+  it('a set-aside rule card stops firing', () => {
+    const from = ym(2026, 1)
+    const t = setCardEnabled(table([iskCard('isk'), taggedFund('f', 1000)]), 'isk', false)
     const r = simulate(t, {}, from, ym(2026, 12))
     expect(balance(r, 'f')[11]).toBe(1000)
   })

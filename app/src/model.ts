@@ -67,17 +67,20 @@ export function runSim(doc: Doc): Sim {
     for (let i = 0; i < points.length; i++) points[i] = points[i]! + (s.points[i] ?? 0)
   }
   const remainder: Series = { id: 'remainder', role: 'net', startMonth: doc.from, points }
-  const compares = allCards(doc.table.root).map((card) => {
-    const ghost = simulate(withoutCard(doc.table, card.id), world, doc.from, to)
-    // solo intentionally starts from nothing — no cash config, no siblings
-    const alone = simulate({ root: { id: `solo-${card.id}`, kind: 'hand', children: [card] } }, world, doc.from, to)
-    return {
-      cardId: card.id,
-      name: card.name ?? card.id,
-      delta: goalDelta(ghost, active, doc.goal),
-      soloGoalMonth: firstCrossing(alone, doc.goal),
-    }
-  })
+  // a set-aside card is already out of the sim — its ghost would equal the plan, so no verdict
+  const compares = allCards(doc.table.root)
+    .filter((card) => card.enabled !== false)
+    .map((card) => {
+      const ghost = simulate(withoutCard(doc.table, card.id), world, doc.from, to)
+      // solo intentionally starts from nothing — no cash config, no siblings
+      const alone = simulate({ root: { id: `solo-${card.id}`, kind: 'hand', children: [card] } }, world, doc.from, to)
+      return {
+        cardId: card.id,
+        name: card.name ?? card.id,
+        delta: goalDelta(ghost, active, doc.goal),
+        soloGoalMonth: firstCrossing(alone, doc.goal),
+      }
+    })
   return { active, remainder, compares }
 }
 

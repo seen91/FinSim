@@ -4,7 +4,7 @@ import {
   formatMonth,
   formatMonthsDelta,
   goalDelta,
-  setHandEnabled,
+  setCardEnabled,
   simulate,
   ym,
   type Series,
@@ -96,7 +96,7 @@ const contribution = (r: { contributions: Series[] }, id: string): number[] => r
 describe('M1 acceptance: "how much longer to 10 MSEK because of this car?"', () => {
   const table = buildTable()
   const withCar = simulate(table, {}, FROM, TO)
-  const withoutCar = simulate(setHandEnabled(table, 'car', false), {}, FROM, TO)
+  const withoutCar = simulate(setCardEnabled(table, 'car', false), {}, FROM, TO)
 
   it('the budget hand plays top to bottom, fully hand-checkable', () => {
     // 65 000 − 30 % = 45 500; − 20 500 = 25 000; funds cascade 20 %:
@@ -179,7 +179,7 @@ describe('M1 acceptance: "how much longer to 10 MSEK because of this car?"', () 
   it('the ghost compare is deterministic and side-effect free', () => {
     const again = simulate(table, {}, FROM, TO)
     expect(JSON.stringify(again)).toBe(JSON.stringify(withCar))
-    const roundTrip = simulate(setHandEnabled(setHandEnabled(table, 'car', false), 'car', true), {}, FROM, TO)
+    const roundTrip = simulate(setCardEnabled(setCardEnabled(table, 'car', false), 'car', true), {}, FROM, TO)
     expect(JSON.stringify(roundTrip)).toBe(JSON.stringify(withCar))
     expect(firstCrossing(withCar, GOAL)).toBe(ym(2046, 9))
   })
