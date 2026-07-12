@@ -90,20 +90,39 @@ export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
   }
 }
 
+/** The design stamp a dealt card wears — an app-level key the engine never reads (like `glyph`, `tune`). */
+type Designed = Card & { design?: string }
+
 /**
  * Deal a playable card from an authored template: a deep clone with every id
  * (nested hands and rule ids included) suffixed fresh, so the same design can
- * sit on the table many times. The dealt card wears the design's glyph.
+ * sit on the table many times. The dealt card wears the design's glyph and a
+ * `design` stamp back to its original — the design stays the one true card,
+ * and editing it in the Workshop reaches every copy in play.
  */
 export function instantiate(authored: AuthoredCard, uid: string): Card {
-  const card = structuredClone(authored.card)
+  const card = structuredClone(authored.card) as Designed
   const rewrite = (c: Card): void => {
     c.id = `${c.id}-${uid}`
     if (c.kind === 'rule') c.rule.id = `${c.rule.id}-${uid}`
     if (c.kind === 'hand') c.children.forEach(rewrite)
   }
   rewrite(card)
+  card.design = authored.id
   return withGlyph(card, authored.glyph)
+}
+
+/**
+ * The design a played card was dealt from, if the library still holds it —
+ * null for one-off cards (pile blueprints, presets) and for orphans whose
+ * design was burned; those are their own originals.
+ */
+export function designIdOf(card: Card, library: AuthoredCard[]): string | null {
+  const stamped = (card as Designed).design
+  if (typeof stamped === 'string') return library.some((a) => a.id === stamped) ? stamped : null
+  // copies dealt before the stamp existed carry the design's id plus one fresh suffix
+  const legacy = card.id.replace(/-[0-9a-f]{8}$/, '')
+  return legacy !== card.id && library.some((a) => a.id === legacy) ? legacy : null
 }
 
 /** Validate an authored card's template with the engine's own table validator. */

@@ -1646,7 +1646,7 @@ input[type='range'].tuned {
 .work-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.9rem 0.55rem; /* row gap leaves room for the 'in play' plaque's overhang */
+  gap: 0.65rem 0.55rem;
   align-items: flex-start;
   padding: 0.65rem 0 0.85rem;
 }
@@ -1657,25 +1657,6 @@ input[type='range'].tuned {
 
 .work-item {
   position: relative;
-}
-
-/* the little plaque pinned to cards that are in play on the table */
-.work-flag {
-  position: absolute;
-  bottom: -7px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.06rem 0.4rem 0.02rem;
-  font-size: 0.54rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-  color: var(--wood-ink);
-  background: #4c3018;
-  border: 1px solid var(--gold-deep);
-  border-radius: 7px;
-  box-shadow: 0 1px 2px var(--shadow);
-  pointer-events: none;
 }
 
 /* the focus stage: one card, face and back side by side */

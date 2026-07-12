@@ -1,6 +1,6 @@
 import { allCards, findCard, type Card as EngineCard } from '@finsim/engine'
 import { useRef, useState, type ReactElement } from 'react'
-import { AUTHORABLE_KINDS, blankCard, headlineFor, mergeLibrary, type AuthoredCard, type AuthorableKind } from '../authored'
+import { AUTHORABLE_KINDS, blankCard, designIdOf, headlineFor, instantiate, mergeLibrary, type AuthoredCard, type AuthorableKind } from '../authored'
 import { downloadJson } from '../download'
 import { errorMessage } from '../format'
 import { Glyph } from '../icons'
@@ -16,8 +16,10 @@ import { DataBench } from './DataBench'
 
 /**
  * The Workshop (DESIGN.md §3), in two stages so each holds one thought:
- * BROWSE — one shelf of small cards, the blank first, then everything you
- * could work on; cards currently in play wear a small 'in play' plaque.
+ * BROWSE — one shelf where each card appears once: the blank first, then
+ * your designs, then any one-off table cards (pile blueprints, presets)
+ * that have no design. A design is the one true card — its played copies
+ * never show here, and editing the design reaches all of them.
  * FOCUS — click one and everything else clears: the bench holds that card's
  * face and its back (the editor), and the chart above holds only its curve.
  * The back of a blank card is the card creator; packs move designs between
@@ -54,7 +56,22 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
     onFocus({ where: 'library', id: fresh.id })
   }
 
-  const patchAuthored = (next: AuthoredCard): void => onLibraryChange(library.map((a) => (a.id === next.id ? next : a)))
+  // the design is the one true card: an edit lands on the library original and
+  // on every copy of it in play — each copy keeps its id, dial and set-aside
+  const patchAuthored = (next: AuthoredCard): void => {
+    onLibraryChange(library.map((a) => (a.id === next.id ? next : a)))
+    update((d) => {
+      for (const played of allCards(d.table.root)) {
+        if (designIdOf(played, [next]) !== next.id) continue
+        const fresh = instantiate(next, newUid())
+        fresh.id = played.id
+        if (played.enabled === false) fresh.enabled = false
+        const tune = (played as EngineCard & { tune?: unknown }).tune
+        if (tune !== undefined) (fresh as EngineCard & { tune?: unknown }).tune = tune
+        replaceCard(d, fresh)
+      }
+    })
+  }
 
   const handleDuplicate = (a: AuthoredCard): void => {
     const uid = newUid()
@@ -114,7 +131,9 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
             ← all cards
           </button>
           <p className="drawer-hint">
-            {focusedTable ? 'in play — edits land immediately; the chart holds only this card' : 'a design — the chart plays it alone on an empty table'}
+            {focusedTable
+              ? 'a one-off on the table — edits land immediately; the chart holds only this card'
+              : 'a design — edits reach every copy in play; the chart plays it alone on an empty table'}
           </p>
           {focusedAuthored && (
             <span className="work-tools">
@@ -169,27 +188,27 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
     )
   }
 
-  // ---- BROWSE: one shelf — the blank first, then everything, in play or not ----
+  // ---- BROWSE: one shelf, each card once — designs, then one-off table cards ----
   const shelf = [
-    ...allCards(doc.table.root).map((card) => ({
-      key: `table-${card.id}`,
-      face: { kind: card.kind, name: card.name ?? card.id, glyph: glyphOf(card), headline: headlineFor(card) },
-      inPlay: true,
-      pick: () => onFocus({ where: 'table', id: card.id }),
-    })),
     ...library.map((a) => ({
       key: `library-${a.id}`,
       face: { kind: a.card.kind, name: a.card.name ?? a.id, glyph: a.glyph, headline: headlineFor(a.card) },
-      inPlay: false,
       pick: () => onFocus({ where: 'library', id: a.id }),
     })),
+    ...allCards(doc.table.root)
+      .filter((card) => designIdOf(card, library) === null) // copies follow their design; the design speaks for them
+      .map((card) => ({
+        key: `table-${card.id}`,
+        face: { kind: card.kind, name: card.name ?? card.id, glyph: glyphOf(card), headline: headlineFor(card) },
+        pick: () => onFocus({ where: 'table', id: card.id }),
+      })),
   ]
 
   return (
     <section className="workbench" role="dialog" aria-label="The Workshop">
       <header className="workbench-bar">
         <h2>The Workshop</h2>
-        <p className="drawer-hint">pick a card up to work on it — ‘in play’ cards edit the live table · packs carry your designs between tables</p>
+        <p className="drawer-hint">pick a card up to work on it — editing a design reaches every copy in play · packs carry your designs between tables</p>
         <button className={dataOpen ? 'data-open' : undefined} onClick={() => setDataOpen(!dataOpen)} title="Import historical data and manage the table's series">
           {dataOpen ? '← cards' : 'Data'}
         </button>
@@ -249,7 +268,6 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
           {shelf.map((item) => (
             <button key={item.key} className="drawer-slot work-item" onClick={item.pick} title="Pick up — only this card on the bench and the chart">
               <Card size="hand" face={item.face} />
-              {item.inPlay && <span className="work-flag">in play</span>}
             </button>
           ))}
         </div>

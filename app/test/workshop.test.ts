@@ -1,6 +1,6 @@
 import { simulate, validateTable } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
-import { AUTHORABLE_KINDS, blankCard, headlineFor, instantiate, mergeLibrary, validateAuthored, type AuthoredCard } from '../src/authored'
+import { AUTHORABLE_KINDS, blankCard, designIdOf, headlineFor, instantiate, mergeLibrary, validateAuthored, type AuthoredCard } from '../src/authored'
 import { addCard, replaceCard } from '../src/hands'
 import { deserializePack, serializePack, type Pack } from '../src/packs'
 import { starterDoc } from '../src/starter'
@@ -49,6 +49,40 @@ describe('playing a design', () => {
     addCard(doc, null, instantiate(blank, 'a'))
     addCard(doc, null, instantiate(blank, 'b'))
     expect(validateTable(doc.table)).toEqual([])
+  })
+})
+
+describe('the design is the one true card (designIdOf)', () => {
+  it('a dealt copy is stamped with its design and found by it', () => {
+    const design = blankCard('source', 'uid1')
+    const copy = instantiate(design, 'a')
+    expect(designIdOf(copy, [design])).toBe(design.id)
+  })
+
+  it('an orphan whose design was burned is its own original', () => {
+    const design = blankCard('source', 'uid1')
+    const copy = instantiate(design, 'a')
+    expect(designIdOf(copy, [])).toBeNull()
+  })
+
+  it('a one-off card (no stamp, id not from a design) is its own original', () => {
+    const design = blankCard('source', 'uid1')
+    const salary = starterDoc().table.root.children[0]!
+    expect(designIdOf(salary, [design])).toBeNull()
+  })
+
+  it('a copy dealt before the stamp existed is matched by its id suffix', () => {
+    const design = blankCard('source', 'uid1')
+    const legacy = instantiate(design, 'deadbeef')
+    delete (legacy as { design?: string }).design
+    expect(designIdOf(legacy, [design])).toBe(design.id)
+    // even when the design itself is a duplicate, whose id ends in the same shape
+    const dupe = structuredClone(design)
+    dupe.id = `${design.id}-12345678`
+    dupe.card.id = dupe.id
+    const fromDupe = instantiate(dupe, 'cafebabe')
+    delete (fromDupe as { design?: string }).design
+    expect(designIdOf(fromDupe, [design, dupe])).toBe(dupe.id)
   })
 })
 
