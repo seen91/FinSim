@@ -349,7 +349,16 @@ export function App(): ReactElement {
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
-              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} range={mc?.ranges.get(card.id)} />
+              <HandStack
+                hand={card}
+                sim={sim}
+                scrub={scrub}
+                from={doc.from}
+                compare={sim.compares.find((c) => c.cardId === card.id)}
+                range={mc?.ranges.get(card.id)}
+                onRemove={handleRemoveCard}
+                onToggle={handleToggleCard}
+              />
             ) : (
               <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} onRemove={handleRemoveCard} onToggle={handleToggleCard} />
             )

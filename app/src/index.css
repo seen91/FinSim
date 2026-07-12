@@ -689,7 +689,10 @@ input[type='range'].tuned {
 
 .stack:hover .mod-remove,
 .stack:hover .mod-toggle,
-.stack.set-aside .mod-toggle {
+.stack.set-aside .mod-toggle,
+.hand-stack:hover .mod-remove,
+.hand-stack:hover .mod-toggle,
+.hand-stack.muted .mod-toggle {
   opacity: 1;
 }
 

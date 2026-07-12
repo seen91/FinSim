@@ -160,7 +160,16 @@ export function Arena(props: Props): ReactElement {
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
-              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} range={mc?.ranges.get(card.id)} />
+              <HandStack
+                hand={card}
+                sim={sim}
+                scrub={scrub}
+                from={doc.from}
+                compare={sim.compares.find((c) => c.cardId === card.id)}
+                range={mc?.ranges.get(card.id)}
+                onRemove={onRemoveCard}
+                onToggle={onToggleCard}
+              />
             ) : (
               <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} size="hand" onRemove={onRemoveCard} onToggle={onToggleCard} />
             )

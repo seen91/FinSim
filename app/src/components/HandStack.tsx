@@ -42,6 +42,8 @@ export function HandStack({
   from,
   compare,
   range,
+  onRemove,
+  onToggle,
 }: {
   hand: HandCard
   sim: Sim
@@ -49,6 +51,8 @@ export function HandStack({
   from: number
   compare?: CardCompare
   range?: BundleRange
+  onRemove: (cardId: string) => void
+  onToggle: (cardId: string) => void
 }): ReactElement {
   const cards = countCards(hand)
   const net = sim.active.contributions.find((s) => s.id === hand.id)
@@ -56,10 +60,24 @@ export function HandStack({
   const held = handHeld(hand, sim, scrub)
   const verdict = compare ? deltaVerdict(compare, from) : null
   const mcRange = rangeVerdict(range)
+  const setAside = hand.enabled === false
   return (
-    <div className={`hand-stack${hand.enabled === false ? ' muted' : ''}`} title="Open this hand">
+    <div className={`hand-stack${setAside ? ' muted' : ''}`} title="Open this hand">
       <span className="hand-stack-under u2" />
       <span className="hand-stack-under u1" />
+      <div className="card-shelf">
+        <button
+          className="mod-toggle"
+          title={setAside ? 'Bring this hand back into play' : 'Set aside — the table plays as if this hand were not there'}
+          aria-label={setAside ? 'Bring back into play' : 'Set aside'}
+          onClick={() => onToggle(hand.id)}
+        >
+          <Glyph name={setAside ? 'play' : 'pause'} size={15} />
+        </button>
+        <button className="mod-remove" title="Discard the whole hand to the draw pile" aria-label="Discard" onClick={() => onRemove(hand.id)}>
+          <Glyph name="flame" size={15} />
+        </button>
+      </div>
       <div className="hand-stack-front">
         <span className="hand-stack-name">{hand.name ?? hand.id}</span>
         <span className="hand-stack-art">
