@@ -1,5 +1,6 @@
 import { allCards, firstCrossing, goalDelta, simulate, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
 import { useCallback, useState } from 'react'
+import { applyTuneTable } from './tune'
 
 /** The one small immutable document the whole table serializes to (DESIGN.md §2). */
 export interface Doc {
@@ -59,19 +60,21 @@ export interface Sim {
 export function runSim(doc: Doc): Sim {
   const to = doc.from + doc.horizonMonths - 1
   const world = doc.world ?? {}
-  const active = simulate(doc.table, world, doc.from, to)
+  // the sim plays the tuned table: every dial applied, dials stripped
+  const table = applyTuneTable(doc.table)
+  const active = simulate(table, world, doc.from, to)
   const points = new Array<number>(doc.horizonMonths).fill(0)
-  for (const child of doc.table.root.children) {
+  for (const child of table.root.children) {
     const s = active.contributions.find((c) => c.id === child.id)
     if (!s) continue
     for (let i = 0; i < points.length; i++) points[i] = points[i]! + (s.points[i] ?? 0)
   }
   const remainder: Series = { id: 'remainder', role: 'net', startMonth: doc.from, points }
   // a set-aside card is already out of the sim — its ghost would equal the plan, so no verdict
-  const compares = allCards(doc.table.root)
+  const compares = allCards(table.root)
     .filter((card) => card.enabled !== false)
     .map((card) => {
-      const ghost = simulate(withoutCard(doc.table, card.id), world, doc.from, to)
+      const ghost = simulate(withoutCard(table, card.id), world, doc.from, to)
       // solo intentionally starts from nothing — no cash config, no siblings
       const alone = simulate({ root: { id: `solo-${card.id}`, kind: 'hand', children: [card] } }, world, doc.from, to)
       return {

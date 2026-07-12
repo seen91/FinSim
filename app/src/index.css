@@ -591,6 +591,21 @@ input[type='range'] {
   accent-color: var(--accent-line);
 }
 
+/* a turned tuning dial: off-center, so it should read as "in effect" */
+input[type='range'].tuned {
+  accent-color: var(--gold);
+}
+
+/* "+35 % → 87 750/mo" — the played value while the authored one stands */
+.tune-note {
+  display: block;
+  font-style: normal;
+  font-size: 0.62rem;
+  text-align: right;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
 .card-action {
   margin-top: 0.3rem;
   font-size: 0.7rem;

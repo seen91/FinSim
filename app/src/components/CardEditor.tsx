@@ -12,10 +12,11 @@ import {
   type SourceCard,
   type Take,
 } from '@finsim/engine'
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactElement } from 'react'
 import { CADENCE_SUFFIX, CARD_GLYPHS, type AuthoredCard } from '../authored'
 import { formatNumber } from '../format'
 import { Glyph } from '../icons'
+import { effectiveValue, tuneOf, withTune, type Tune } from '../tune'
 
 /**
  * The back of the card is the card creator (DESIGN.md §3): every parameter a
@@ -82,38 +83,46 @@ function round(v: number): number {
   return Math.round(v * 1000) / 1000
 }
 
-/** Slider ceiling: a round number comfortably above the current value. */
-function niceMax(value: number, floor: number): number {
-  const target = Math.max(Math.abs(value) * 1.6, floor)
-  const mag = Math.pow(10, Math.floor(Math.log10(target)))
-  for (const m of [1, 2, 5, 10]) {
-    if (m * mag >= target) return m * mag
-  }
-  return 10 * mag
+const TuneContext = createContext<{ tune: Tune; retune: (path: string, pct: number) => void }>({ tune: {}, retune: () => undefined })
+
+/** One parameter's dial: its remembered percent and how to turn it. */
+function useDial(path: string): { pct: number; retune: (pct: number) => void } {
+  const { tune, retune } = useContext(TuneContext)
+  return { pct: tune[path] ?? 0, retune: (pct) => retune(path, pct) }
 }
 
 /**
- * The slide under a parameter. Its scale adapts to the value between
- * gestures, but is FROZEN while dragging — recomputing the max from the value
- * mid-drag is a feedback loop that runs away into the millions.
+ * The slide under a parameter — a tuning dial, never the value itself. It
+ * spans −100..+100 % and is remembered separately (the card's `tune` map):
+ * the authored number in the field never moves, the table plays
+ * value × (1 + pct/100), and re-centering restores the authored number
+ * exactly. Double-click re-centers.
  */
-function Slide({ value, min, max, step, onCommit }: { value: number; min: number; max: number; step: number; onCommit: (v: number) => void }): ReactElement {
-  const [frozen, setFrozen] = useState<{ min: number; max: number; step: number } | null>(null)
-  const r = frozen ?? { min, max, step }
-  const thaw = (): void => setFrozen(null)
+function Slide({ path }: { path: string }): ReactElement {
+  const { pct, retune } = useDial(path)
   return (
     <input
       type="range"
-      min={r.min}
-      max={r.max}
-      step={r.step}
-      value={Math.min(r.max, Math.max(r.min, value))}
-      onPointerDown={() => setFrozen({ min, max, step })}
-      onPointerUp={thaw}
-      onPointerCancel={thaw}
-      onBlur={thaw}
-      onChange={(e) => onCommit(Number(e.target.value))}
+      className={pct === 0 ? undefined : 'tuned'}
+      min={-100}
+      max={100}
+      step={1}
+      value={pct}
+      onChange={(e) => retune(Number(e.target.value))}
+      onDoubleClick={() => retune(0)}
     />
+  )
+}
+
+/** "+35 % → 87 750/mo" — what the dial makes of the authored number. */
+function TuneNote({ path, base, format }: { path: string; base: number; format: (v: number) => string }): ReactElement | null {
+  const { pct } = useDial(path)
+  if (pct === 0) return null
+  return (
+    <em className="tune-note">
+      {pct > 0 ? '+' : ''}
+      {pct} % → {format(effectiveValue(path, base, pct))}
+    </em>
   )
 }
 
@@ -154,16 +163,19 @@ function useDraft(canonical: string): {
  */
 function AmountField({
   label,
+  path,
   value,
   cadence,
   onCommit,
 }: {
   label: string
+  path: string
   value: number
   cadence: Cadence | undefined
   onCommit: (value: number, cadence: Cadence | undefined) => void
 }): ReactElement {
-  const canonical = `${formatNumber(round(value))}${CADENCE_SUFFIX[cadence ?? 'monthly']}`
+  const suffix = CADENCE_SUFFIX[cadence ?? 'monthly']
+  const canonical = `${formatNumber(round(value))}${suffix}`
   const { draft, setDraft, onFocus, onBlur } = useDraft(canonical)
   const commit = (text: string): void => {
     setDraft(text)
@@ -172,7 +184,6 @@ function AmountField({
     const next = parsed.cadence ?? cadence ?? 'monthly'
     onCommit(Math.max(0, parsed.value), next === 'monthly' ? undefined : next)
   }
-  const max = niceMax(value, 20_000)
   return (
     <label className="param">
       <span className="param-label">
@@ -181,7 +192,8 @@ function AmountField({
           <input className="num" type="text" inputMode="decimal" value={draft} onChange={(e) => commit(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
         </span>
       </span>
-      <Slide value={value} min={0} max={max} step={max / 200} onCommit={(v) => onCommit(v, cadence)} />
+      <Slide path={path} />
+      <TuneNote path={path} base={value} format={(v) => `${formatNumber(round(v))}${suffix}`} />
     </label>
   )
 }
@@ -190,19 +202,7 @@ function AmountField({
  * An annual rate, unit editable in the text: "7 %/yr" understands "1 %/m"
  * and compounds it to the yearly figure the engine keeps.
  */
-function RateField({
-  label,
-  value,
-  onCommit,
-  signed = false,
-  max = 0.3,
-}: {
-  label: string
-  value: number
-  onCommit: (annual: number) => void
-  signed?: boolean
-  max?: number
-}): ReactElement {
+function RateField({ label, path, value, onCommit }: { label: string; path: string; value: number; onCommit: (annual: number) => void }): ReactElement {
   const canonical = `${round(value * 100)} %/yr`
   const { draft, setDraft, onFocus, onBlur } = useDraft(canonical)
   const commit = (text: string): void => {
@@ -210,7 +210,6 @@ function RateField({
     const annual = parseRate(text)
     if (annual !== null) onCommit(annual)
   }
-  const min = signed ? -max : 0
   return (
     <label className="param">
       <span className="param-label">
@@ -219,27 +218,25 @@ function RateField({
           <input className="num" type="text" inputMode="decimal" value={draft} onChange={(e) => commit(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
         </span>
       </span>
-      <Slide value={value * 100} min={min * 100} max={max * 100} step={0.1} onCommit={(v) => onCommit(v / 100)} />
+      <Slide path={path} />
+      <TuneNote path={path} base={value} format={(v) => `${round(v * 100)} %/yr`} />
     </label>
   )
 }
 
 interface NumProps {
   label: string
+  path: string
   value: number
   onCommit: (value: number) => void
-  min: number
-  max: number
-  step: number
   /** Display multiplier: 100 shows a 0.07 rate as 7. */
   scale?: number
   unit?: string
 }
 
 /** One plain number: label, an editable value, and the slide under it. */
-function Num({ label, value, onCommit, min, max, step, scale = 1, unit }: NumProps): ReactElement {
-  const shown = value * scale
-  const canonical = formatNumber(round(shown))
+function Num({ label, path, value, onCommit, scale = 1, unit }: NumProps): ReactElement {
+  const canonical = formatNumber(round(value * scale))
   const { draft, setDraft, onFocus, onBlur } = useDraft(canonical)
   const commitDraft = (text: string): void => {
     setDraft(text)
@@ -255,20 +252,20 @@ function Num({ label, value, onCommit, min, max, step, scale = 1, unit }: NumPro
           {unit !== undefined && <em>{unit}</em>}
         </span>
       </span>
-      <Slide value={shown} min={min * scale} max={max * scale} step={step * scale} onCommit={(v) => onCommit(v / scale)} />
+      <Slide path={path} />
+      <TuneNote path={path} base={value} format={(v) => `${formatNumber(round(v * scale))}${unit ?? ''}`} />
     </label>
   )
 }
 
 /** A unit-less money amount (a balance, a principal, a monthly take). */
-function Money({ label, value, onCommit, unit }: { label: string; value: number; onCommit: (v: number) => void; unit?: string }): ReactElement {
-  const max = niceMax(value, 20_000)
-  return <Num label={label} value={value} onCommit={(v) => onCommit(Math.max(0, v))} min={0} max={max} step={max / 200} {...(unit !== undefined ? { unit } : {})} />
+function Money({ label, path, value, onCommit, unit }: { label: string; path: string; value: number; onCommit: (v: number) => void; unit?: string }): ReactElement {
+  return <Num label={label} path={path} value={value} onCommit={(v) => onCommit(Math.max(0, v))} {...(unit !== undefined ? { unit } : {})} />
 }
 
 /** A share of the running total, 0..100 %. */
-function Share({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number) => void }): ReactElement {
-  return <Num label={label} value={value} onCommit={(v) => onCommit(Math.min(1, Math.max(0, v)))} min={0} max={1} step={0.01} scale={100} unit="%" />
+function Share({ label, path, value, onCommit }: { label: string; path: string; value: number; onCommit: (v: number) => void }): ReactElement {
+  return <Num label={label} path={path} value={value} onCommit={(v) => onCommit(Math.min(1, Math.max(0, v)))} scale={100} unit="%" />
 }
 
 function Row({ label, children }: { label: string; children: ReactElement }): ReactElement {
@@ -396,63 +393,49 @@ function CurveField({
   curve,
   cadence,
   onCommit,
+  path,
 }: {
   curve: Curve
   cadence: Cadence | undefined
   onCommit: (c: Curve, cadence: Cadence | undefined) => void
+  /** Where this curve lives on the card ("flow", "amount") — dial paths hang off it. */
+  path: string
 }): ReactElement {
   // secondary fields change the curve only; the cadence rides along untouched
   const commit = (c: Curve): void => onCommit(c, cadence)
   return (
     <>
       <Select label="Curve" value={curve.type} options={CURVE_TYPES} onCommit={(type) => commit(curveOfType(type, curve))} />
-      {curve.type === 'constant' && <AmountField label="Amount" value={curve.value} cadence={cadence} onCommit={(value, cad) => onCommit({ ...curve, value }, cad)} />}
+      {curve.type === 'constant' && <AmountField label="Amount" path={`${path}.value`} value={curve.value} cadence={cadence} onCommit={(value, cad) => onCommit({ ...curve, value }, cad)} />}
       {curve.type === 'linear' && (
         <>
-          <AmountField label="Starts at" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
-          <Num
-            label="Drift"
-            value={curve.slopePerMonth}
-            onCommit={(slopePerMonth) => commit({ ...curve, slopePerMonth })}
-            min={-niceMax(curve.slopePerMonth, 500)}
-            max={niceMax(curve.slopePerMonth, 500)}
-            step={10}
-            unit="/mo"
-          />
+          <AmountField label="Starts at" path={`${path}.base`} value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          <Num label="Drift" path={`${path}.slopePerMonth`} value={curve.slopePerMonth} onCommit={(slopePerMonth) => commit({ ...curve, slopePerMonth })} unit="/mo" />
         </>
       )}
       {curve.type === 'compound' && (
         <>
-          <AmountField label="Starts at" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
-          <RateField
-            label="Grows"
-            signed
-            value={curve.annualRate.expected}
-            onCommit={(expected) => commit({ ...curve, annualRate: { ...curve.annualRate, expected } })}
-          />
+          <AmountField label="Starts at" path={`${path}.base`} value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          <RateField label="Grows" path={`${path}.annualRate.expected`} value={curve.annualRate.expected} onCommit={(expected) => commit({ ...curve, annualRate: { ...curve.annualRate, expected } })} />
         </>
       )}
       {curve.type === 'step' && (
         <>
-          <AmountField label="Starts at" value={curve.initial} cadence={cadence} onCommit={(initial, cad) => onCommit({ ...curve, initial }, cad)} />
+          <AmountField label="Starts at" path={`${path}.initial`} value={curve.initial} cadence={cadence} onCommit={(initial, cad) => onCommit({ ...curve, initial }, cad)} />
           {curve.steps.map((step, i) => (
             <div className="step-row" key={i}>
               <Num
                 label={`Month ${String(step.atMonth)} →`}
+                path={`${path}.steps.${String(i)}.value`}
                 value={step.value}
                 onCommit={(value) => commit({ ...curve, steps: normalizeSteps(curve.steps.map((s, j) => (j === i ? { ...s, value } : s))) })}
-                min={0}
-                max={niceMax(step.value, 20_000)}
-                step={100}
               />
               <div className="step-tools">
                 <Num
                   label="at month"
+                  path={`${path}.steps.${String(i)}.atMonth`}
                   value={step.atMonth}
                   onCommit={(atMonth) => commit({ ...curve, steps: normalizeSteps(curve.steps.map((s, j) => (j === i ? { ...s, atMonth } : s))) })}
-                  min={1}
-                  max={600}
-                  step={1}
                 />
                 <button className="card-action" onClick={() => commit({ ...curve, steps: curve.steps.filter((_, j) => j !== i) })}>
                   remove
@@ -473,9 +456,9 @@ function CurveField({
       )}
       {curve.type === 'sinusoidal' && (
         <>
-          <AmountField label="Around" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
-          <Money label="Swings ±" value={curve.amplitude} onCommit={(amplitude) => commit({ ...curve, amplitude })} />
-          <Num label="Every" value={curve.periodMonths} onCommit={(periodMonths) => commit({ ...curve, periodMonths: Math.max(1, periodMonths) })} min={1} max={120} step={1} unit="mo" />
+          <AmountField label="Around" path={`${path}.base`} value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          <Money label="Swings ±" path={`${path}.amplitude`} value={curve.amplitude} onCommit={(amplitude) => commit({ ...curve, amplitude })} />
+          <Num label="Every" path={`${path}.periodMonths`} value={curve.periodMonths} onCommit={(periodMonths) => commit({ ...curve, periodMonths: Math.max(1, periodMonths) })} unit="mo" />
         </>
       )}
       {curve.type === 'sampled' && (
@@ -488,7 +471,7 @@ function CurveField({
 
 /* ---- takes and the kind-specific editors ---- */
 
-function TakeField({ label, take, onCommit }: { label: string; take: Take | undefined; onCommit: (t: Take | undefined) => void }): ReactElement {
+function TakeField({ label, path, take, onCommit }: { label: string; path: string; take: Take | undefined; onCommit: (t: Take | undefined) => void }): ReactElement {
   const mode = take?.type ?? 'none'
   return (
     <>
@@ -502,14 +485,14 @@ function TakeField({ label, take, onCommit }: { label: string; take: Take | unde
         ]}
         onCommit={(m) => onCommit(m === 'none' ? undefined : m === 'fixed' ? { type: 'fixed', amountPerMonth: 1_000 } : { type: 'percent', percent: 0.1 })}
       />
-      {take?.type === 'fixed' && <Money label="Takes" value={take.amountPerMonth} onCommit={(amountPerMonth) => onCommit({ type: 'fixed', amountPerMonth })} unit="/mo" />}
-      {take?.type === 'percent' && <Share label="Takes" value={take.percent} onCommit={(percent) => onCommit({ type: 'percent', percent })} />}
+      {take?.type === 'fixed' && <Money label="Takes" path={`${path}.amountPerMonth`} value={take.amountPerMonth} onCommit={(amountPerMonth) => onCommit({ type: 'fixed', amountPerMonth })} unit="/mo" />}
+      {take?.type === 'percent' && <Share label="Takes" path={`${path}.percent`} value={take.percent} onCommit={(percent) => onCommit({ type: 'percent', percent })} />}
     </>
   )
 }
 
 function SourceEditor({ card, onChange }: { card: SourceCard; onChange: (c: EngineCard) => void }): ReactElement {
-  return <CurveField curve={card.flow} cadence={card.cadence} onCommit={(flow, cadence) => onChange(withOptional({ ...card, flow }, 'cadence', cadence))} />
+  return <CurveField curve={card.flow} cadence={card.cadence} path="flow" onCommit={(flow, cadence) => onChange(withOptional({ ...card, flow }, 'cadence', cadence))} />
 }
 
 function DrainEditor({ card, onChange }: { card: DrainCard; onChange: (c: EngineCard) => void }): ReactElement {
@@ -537,11 +520,12 @@ function DrainEditor({ card, onChange }: { card: DrainCard; onChange: (c: Engine
           onChange(next)
         }}
       />
-      {card.percent !== undefined && <Share label="Takes" value={card.percent} onCommit={(percent) => onChange({ ...card, percent })} />}
+      {card.percent !== undefined && <Share label="Takes" path="percent" value={card.percent} onCommit={(percent) => onChange({ ...card, percent })} />}
       {card.percent === undefined && (
         <CurveField
           curve={card.amount ?? { type: 'constant', value: 0 }}
           cadence={card.cadence}
+          path="amount"
           onCommit={(amount, cadence) => onChange(withOptional({ ...card, amount }, 'cadence', cadence))}
         />
       )}
@@ -560,17 +544,17 @@ function AssetEditor({ card, onChange }: { card: AssetCard; onChange: (c: Engine
             placeholder="series id from a data pack"
             onCommit={(seriesId) => onChange({ ...card, price: { ...card.price, seriesId } })}
           />
-          <Num label="Units held" value={card.initialUnits ?? 0} onCommit={(initialUnits) => onChange({ ...card, initialUnits })} min={0} max={niceMax(card.initialUnits ?? 0, 100)} step={1} />
+          <Num label="Units held" path="initialUnits" value={card.initialUnits ?? 0} onCommit={(initialUnits) => onChange({ ...card, initialUnits })} />
         </>
       ) : (
         <>
-          <Money label="Already holds" value={card.initialBalance ?? 0} onCommit={(v) => onChange(withOptional(card, 'initialBalance', v || undefined))} />
-          <RateField label="Grows" signed value={card.growth?.expected ?? 0} onCommit={(expected) => onChange({ ...card, growth: { ...card.growth, expected } })} />
-          <RateField label="Volatility" max={0.5} value={card.growth?.volatility ?? 0} onCommit={(v) => onChange({ ...card, growth: { expected: card.growth?.expected ?? 0, ...(v > 0 ? { volatility: v } : {}) } })} />
-          <RateField label="Fee" max={0.03} value={card.fee ?? 0} onCommit={(v) => onChange(withOptional(card, 'fee', v > 0 ? v : undefined))} />
+          <Money label="Already holds" path="initialBalance" value={card.initialBalance ?? 0} onCommit={(v) => onChange(withOptional(card, 'initialBalance', v || undefined))} />
+          <RateField label="Grows" path="growth.expected" value={card.growth?.expected ?? 0} onCommit={(expected) => onChange({ ...card, growth: { ...card.growth, expected } })} />
+          <RateField label="Volatility" path="growth.volatility" value={card.growth?.volatility ?? 0} onCommit={(v) => onChange({ ...card, growth: { expected: card.growth?.expected ?? 0, ...(v > 0 ? { volatility: v } : {}) } })} />
+          <RateField label="Fee" path="fee" value={card.fee ?? 0} onCommit={(v) => onChange(withOptional(card, 'fee', v > 0 ? v : undefined))} />
         </>
       )}
-      <TakeField label="Deposits" take={card.take} onCommit={(take) => onChange(withOptional(card, 'take', take))} />
+      <TakeField label="Deposits" path="take" take={card.take} onCommit={(take) => onChange(withOptional(card, 'take', take))} />
     </>
   )
 }
@@ -578,9 +562,9 @@ function AssetEditor({ card, onChange }: { card: AssetCard; onChange: (c: Engine
 function DebtEditor({ card, onChange }: { card: DebtCard; onChange: (c: EngineCard) => void }): ReactElement {
   return (
     <>
-      <Num label="Principal" value={card.principal} onCommit={(principal) => onChange({ ...card, principal: Math.max(0, principal) })} min={0} max={niceMax(card.principal, 1_000_000)} step={niceMax(card.principal, 1_000_000) / 200} />
-      <RateField label="Interest" value={card.interest.expected} onCommit={(expected) => onChange({ ...card, interest: { ...card.interest, expected } })} />
-      <TakeField label="Pays" take={card.payment} onCommit={(payment) => onChange(withOptional(card, 'payment', payment))} />
+      <Num label="Principal" path="principal" value={card.principal} onCommit={(principal) => onChange({ ...card, principal: Math.max(0, principal) })} />
+      <RateField label="Interest" path="interest.expected" value={card.interest.expected} onCommit={(expected) => onChange({ ...card, interest: { ...card.interest, expected } })} />
+      <TakeField label="Pays" path="payment" take={card.payment} onCommit={(payment) => onChange(withOptional(card, 'payment', payment))} />
     </>
   )
 }
@@ -625,8 +609,8 @@ function RuleEditor({ card, onChange, from }: { card: RuleCard; onChange: (c: En
           })
         }}
       />
-      {'rate' in effect && <Share label="Rate" value={effect.rate} onCommit={(rate) => commit({ effect: { ...effect, rate } })} />}
-      {'factor' in effect && <Num label="Factor" value={effect.factor} onCommit={(factor) => commit({ effect: { ...effect, factor } })} min={0} max={2} step={0.01} unit="×" />}
+      {'rate' in effect && <Share label="Rate" path="rule.effect.rate" value={effect.rate} onCommit={(rate) => commit({ effect: { ...effect, rate } })} />}
+      {'factor' in effect && <Num label="Factor" path="rule.effect.factor" value={effect.factor} onCommit={(factor) => commit({ effect: { ...effect, factor } })} unit="×" />}
       <Select
         label="Fires"
         value={rule.schedule.kind}
@@ -691,24 +675,26 @@ function withOptional<C extends EngineCard, K extends keyof C>(card: C, key: K, 
  */
 export function CardMathEditor({ card, onChange, from }: { card: EngineCard; onChange: (next: EngineCard) => void; from: number }): ReactElement {
   return (
-    <div className="card-editor">
-      <Text label="Name" value={card.name ?? ''} onCommit={(name) => onChange({ ...card, name })} />
-      {card.kind === 'source' && <SourceEditor card={card} onChange={onChange} />}
-      {card.kind === 'drain' && <DrainEditor card={card} onChange={onChange} />}
-      {card.kind === 'asset' && <AssetEditor card={card} onChange={onChange} />}
-      {card.kind === 'debt' && <DebtEditor card={card} onChange={onChange} />}
-      {card.kind === 'rule' && <RuleEditor card={card} onChange={onChange} from={from} />}
-      {card.kind === 'hand' && <TakeField label="Takes" take={card.take} onCommit={(take) => onChange(withOptional(card, 'take', take))} />}
-      <Text
-        label="Tags"
-        value={card.tags?.join(', ') ?? ''}
-        placeholder="fund, equity — what rules aim at"
-        onCommit={(text) => {
-          const tags = text.split(',').map((t) => t.trim()).filter(Boolean)
-          onChange(withOptional(card, 'tags', tags.length > 0 ? tags : undefined))
-        }}
-      />
-    </div>
+    <TuneContext.Provider value={{ tune: tuneOf(card), retune: (path, pct) => onChange(withTune(card, path, pct)) }}>
+      <div className="card-editor">
+        <Text label="Name" value={card.name ?? ''} onCommit={(name) => onChange({ ...card, name })} />
+        {card.kind === 'source' && <SourceEditor card={card} onChange={onChange} />}
+        {card.kind === 'drain' && <DrainEditor card={card} onChange={onChange} />}
+        {card.kind === 'asset' && <AssetEditor card={card} onChange={onChange} />}
+        {card.kind === 'debt' && <DebtEditor card={card} onChange={onChange} />}
+        {card.kind === 'rule' && <RuleEditor card={card} onChange={onChange} from={from} />}
+        {card.kind === 'hand' && <TakeField label="Takes" path="take" take={card.take} onCommit={(take) => onChange(withOptional(card, 'take', take))} />}
+        <Text
+          label="Tags"
+          value={card.tags?.join(', ') ?? ''}
+          placeholder="fund, equity — what rules aim at"
+          onCommit={(text) => {
+            const tags = text.split(',').map((t) => t.trim()).filter(Boolean)
+            onChange(withOptional(card, 'tags', tags.length > 0 ? tags : undefined))
+          }}
+        />
+      </div>
+    </TuneContext.Provider>
   )
 }
 
