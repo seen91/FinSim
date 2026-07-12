@@ -32,8 +32,6 @@
   --kind-asset: #a67c2e;
   --kind-debt: #7c4a33;
   --kind-rule: #5f4b85;
-  --kind-vessel: #6f6250;
-  --kind-flow: #6f6250;
   --kind-hand: #5f4b85;
 
   --money-pos: #2e6b2e;
@@ -90,7 +88,7 @@ body {
 
 .app {
   display: grid;
-  grid-template-rows: auto 1fr 268px;
+  grid-template-rows: auto 1fr 288px;
   height: 100vh;
 }
 
@@ -341,7 +339,7 @@ button:not(:disabled):hover {
 
 /* ---- playing cards: parchment, gold frame, engraved sigil ---- */
 .pcard {
-  --card-w: 168px;
+  --card-w: 184px;
   width: var(--card-w);
   aspect-ratio: 63 / 88;
   perspective: 1000px;
@@ -415,8 +413,6 @@ button:not(:disabled):hover {
 .kind-asset .pcard-band { border-color: var(--kind-asset); color: var(--kind-asset); }
 .kind-debt .pcard-band { border-color: var(--kind-debt); color: var(--kind-debt); }
 .kind-rule .pcard-band { border-color: var(--kind-rule); color: var(--kind-rule); }
-.kind-vessel .pcard-band { border-color: var(--kind-vessel); color: var(--kind-vessel); }
-.kind-flow .pcard-band { border-color: var(--kind-flow); color: var(--kind-flow); }
 .kind-hand .pcard-band { border-color: var(--kind-hand); color: var(--kind-hand); }
 
 .pcard-name {
@@ -463,8 +459,6 @@ button:not(:disabled):hover {
 .kind-drain .pcard-art { color: var(--kind-drain); }
 .kind-asset .pcard-art { color: var(--kind-asset); }
 .kind-debt .pcard-art { color: var(--kind-debt); }
-.kind-vessel .pcard-art { color: var(--kind-vessel); }
-.kind-flow .pcard-art { color: var(--kind-flow); }
 .kind-hand .pcard-art { color: var(--kind-hand); }
 
 .pcard-stats {
@@ -862,29 +856,103 @@ input[type='range'] {
 .hand-stack-delta.pos { color: var(--money-pos); }
 .hand-stack-delta.neg { color: var(--money-neg); }
 
-/* ---- the pipeline's mouth, pinned in the corner: vessel (stock) over spout (flow) ---- */
-.cash-corner {
+/* ---- the pipeline's mouth: a brass plaque stacked above the draw pile,
+   one fixture column in the right corner. Not a card. ---- */
+.cash-dock {
   position: fixed;
-  left: 1.2rem;
-  bottom: 1rem;
+  right: 1.4rem;
+  bottom: calc(1.6rem + 130px + 1rem);
   z-index: 40;
   display: flex;
+  justify-content: flex-end;
+}
+
+.dock-plaque {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem 0.3rem 0.55rem;
+  background:
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.14) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.14) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 9px;
+  box-shadow: 0 2px 6px var(--shadow);
+  color: var(--wood-ink);
+}
+
+.dock-plaque:not(:disabled):hover {
+  border-color: var(--gold);
+}
+
+.dock-plaque .glyph {
+  flex-shrink: 0;
+  color: var(--gold);
+  opacity: 0.85;
+}
+
+.dock-rows {
+  display: flex;
   flex-direction: column;
+  gap: 0.08rem;
+}
+
+.dock-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 0.7rem;
 }
 
-.corner-slot {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+.dock-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--wood-ink-soft);
 }
 
-.corner-caption {
-  font-size: 0.66rem;
-  font-variant: small-caps;
-  letter-spacing: 0.08em;
+.dock-value {
+  font-size: 0.8rem;
+}
+
+/* money direction, lightened just enough to read on the dark leather */
+.dock-value.pos { color: color-mix(in srgb, var(--money-pos) 45%, var(--wood-ink)); }
+.dock-value.neg { color: color-mix(in srgb, var(--money-neg) 45%, var(--wood-ink)); }
+
+/* the editing panel: a parchment slip that unfolds above the plaque */
+.dock-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.55rem);
+  width: 232px;
+  padding: 0.6rem 0.75rem 0.55rem;
+  background:
+    radial-gradient(ellipse at 30% 15%, rgba(255, 252, 240, 0.55), transparent 60%),
+    var(--card);
+  color: var(--ink);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 9px;
+  box-shadow: 0 8px 20px -6px var(--shadow);
+}
+
+.dock-panel-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.dock-panel-hint {
+  font-size: 0.64rem;
+  line-height: 1.35;
   color: var(--ink-soft);
-  padding-left: 0.2rem;
+  margin: 0.1rem 0 0.5rem;
+}
+
+.dock-panel-spark {
+  color: var(--ink-soft);
+  margin-top: 0.2rem;
 }
 
 /* ---- the draw pile: a leather-backed deck ---- */

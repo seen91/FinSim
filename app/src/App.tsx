@@ -2,10 +2,9 @@ import { findCard, formatMonth, ym, type HandCard } from '@finsim/engine'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
-import { CashCard } from './components/CashCard'
+import { CashDock } from './components/CashDock'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
-import { FlowCard } from './components/FlowCard'
 import { HandStack } from './components/HandStack'
 import { loadDoc, saveDoc } from './db'
 import { deserializeDoc, serializeDoc } from './exchange'
@@ -17,7 +16,7 @@ import type { HandPreset, PresetCard } from './presets'
 import { starterDoc } from './starter'
 
 /** The main hand at the bottom of the screen: a wide, gentle arc. */
-const MAIN_FAN: FanGeometry = { radius: 1150, maxStep: 5, maxSpread: 40, visibleTo: 90, cardWidth: 168 }
+const MAIN_FAN: FanGeometry = { radius: 1150, maxStep: 6, maxSpread: 46, visibleTo: 90, cardWidth: 184 }
 
 /** The goal in compact money ("10 M", "250 k"); accepts "1,5m", "10M", "250k" or a plain number. */
 function GoalInput({ goal, onCommit }: { goal: number; onCommit: (v: number) => void }): ReactElement {
@@ -240,16 +239,7 @@ export function App(): ReactElement {
         {root.children.length === 0 && <p className="hand-empty">your hand is empty — draw from the pile</p>}
       </footer>
 
-      <div className="cash-corner">
-        <div className="corner-slot">
-          <span className="corner-caption">accumulated</span>
-          <CashCard doc={doc} sim={sim} scrub={scrub} onEdit={store.update} />
-        </div>
-        <div className="corner-slot">
-          <span className="corner-caption">monthly</span>
-          <FlowCard sim={sim} scrub={scrub} />
-        </div>
-      </div>
+      <CashDock doc={doc} sim={sim} scrub={scrub} onEdit={store.update} />
 
       <DrawPile
         open={drawerOpen}
