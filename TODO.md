@@ -37,21 +37,22 @@ Done:
 - [x] **PWA offline**: `vite-plugin-pwa` service worker precaches the app; verified offline reload + play in a headless browser
 - [x] Acceptance pass in the running app (headless Chrome): default (ISK-taxed) table reads "goal in 20 yr 6 mo", car played → "+1 yr 5 mo to goal"; the hand-checked ISK-free golden scenario ("1 yr 3 mo", chart "20 yr 8 mo") is pinned by `app/test/app.test.ts` via `goldenDoc()`
 
-Remaining gaps:
+Remaining gaps (both resolved 2026-07-12):
 
-- [ ] `editors.ts` (card-back parameter sliders) is written but unused — per the v3 decision, tuning lives in the Workshop; wire it there in M2 or delete it (an ISK-rate slider would be its first real customer)
-- [ ] Record the taxes-as-cards decision (playable hand-scoped event cards; no locale/view toggles) in DESIGN.md §0/§7/§8
+- [x] `editors.ts` **deleted** (not wired) so the Workshop starts clean — see the M2 note below about bringing back a quick what-if tool afterwards
+- [x] Taxes-as-cards decision recorded in DESIGN.md §0/§7/§8 (plus §7 Anatomy aligned with the v3 "tuning lives in the Workshop" rule)
 
 ## M2 — Workshop v1 ❌ not started
 
 The Workshop button in the draw pile is a disabled placeholder (`DrawPile.tsx`).
 Spec: DESIGN §3.
 
-- [ ] Card back as editor: flip a card, tune parameters with live sliders (reuse/wire `app/src/editors.ts`)
+- [ ] Card back as editor: flip a card, tune parameters with live sliders (built fresh — the old `editors.ts` was deleted 2026-07-12 so it wouldn't shape the Workshop)
 - [ ] Blank-card authoring: pick kind → curve primitive → parameters → front (name, icon, tags) → assumptions footnote
 - [ ] Personal library (authored cards persisted alongside the table doc)
 - [ ] **Pack format** (JSON: instrument cards, locale rules, data series, scenarios) — decide versioning *first* (open question §14.4)
 - [ ] Pack export/import as files
+- [ ] **After the Workshop is done:** bring back something like the deleted `editors.ts` sliders as a quick **what-if tool on the table** — the main use case is cheap experimentation ("what if this fund returns 7 % instead of 6 %, what effect does that have?"), *not* permanently changing cards (permanent edits live in the Workshop)
 
 ## M3 — Game prototype, hot-seat ❌ not started
 
