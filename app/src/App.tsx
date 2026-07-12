@@ -7,6 +7,7 @@ import { CashDock } from './components/CashDock'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
 import { HandStack } from './components/HandStack'
+import { Rulebook } from './components/Rulebook'
 import { Workshop, type WorkshopFocus } from './components/Workshop'
 import type { ArenaFocus } from './components/Arena'
 import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
@@ -54,6 +55,7 @@ export function App(): ReactElement {
   const { doc } = store
   const [scrubRaw, setScrub] = useState(doc.from)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [rulebookOpen, setRulebookOpen] = useState(false)
   const [workshopOpen, setWorkshopOpen] = useState(false)
   const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
   const [library, setLibrary] = useState<AuthoredCard[]>([])
@@ -137,14 +139,15 @@ export function App(): ReactElement {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return
-      if (drawerOpen) setDrawerOpen(false)
+      if (rulebookOpen) setRulebookOpen(false)
+      else if (drawerOpen) setDrawerOpen(false)
       else if (workshopFocus) setWorkshopFocus(null) // focus → back to browsing
       else if (workshopOpen) setWorkshopOpen(false)
       else if (trail.length > 0) setOpenHandId(trail[trail.length - 2]?.id ?? null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [drawerOpen, workshopOpen, workshopFocus, trail])
+  }, [rulebookOpen, drawerOpen, workshopOpen, workshopFocus, trail])
 
   const targetId = openHand?.id ?? null
 
@@ -240,6 +243,9 @@ export function App(): ReactElement {
           />
         </label>
         <div className="topbar-actions">
+          <button onClick={() => setRulebookOpen(true)} title="how the table plays — the rules, written down">
+            Rulebook
+          </button>
           <button onClick={handleExport} title="download the whole table as a JSON file — the backup/share path">
             Export
           </button>
@@ -299,6 +305,8 @@ export function App(): ReactElement {
       </footer>
 
       <CashDock doc={doc} sim={sim} scrub={scrub} onEdit={store.update} />
+
+      <Rulebook open={rulebookOpen} onClose={() => setRulebookOpen(false)} />
 
       <DrawPile
         open={drawerOpen}
