@@ -35,6 +35,12 @@ export interface SampledData {
   values: number[]
 }
 
+/** A reference to sampled data: inline, or by id into `world.series`. */
+export interface SampledRef {
+  seriesId?: string
+  data?: SampledData
+}
+
 /**
  * Curve primitives — every card is a curve f(t) built from these.
  * `t` below is months since the card's start; sampled data is indexed by
@@ -46,7 +52,7 @@ export type Curve =
   | { type: 'compound'; base: number; annualRate: GrowthParam }
   | { type: 'step'; initial: number; steps: { atMonth: number; value: number }[] } // atMonth: months since card start
   | { type: 'sinusoidal'; base: number; amplitude: number; periodMonths: number; phaseMonths?: number }
-  | { type: 'sampled'; seriesId?: string; data?: SampledData }
+  | ({ type: 'sampled' } & SampledRef)
   | { type: 'expression'; expr: string } // variables: t (local months), month (absolute)
 
 export interface CardBase {
@@ -67,7 +73,8 @@ export interface CardBase {
  * ×1/12). A yearly amount is smoothed across the year — a lump landing in a
  * specific month is a step/expression curve or a rule, not a cadence.
  */
-export type Cadence = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
+export const CADENCES = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'] as const
+export type Cadence = (typeof CADENCES)[number]
 
 /** Adds its flow to the running total. A raise is the curve's own growth. */
 export interface SourceCard extends CardBase {
@@ -112,7 +119,7 @@ export interface AssetCard extends CardBase {
   growth?: GrowthParam
   /** Annual fee drag, e.g. 0.004 = 0.40 %/yr. */
   fee?: number
-  price?: { seriesId?: string; data?: SampledData }
+  price?: SampledRef
   initialUnits?: number
   take?: Take
 }

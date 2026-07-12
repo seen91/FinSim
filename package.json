@@ -7,7 +7,7 @@
     "app"
   ],
   "scripts": {
-    "test": "npm --workspace @finsim/engine run test",
+    "test": "npm --workspace @finsim/engine run test && npm --workspace @finsim/app run test",
     "typecheck": "npm --workspace @finsim/engine run typecheck && npm --workspace @finsim/app run typecheck",
     "dev": "npm --workspace @finsim/app run dev",
     "build": "npm --workspace @finsim/app run build"

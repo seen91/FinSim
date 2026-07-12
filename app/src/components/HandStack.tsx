@@ -5,6 +5,7 @@ import { Glyph } from '../icons'
 import type { BundleRange } from '../mc'
 import type { CardCompare, Sim } from '../model'
 import { deltaVerdict, rangeVerdict } from '../verdict'
+import { CardShelf } from './CardShelf'
 
 /** A hand at rest: a pile of stacked cards. Tap it to open the hand. */
 
@@ -35,6 +36,57 @@ export function handHeld(hand: HandCard, sim: Sim, scrub: number): number | null
   return has ? sum : null
 }
 
+/**
+ * A hand's numbers — net flow, held balance, time-to-goal verdict, Monte
+ * Carlo range — shared by the resting stack and the opened hand's hub; the
+ * prefix picks which family of classes dresses them.
+ */
+export function HandFigures({
+  prefix,
+  hand,
+  sim,
+  scrub,
+  from,
+  compare,
+  range,
+}: {
+  prefix: 'hand-stack' | 'hub'
+  hand: HandCard
+  sim: Sim
+  scrub: number
+  from: number
+  compare?: CardCompare
+  range?: BundleRange
+}): ReactElement {
+  const net = sim.active.contributions.find((s) => s.id === hand.id)
+  const netValue = net ? valueAt(net, scrub) : null
+  const held = handHeld(hand, sim, scrub)
+  const verdict = compare ? deltaVerdict(compare, from) : null
+  const mcRange = rangeVerdict(range)
+  return (
+    <>
+      <span className={`${prefix}-net num${netValue !== null && netValue < 0 ? ' neg' : ' pos'}`}>
+        {netValue !== null ? formatPerMonth(netValue) : '—'}
+      </span>
+      {held !== null && (
+        <span className={`${prefix}-held num${held < 0 ? ' neg' : ' pos'}`} title="what this hand's assets and debts hold, net, at the scrubbed month">
+          {formatAmount(held)} /total
+        </span>
+      )}
+      {verdict && (
+        <span className={`${prefix}-delta num ${verdict.cls}`} title={verdict.tooltip}>
+          {verdict.text}
+        </span>
+      )}
+      {mcRange && (
+        <span className={`${prefix}-range num ${mcRange.cls}`} title={mcRange.tooltip}>
+          {mcRange.text}
+        </span>
+      )}
+    </>
+  )
+}
+
 export function HandStack({
   hand,
   sim,
@@ -55,29 +107,12 @@ export function HandStack({
   onToggle: (cardId: string) => void
 }): ReactElement {
   const cards = countCards(hand)
-  const net = sim.active.contributions.find((s) => s.id === hand.id)
-  const netValue = net ? valueAt(net, scrub) : null
-  const held = handHeld(hand, sim, scrub)
-  const verdict = compare ? deltaVerdict(compare, from) : null
-  const mcRange = rangeVerdict(range)
   const setAside = hand.enabled === false
   return (
     <div className={`hand-stack${setAside ? ' muted' : ''}`} title="Open this hand">
       <span className="hand-stack-under u2" />
       <span className="hand-stack-under u1" />
-      <div className="card-shelf">
-        <button
-          className="mod-toggle"
-          title={setAside ? 'Bring this hand back into play' : 'Set aside — the table plays as if this hand were not there'}
-          aria-label={setAside ? 'Bring back into play' : 'Set aside'}
-          onClick={() => onToggle(hand.id)}
-        >
-          <Glyph name={setAside ? 'play' : 'pause'} size={15} />
-        </button>
-        <button className="mod-remove" title="Discard the whole hand to the draw pile" aria-label="Discard" onClick={() => onRemove(hand.id)}>
-          <Glyph name="flame" size={15} />
-        </button>
-      </div>
+      <CardShelf noun="hand" setAside={setAside} onToggle={() => onToggle(hand.id)} onRemove={() => onRemove(hand.id)} />
       <div className="hand-stack-front">
         <span className="hand-stack-name">{hand.name ?? hand.id}</span>
         <span className="hand-stack-art">
@@ -86,24 +121,7 @@ export function HandStack({
         <span className="hand-stack-count num">
           {cards} card{cards === 1 ? '' : 's'}
         </span>
-        <span className={`hand-stack-net num${netValue !== null && netValue < 0 ? ' neg' : ' pos'}`}>
-          {netValue !== null ? formatPerMonth(netValue) : '—'}
-        </span>
-        {held !== null && (
-          <span className={`hand-stack-held num${held < 0 ? ' neg' : ' pos'}`} title="what this hand's assets and debts hold, net, at the scrubbed month">
-            {formatAmount(held)} /total
-          </span>
-        )}
-        {verdict && (
-          <span className={`hand-stack-delta num ${verdict.cls}`} title={verdict.tooltip}>
-            {verdict.text}
-          </span>
-        )}
-        {mcRange && (
-          <span className={`hand-stack-range num ${mcRange.cls}`} title={mcRange.tooltip}>
-            {mcRange.text}
-          </span>
-        )}
+        <HandFigures prefix="hand-stack" hand={hand} sim={sim} scrub={scrub} from={from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
       </div>
     </div>
   )

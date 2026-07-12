@@ -1,4 +1,4 @@
-import { findCard, formatMonth, ym, type HandCard } from '@finsim/engine'
+import { findCard, formatMonth, type Card, type HandCard, type SampledData } from '@finsim/engine'
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { instantiate, type AuthoredCard } from './authored'
 import { Arena } from './components/Arena'
@@ -12,16 +12,16 @@ import { Rulebook } from './components/Rulebook'
 import { Workshop, type WorkshopFocus } from './components/Workshop'
 import type { ArenaFocus } from './components/Arena'
 import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
+import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
-import { formatCompact, parseCompact } from './format'
+import { errorMessage, formatCompact, parseCompact } from './format'
 import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import { Glyph } from './icons'
-import type { Blueprint } from './library'
 import { runMc } from './mc'
-import { cardFocusSeries, migrateDoc, runSim, useDoc, type Doc, type Sim } from './model'
-import type { HandPreset, PresetCard } from './presets'
-import { addSeries } from './seriesImport'
+import { cardFocusSeries, migrateDoc, runSim, useDoc, type Sim } from './model'
+import { addSeries, parseMonthText } from './seriesImport'
 import { starterDoc } from './starter'
+import { newUid } from './uid'
 
 /** The main hand at the bottom of the screen: a wide, gentle arc. */
 const MAIN_FAN: FanGeometry = { radius: 1150, maxStep: 6, maxSpread: 46, visibleTo: 90, cardWidth: 184 }
@@ -78,7 +78,9 @@ export function App(): ReactElement {
     }
     void loadDoc().then((saved) => {
       if (saved) {
-        // the removed Sweden-rules toggle was the only writer of world rules — lift any it left behind
+        // the removed Sweden-rules toggle was the only app-side writer of world
+        // rules — lift what it left behind in old saves. Imported files keep
+        // theirs: world rules are engine surface, and exchange round-trips them.
         if (saved.world?.rules) delete saved.world.rules
         store.replace(migrateDoc(saved))
       }
@@ -111,7 +113,7 @@ export function App(): ReactElement {
     try {
       return { sim: runSim(doc), error: null as string | null }
     } catch (err) {
-      return { sim: null, error: err instanceof Error ? err.message : String(err) }
+      return { sim: null, error: errorMessage(err) }
     }
   }, [doc])
   const lastGoodSim = useRef<Sim | null>(null)
@@ -183,39 +185,18 @@ export function App(): ReactElement {
 
   const targetId = openHand?.id ?? null
 
-  const playCard = (bp: Blueprint): void => {
-    const uid = crypto.randomUUID().slice(0, 8)
+  // one dealing gesture for everything the pile offers — a library blueprint,
+  // a preset card or hand, a Workshop design: land any series the card wears,
+  // then the card itself, into the open hand
+  const deal = (make: (uid: string) => Card, series?: Record<string, SampledData>): void => {
     store.update((d) => {
-      addSeries(d, bp.series)
-      addCard(d, targetId, bp.make(uid))
+      addSeries(d, series)
+      addCard(d, targetId, make(newUid()))
     })
     setDrawerOpen(false)
   }
 
-  const handleImportHand = (preset: HandPreset): void => {
-    const uid = crypto.randomUUID().slice(0, 8)
-    store.update((d) => {
-      addSeries(d, preset.series)
-      addCard(d, targetId, preset.build(uid))
-    })
-    setDrawerOpen(false)
-  }
-
-  const handleImportCard = (card: PresetCard): void => {
-    const uid = crypto.randomUUID().slice(0, 8)
-    store.update((d) => {
-      addSeries(d, card.series)
-      addCard(d, targetId, card.make(uid))
-    })
-    setDrawerOpen(false)
-  }
-
-  // deal a fresh copy of a Workshop design into the open hand
-  const playAuthored = (authored: AuthoredCard): void => {
-    const uid = crypto.randomUUID().slice(0, 8)
-    store.update((d) => addCard(d, targetId, instantiate(authored, uid)))
-    setDrawerOpen(false)
-  }
+  const playAuthored = (authored: AuthoredCard): void => deal((uid) => instantiate(authored, uid))
 
   const handleReorder = (cardId: string, toIndex: number): void => {
     store.update((d) => moveCard(d, cardId, toIndex))
@@ -236,13 +217,7 @@ export function App(): ReactElement {
   }
 
   const handleExport = (): void => {
-    const blob = new Blob([serializeDoc(doc)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `finsim-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadJson(`finsim-${new Date().toISOString().slice(0, 10)}.json`, serializeDoc(doc))
   }
 
   const handleImportFile = (file: File): void => {
@@ -253,7 +228,7 @@ export function App(): ReactElement {
         setOpenHandId(null)
         setScrub(imported.from)
       } catch (err) {
-        alert(`Could not import: ${err instanceof Error ? err.message : String(err)}`)
+        alert(`Could not import: ${errorMessage(err)}`)
       }
     })
   }
@@ -277,9 +252,8 @@ export function App(): ReactElement {
             type="month"
             value={formatMonth(doc.from)}
             onChange={(e) => {
-              const [y, m] = e.target.value.split('-').map(Number)
-              if (!y || !m) return
-              store.update((d) => (d.from = ym(y, m)))
+              const month = parseMonthText(e.target.value)
+              if (month !== null) store.update((d) => (d.from = month))
             }}
           />
         </label>
@@ -367,7 +341,7 @@ export function App(): ReactElement {
         {root.children.length === 0 && <p className="hand-empty">your hand is empty — draw from the pile</p>}
       </footer>
 
-      <CashDock doc={doc} sim={sim} scrub={scrub} onEdit={store.update} />
+      <CashDock doc={doc} sim={sim} scrub={scrub} update={store.update} />
 
       <Rulebook open={rulebookOpen} onClose={() => setRulebookOpen(false)} />
 
@@ -379,10 +353,10 @@ export function App(): ReactElement {
         authored={library}
         onOpen={() => setDrawerOpen(true)}
         onClose={() => setDrawerOpen(false)}
-        onChoose={playCard}
+        onChoose={(bp) => deal(bp.make, bp.series)}
         onChooseAuthored={playAuthored}
-        onImportHand={handleImportHand}
-        onImportCard={handleImportCard}
+        onImportHand={(preset) => deal(preset.build, preset.series)}
+        onImportCard={(card) => deal(card.make, card.series)}
         onWorkshop={() => {
           setDrawerOpen(false)
           setWorkshopOpen(true)

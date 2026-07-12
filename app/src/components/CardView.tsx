@@ -1,38 +1,14 @@
 import { formatMonth, valueAt, type Card as EngineCard, type RuleSchedule } from '@finsim/engine'
 import type { ReactElement } from 'react'
-import { formatAmount, formatPerMonth, formatPercent } from '../format'
-import { Glyph, type GlyphName } from '../icons'
+import { takeLabel } from '../authored'
+import { MONTH_NAMES, formatAmount, formatPerMonth, formatPercent } from '../format'
+import { glyphOf } from '../glyph'
 import type { CardCompare, Sim } from '../model'
 import { deltaVerdict } from '../verdict'
 import { Card, type CardStat } from './Card'
+import { CardShelf } from './CardShelf'
 
 /** An engine card dressed for the table: glyph, live headline, stat rows. */
-
-export function glyphFor(card: EngineCard): GlyphName {
-  const name = (card.name ?? '').toLowerCase()
-  switch (card.kind) {
-    case 'debt':
-      return 'bank'
-    case 'hand':
-      return 'bundle'
-    case 'drain':
-      if (card.percent !== undefined) return 'stamp'
-      if (name.includes('rent') || name.includes('avgift')) return 'home'
-      if (name.includes('payment')) return 'cash'
-      return 'receipt'
-    case 'source':
-      return name.includes('hustle') ? 'briefcase' : 'coins'
-    case 'asset':
-      if (name.includes('car')) return 'car'
-      if (name.includes('apartment') || name.includes('flat')) return 'building'
-      if (name.includes('savings') || name.includes('nest')) return 'vault'
-      return 'trend'
-    case 'rule':
-      return 'percent'
-  }
-}
-
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 function scheduleLabel(schedule: RuleSchedule): string {
   switch (schedule.kind) {
@@ -54,25 +30,12 @@ function frontStats(card: EngineCard): CardStat[] {
   } else if (card.kind === 'asset') {
     if (!card.price) stats.push({ label: 'Growth', value: `${formatPercent(card.growth?.expected ?? 0)} /yr` })
     if ((card.fee ?? 0) > 0) stats.push({ label: 'Fee', value: `${formatPercent(card.fee!, 2)} /yr` })
-    if (card.take) {
-      stats.push({
-        label: 'Takes',
-        value: card.take.type === 'percent' ? `${formatPercent(card.take.percent, 0)} of subtotal` : formatPerMonth(card.take.amountPerMonth),
-      })
-    }
+    if (card.take) stats.push({ label: 'Takes', value: takeLabel(card.take) })
   } else if (card.kind === 'debt') {
     stats.push({ label: 'Interest', value: `${formatPercent(card.interest.expected)} /yr` })
-    if (card.payment) {
-      stats.push({
-        label: 'Payment',
-        value: card.payment.type === 'percent' ? `${formatPercent(card.payment.percent, 0)} of subtotal` : formatPerMonth(card.payment.amountPerMonth),
-      })
-    }
+    if (card.payment) stats.push({ label: 'Payment', value: takeLabel(card.payment) })
   } else if (card.kind === 'hand' && card.take) {
-    stats.push({
-      label: 'Takes',
-      value: card.take.type === 'percent' ? `${formatPercent(card.take.percent, 0)} of subtotal` : formatPerMonth(card.take.amountPerMonth),
-    })
+    stats.push({ label: 'Takes', value: takeLabel(card.take) })
   } else if (card.kind === 'rule') {
     const { schedule, target, effect } = card.rule
     if (effect.type === 'balanceTax') stats.push({ label: 'Drains', value: `${formatPercent(effect.rate, 2)} of balance`, cls: 'neg' })
@@ -121,7 +84,7 @@ export function CardView({
         face={{
           kind: card.kind,
           name: card.name ?? card.id,
-          glyph: glyphFor(card),
+          glyph: glyphOf(card),
           ...(isRule
             ? {}
             : {
@@ -133,19 +96,7 @@ export function CardView({
           ...(verdict ? { verdict } : {}),
         }}
       />
-      <div className="card-shelf">
-        <button
-          className="mod-toggle"
-          title={setAside ? 'Bring back into play' : 'Set aside — the table plays as if this card were not there'}
-          aria-label={setAside ? 'Bring back into play' : 'Set aside'}
-          onClick={() => onToggle(card.id)}
-        >
-          <Glyph name={setAside ? 'play' : 'pause'} size={15} />
-        </button>
-        <button className="mod-remove" title="Discard to the draw pile" aria-label="Discard" onClick={() => onRemove(card.id)}>
-          <Glyph name="flame" size={15} />
-        </button>
-      </div>
+      <CardShelf noun="card" setAside={setAside} onToggle={() => onToggle(card.id)} onRemove={() => onRemove(card.id)} />
     </div>
   )
 }

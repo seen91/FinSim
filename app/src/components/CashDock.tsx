@@ -16,13 +16,13 @@ export function CashDock({
   doc,
   sim,
   scrub,
-  onEdit,
+  update,
 }: {
   doc: Doc
   sim: Sim
   scrub: number
   /** Doc update, same contract as DocStore.update. */
-  onEdit: (mutate: (doc: Doc) => void) => void
+  update: (mutate: (doc: Doc) => void) => void
 }): ReactElement {
   const [open, setOpen] = useState(false)
   const dock = useRef<HTMLElement>(null)
@@ -59,7 +59,7 @@ export function CashDock({
               value={initial}
               onChange={(e) => {
                 const v = Number(e.target.value)
-                onEdit((d) => {
+                update((d) => {
                   d.table.cash = { ...d.table.cash, initialBalance: v }
                 })
               }}
@@ -77,7 +77,7 @@ export function CashDock({
               value={interest}
               onChange={(e) => {
                 const v = Number(e.target.value)
-                onEdit((d) => {
+                update((d) => {
                   d.table.cash = { ...d.table.cash, growth: { ...d.table.cash?.growth, expected: v } }
                 })
               }}

@@ -1,6 +1,6 @@
 import { findCard, formatMonth, formatMonthsDelta, fromMonthIndex, quantile } from '@finsim/engine'
 import type { ReactElement } from 'react'
-import { formatAmount } from '../format'
+import { formatAmount, formatPercent } from '../format'
 import { Glyph } from '../icons'
 import type { Mc } from '../mc'
 import type { Doc } from '../model'
@@ -18,7 +18,7 @@ export function FuturesReport({ open, mc, doc, onClose }: { open: boolean; mc: M
 
   const { run, crossings } = mc
   const to = doc.from + doc.horizonMonths - 1
-  const pct = (v: number): string => `${String(Math.round(v * 100))} %`
+  const pct = (v: number): string => formatPercent(v, 0)
 
   // time to goal, among the futures that get there
   const reached = crossings.filter((m): m is number => m !== null).sort((a, b) => a - b)

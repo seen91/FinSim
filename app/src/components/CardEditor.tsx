@@ -1,7 +1,6 @@
 import {
   compileExpression,
   formatMonth,
-  ym,
   type AssetCard,
   type Cadence,
   type Card as EngineCard,
@@ -13,9 +12,11 @@ import {
   type Take,
 } from '@finsim/engine'
 import { createContext, useContext, useEffect, useRef, useState, type ReactElement } from 'react'
-import { CADENCE_SUFFIX, CARD_GLYPHS, type AuthoredCard } from '../authored'
-import { formatNumber } from '../format'
+import { CADENCE_SUFFIX, type AuthoredCard } from '../authored'
+import { MONTH_NAMES, formatNumber } from '../format'
+import { CARD_GLYPHS } from '../glyph'
 import { Glyph } from '../icons'
+import { parseMonthText } from '../seriesImport'
 import { effectiveValue, tuneOf, withTune, type Tune } from '../tune'
 
 /**
@@ -609,20 +610,7 @@ function DebtEditor({ card, onChange }: { card: DebtCard; onChange: (c: EngineCa
   )
 }
 
-const MONTH_OPTIONS: [string, string][] = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-].map((name, i) => [String(i + 1), name])
+const MONTH_OPTIONS: [string, string][] = MONTH_NAMES.map((name, i) => [String(i + 1), name])
 
 function RuleEditor({ card, onChange, from }: { card: RuleCard; onChange: (c: EngineCard) => void; from: number }): ReactElement {
   const { rule } = card
@@ -678,8 +666,8 @@ function RuleEditor({ card, onChange, from }: { card: RuleCard; onChange: (c: En
             type="month"
             value={formatMonth(rule.schedule.atMonth)}
             onChange={(e) => {
-              const [y, m] = e.target.value.split('-').map(Number)
-              if (y && m) commit({ schedule: { kind: 'once', atMonth: ym(y, m) } })
+              const atMonth = parseMonthText(e.target.value)
+              if (atMonth !== null) commit({ schedule: { kind: 'once', atMonth } })
             }}
           />
         </Row>

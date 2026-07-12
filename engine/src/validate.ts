@@ -1,4 +1,4 @@
-import type { Card, Curve, GrowthParam, HandCard, Table } from './types.js'
+import { CADENCES, type Cadence, type Card, type Curve, type GrowthParam, type HandCard, type Table, type Take } from './types.js'
 
 /**
  * Structural validation of a table — the kind system as code (DESIGN.md §7).
@@ -8,7 +8,19 @@ import type { Card, Curve, GrowthParam, HandCard, Table } from './types.js'
 
 export const CASH_ID = 'cash'
 
-const CADENCES = new Set(['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'])
+function validCadence(cadence: Cadence): boolean {
+  return (CADENCES as readonly string[]).includes(cadence)
+}
+
+/** A take/payment draws a share within 0..1 or a non-negative fixed amount. */
+function validateTake(take: Take | undefined, what: string, where: string, errors: string[]): void {
+  if (take?.type === 'percent' && (take.percent < 0 || take.percent > 1)) {
+    errors.push(`${where}: ${what} percent must be within 0..1`)
+  }
+  if (take?.type === 'fixed' && take.amountPerMonth < 0) {
+    errors.push(`${where}: ${what} amount must be ≥ 0`)
+  }
+}
 
 function validateCurveShape(curve: Curve, where: string, errors: string[]): void {
   if (curve.type === 'step') {
@@ -35,7 +47,7 @@ function validateCard(card: Card, errors: string[]): void {
   switch (card.kind) {
     case 'source':
       validateCurveShape(card.flow, `Card "${card.id}"`, errors)
-      if (card.cadence !== undefined && !CADENCES.has(card.cadence)) {
+      if (card.cadence !== undefined && !validCadence(card.cadence)) {
         errors.push(`Card "${card.id}": unknown cadence "${String(card.cadence)}"`)
       }
       break
@@ -45,7 +57,7 @@ function validateCard(card: Card, errors: string[]): void {
       if (hasAmount === hasPercent) {
         errors.push(`Card "${card.id}": a drain has exactly one of amount or percent`)
       }
-      if (card.cadence !== undefined && !CADENCES.has(card.cadence)) {
+      if (card.cadence !== undefined && !validCadence(card.cadence)) {
         errors.push(`Card "${card.id}": unknown cadence "${String(card.cadence)}"`)
       }
       if (card.cadence !== undefined && hasPercent) {
@@ -65,31 +77,16 @@ function validateCard(card: Card, errors: string[]): void {
       if (card.fee !== undefined && card.fee < 0) {
         errors.push(`Card "${card.id}": fee must be ≥ 0`)
       }
-      if (card.take?.type === 'percent' && (card.take.percent < 0 || card.take.percent > 1)) {
-        errors.push(`Card "${card.id}": take percent must be within 0..1`)
-      }
-      if (card.take?.type === 'fixed' && card.take.amountPerMonth < 0) {
-        errors.push(`Card "${card.id}": take amount must be ≥ 0`)
-      }
+      validateTake(card.take, 'take', `Card "${card.id}"`, errors)
       break
     case 'debt':
       if (card.principal < 0) {
         errors.push(`Card "${card.id}": debt principal must be ≥ 0 (it is reported as a negative balance)`)
       }
-      if (card.payment?.type === 'percent' && (card.payment.percent < 0 || card.payment.percent > 1)) {
-        errors.push(`Card "${card.id}": payment percent must be within 0..1`)
-      }
-      if (card.payment?.type === 'fixed' && card.payment.amountPerMonth < 0) {
-        errors.push(`Card "${card.id}": payment amount must be ≥ 0`)
-      }
+      validateTake(card.payment, 'payment', `Card "${card.id}"`, errors)
       break
     case 'hand':
-      if (card.take?.type === 'percent' && (card.take.percent < 0 || card.take.percent > 1)) {
-        errors.push(`Card "${card.id}": take percent must be within 0..1`)
-      }
-      if (card.take?.type === 'fixed' && card.take.amountPerMonth < 0) {
-        errors.push(`Card "${card.id}": take amount must be ≥ 0`)
-      }
+      validateTake(card.take, 'take', `Card "${card.id}"`, errors)
       for (const child of card.children) validateCard(child, errors)
       break
     case 'rule': {

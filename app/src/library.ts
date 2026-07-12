@@ -1,5 +1,6 @@
 import type { Card, SampledData } from '@finsim/engine'
 import { DEMO_SERIES_ID, demoSeriesData } from './demoSeries'
+import { withGlyph } from './glyph'
 import type { GlyphName } from './icons'
 
 /**
@@ -24,7 +25,7 @@ export interface Blueprint {
   series?: Record<string, SampledData>
 }
 
-export const LIBRARY: Blueprint[] = [
+const BLUEPRINTS: Blueprint[] = [
   {
     id: 'salary',
     name: 'Salary',
@@ -177,3 +178,6 @@ export const LIBRARY: Blueprint[] = [
     make: (uid) => ({ id: `hand-${uid}`, name: 'New hand', kind: 'hand', children: [] }),
   },
 ]
+
+/** Every dealt card wears its blueprint's glyph — stamped here so the literals above stay plain engine cards. */
+export const LIBRARY: Blueprint[] = BLUEPRINTS.map((bp) => ({ ...bp, make: (uid) => withGlyph(bp.make(uid), bp.glyph) }))

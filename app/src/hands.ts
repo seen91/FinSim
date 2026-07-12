@@ -1,9 +1,9 @@
-import type { Card, HandCard } from '@finsim/engine'
+import { findCard, type Card, type HandCard } from '@finsim/engine'
 import type { Doc } from './model'
 
 /**
  * App-side tree operations on the document's root hand. The engine owns the
- * card model (types, findCard, setHandEnabled); these are the edit gestures:
+ * card model (types, findCard, setCardEnabled); these are the edit gestures:
  * add, remove, reorder.
  */
 
@@ -24,15 +24,10 @@ export function addCard(doc: Doc, handId: string | null, card: Card): void {
   ;(target ?? doc.table.root).children.push(card)
 }
 
-function findHandById(hand: HandCard, id: string): HandCard | null {
-  if (hand.id === id) return hand
-  for (const child of hand.children) {
-    if (child.kind === 'hand') {
-      const found = findHandById(child, id)
-      if (found) return found
-    }
-  }
-  return null
+function findHandById(root: HandCard, id: string): HandCard | null {
+  if (root.id === id) return root
+  const found = findCard(root, id)
+  return found?.kind === 'hand' ? found : null
 }
 
 /** Remove a card (a hand goes with everything in it). */

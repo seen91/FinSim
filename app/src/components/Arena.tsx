@@ -1,13 +1,12 @@
-import { firstCrossing, formatMonth, formatMonthsDelta, valueAt, type HandCard, type Series } from '@finsim/engine'
+import { firstCrossing, formatMonth, formatMonthsDelta, type HandCard, type Series } from '@finsim/engine'
 import { useState, type ReactElement } from 'react'
-import { formatAmount, formatPerMonth } from '../format'
+import { formatPercent } from '../format'
 import { Glyph } from '../icons'
 import type { Mc } from '../mc'
 import type { Doc, Sim } from '../model'
-import { deltaVerdict, rangeVerdict } from '../verdict'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
-import { HandStack, countCards, handHeld } from './HandStack'
+import { HandFigures, HandStack, countCards } from './HandStack'
 import { Timeline } from './Timeline'
 
 /**
@@ -120,7 +119,7 @@ export function Arena(props: Props): ReactElement {
               onClick={onOpenReport}
               title="share of simulated futures that reach the goal within the horizon — click to unfold the full futures report"
             >
-              in {Math.round(mc.goalProbability * 100)} % of futures
+              in {formatPercent(mc.goalProbability, 0)} of futures
               <Glyph name="book" size={10} />
             </button>
           )}
@@ -130,11 +129,8 @@ export function Arena(props: Props): ReactElement {
   }
 
   const cards = countCards(hand)
-  const net = sim.active.contributions.find((s) => s.id === hand.id)
-  const held = handHeld(hand, sim, scrub)
   const compare = sim.compares.find((c) => c.cardId === hand.id)
-  const verdict = compare ? deltaVerdict(compare, doc.from) : null
-  const range = rangeVerdict(mc?.ranges.get(hand.id))
+  const range = mc?.ranges.get(hand.id)
   const parent = trail[trail.length - 2]
 
   return (
@@ -180,24 +176,7 @@ export function Arena(props: Props): ReactElement {
           <span className="hub-count num">
             {cards} card{cards === 1 ? '' : 's'} · plays left to right
           </span>
-          <span className={`hub-net num${net && valueAt(net, scrub) < 0 ? ' neg' : ' pos'}`}>
-            {net ? formatPerMonth(valueAt(net, scrub)) : '—'}
-          </span>
-          {held !== null && (
-            <span className={`hub-held num${held < 0 ? ' neg' : ' pos'}`} title="what this hand's assets and debts hold, net, at the scrubbed month">
-              {formatAmount(held)} /total
-            </span>
-          )}
-          {verdict && (
-            <span className={`hub-delta num ${verdict.cls}`} title={verdict.tooltip}>
-              {verdict.text}
-            </span>
-          )}
-          {range && (
-            <span className={`hub-range num ${range.cls}`} title={range.tooltip}>
-              {range.text}
-            </span>
-          )}
+          <HandFigures prefix="hub" hand={hand} sim={sim} scrub={scrub} from={doc.from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
           <button
             className="hub-toggle"
             title={hand.enabled === false ? 'Bring this hand back into play' : 'Set aside — the table plays as if this hand were not there'}

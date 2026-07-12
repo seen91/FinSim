@@ -293,7 +293,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
           state.balance -= payment
           total -= payment
           contributions.get(card.id)![i] = neg(payment)
-          balancePoints.get(card.id)![i] = state.balance === 0 ? 0 : -state.balance
+          balancePoints.get(card.id)![i] = neg(state.balance)
           break
         }
         case 'hand': {
@@ -339,7 +339,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
       for (const state of debtStates.values()) {
         if (month >= state.start && ruleApplies(r, state.card, month)) {
           state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
-          balancePoints.get(state.card.id)![i] = state.balance === 0 ? 0 : -state.balance
+          balancePoints.get(state.card.id)![i] = neg(state.balance)
         }
       }
       // the cash vessel lives outside every hand — only world rules reach it

@@ -1,14 +1,17 @@
 import { allCards, findCard, type Card as EngineCard } from '@finsim/engine'
 import { useRef, useState, type ReactElement } from 'react'
 import { AUTHORABLE_KINDS, blankCard, headlineFor, mergeLibrary, type AuthoredCard, type AuthorableKind } from '../authored'
+import { downloadJson } from '../download'
+import { errorMessage } from '../format'
 import { Glyph } from '../icons'
 import type { Doc } from '../model'
 import { deserializePack, serializePack, type Pack } from '../packs'
 import { replaceCard } from '../hands'
 import { seriesIdsIn } from '../seriesImport'
+import { newUid } from '../uid'
+import { glyphOf } from '../glyph'
 import { Card } from './Card'
 import { CardMathEditor, FrontMatterEditor } from './CardEditor'
-import { glyphFor } from './CardView'
 import { DataBench } from './DataBench'
 
 /**
@@ -45,7 +48,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
   if (!open) return null
 
   const handleNew = (kind: AuthorableKind): void => {
-    const fresh = blankCard(kind, crypto.randomUUID().slice(0, 8))
+    const fresh = blankCard(kind, newUid())
     onLibraryChange([...library, fresh])
     setPicking(false)
     onFocus({ where: 'library', id: fresh.id })
@@ -54,7 +57,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
   const patchAuthored = (next: AuthoredCard): void => onLibraryChange(library.map((a) => (a.id === next.id ? next : a)))
 
   const handleDuplicate = (a: AuthoredCard): void => {
-    const uid = crypto.randomUUID().slice(0, 8)
+    const uid = newUid()
     const copy = structuredClone(a)
     copy.id = `${a.id}-${uid}`
     copy.card.id = copy.id
@@ -71,13 +74,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
     const worn = new Set(library.flatMap((a) => seriesIdsIn(a.card)))
     const series = Object.fromEntries(Object.entries(doc.world?.series ?? {}).filter(([id]) => worn.has(id)))
     const pack: Pack = { name, cards: library, ...(Object.keys(series).length > 0 ? { series } : {}) }
-    const blob = new Blob([serializePack(pack)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `finsim-pack-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadJson(`finsim-pack-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`, serializePack(pack))
   }
 
   const handleImportFile = (file: File): void => {
@@ -92,7 +89,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
           })
         }
       } catch (err) {
-        alert(`Could not import pack: ${err instanceof Error ? err.message : String(err)}`)
+        alert(`Could not import pack: ${errorMessage(err)}`)
       }
     })
   }
@@ -106,7 +103,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
     const face = {
       kind: card.kind,
       name: card.name ?? card.id,
-      glyph: focusedAuthored ? focusedAuthored.glyph : glyphFor(card),
+      glyph: focusedAuthored ? focusedAuthored.glyph : glyphOf(card),
       headline: headlineFor(card),
       ...(focusedAuthored?.description ? { description: focusedAuthored.description } : {}),
     }
@@ -176,7 +173,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
   const shelf = [
     ...allCards(doc.table.root).map((card) => ({
       key: `table-${card.id}`,
-      face: { kind: card.kind, name: card.name ?? card.id, glyph: glyphFor(card), headline: headlineFor(card) },
+      face: { kind: card.kind, name: card.name ?? card.id, glyph: glyphOf(card), headline: headlineFor(card) },
       inPlay: true,
       pick: () => onFocus({ where: 'table', id: card.id }),
     })),

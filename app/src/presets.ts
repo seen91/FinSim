@@ -1,4 +1,5 @@
 import type { Card, HandCard, SampledData } from '@finsim/engine'
+import { withGlyph } from './glyph'
 import type { GlyphName } from './icons'
 
 /**
@@ -32,7 +33,12 @@ export interface HandPreset {
   series?: Record<string, SampledData>
 }
 
-const salary: PresetCard = {
+/** Every card the preset deals wears its glyph — stamped once here, so the makes stay plain engine cards. */
+function stamped(card: PresetCard): PresetCard {
+  return { ...card, make: (uid) => withGlyph(card.make(uid), card.glyph) }
+}
+
+const salary: PresetCard = stamped({
   key: 'salary',
   name: 'Salary',
   glyph: 'coins',
@@ -44,29 +50,29 @@ const salary: PresetCard = {
     flow: { type: 'compound', base: 65000, annualRate: { expected: 0 } },
     tags: ['income'],
   }),
-}
+})
 
-const incomeTax: PresetCard = {
+const incomeTax: PresetCard = stamped({
   key: 'income-tax',
   name: 'Income tax',
   glyph: 'stamp',
   headline: '−30 %',
   make: (uid) => ({ id: `tax-${uid}`, name: 'Income tax', kind: 'drain', percent: 0.3 }),
-}
+})
 
-const expenses: PresetCard = {
+const expenses: PresetCard = stamped({
   key: 'expenses',
   name: 'Living expenses',
   glyph: 'receipt',
   headline: '−20 500 /mo',
   make: (uid) => ({ id: `expenses-${uid}`, name: 'Living expenses', kind: 'drain', amount: { type: 'constant', value: 20500 } }),
-}
+})
 
 const FUND_NAMES = ['Index: Global', 'Index: Sverige', 'Index: USA', 'Index: Europa', 'Index: Asien']
 
 function fundCard(index: number): PresetCard {
   const name = FUND_NAMES[index]!
-  return {
+  return stamped({
     key: `fund${index + 1}`,
     name,
     glyph: 'trend',
@@ -79,26 +85,26 @@ function fundCard(index: number): PresetCard {
       take: { type: 'percent', percent: 0.2 },
       tags: ['equity', 'fund'],
     }),
-  }
+  })
 }
 
-const carValue: PresetCard = {
+const carValue: PresetCard = stamped({
   key: 'car-value',
   name: 'Car',
   glyph: 'car',
   headline: '240 000 · −15 % /yr',
   make: (uid) => ({ id: `car-value-${uid}`, name: 'Car', kind: 'asset', initialBalance: 240000, growth: { expected: -0.15 } }),
-}
+})
 
-const carCosts: PresetCard = {
+const carCosts: PresetCard = stamped({
   key: 'car-costs',
   name: 'Running costs',
   glyph: 'receipt',
   headline: '−3 500 /mo',
   make: (uid) => ({ id: `car-costs-${uid}`, name: 'Running costs', kind: 'drain', amount: { type: 'constant', value: 3500 } }),
-}
+})
 
-const carLoan: PresetCard = {
+const carLoan: PresetCard = stamped({
   key: 'car-loan',
   name: 'Car loan',
   glyph: 'bank',
@@ -111,9 +117,9 @@ const carLoan: PresetCard = {
     interest: { expected: 0.06 },
     payment: { type: 'fixed', amountPerMonth: 4300 },
   }),
-}
+})
 
-const flatValue: PresetCard = {
+const flatValue: PresetCard = stamped({
   key: 'flat-value',
   name: 'Apartment',
   glyph: 'building',
@@ -126,9 +132,9 @@ const flatValue: PresetCard = {
     growth: { expected: 0.03 },
     tags: ['property'],
   }),
-}
+})
 
-const flatOutlay: PresetCard = {
+const flatOutlay: PresetCard = stamped({
   key: 'flat-outlay',
   name: 'Down payment',
   glyph: 'cash',
@@ -139,17 +145,17 @@ const flatOutlay: PresetCard = {
     kind: 'drain',
     amount: { type: 'step', initial: 700_000, steps: [{ atMonth: 1, value: 0 }] },
   }),
-}
+})
 
-const flatAvgift: PresetCard = {
+const flatAvgift: PresetCard = stamped({
   key: 'flat-avgift',
   name: 'Avgift & drift',
   glyph: 'home',
   headline: '−4 500 /mo',
   make: (uid) => ({ id: `flat-avgift-${uid}`, name: 'Avgift & drift', kind: 'drain', amount: { type: 'constant', value: 4500 } }),
-}
+})
 
-const mortgage: PresetCard = {
+const mortgage: PresetCard = stamped({
   key: 'mortgage',
   name: 'Mortgage',
   glyph: 'bank',
@@ -162,9 +168,9 @@ const mortgage: PresetCard = {
     interest: { expected: 0.045 },
     payment: { type: 'fixed', amountPerMonth: 11000 },
   }),
-}
+})
 
-export const PRESETS: HandPreset[] = [
+const HANDS: HandPreset[] = [
   {
     id: 'current-budget',
     name: 'Current budget',
@@ -214,3 +220,6 @@ export const PRESETS: HandPreset[] = [
     }),
   },
 ]
+
+/** The dealt hand wears the preset's glyph too (its cards come pre-stamped by `stamped`). */
+export const PRESETS: HandPreset[] = HANDS.map((p) => ({ ...p, build: (uid) => withGlyph(p.build(uid), p.glyph) }))

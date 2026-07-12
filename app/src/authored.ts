@@ -1,5 +1,6 @@
-import { validateTable, type Card, type Curve } from '@finsim/engine'
+import { validateTable, type Card, type Curve, type Take } from '@finsim/engine'
 import { formatAmount, formatPercent, formatPerMonth } from './format'
+import { KIND_GLYPHS, withGlyph } from './glyph'
 import type { GlyphName } from './icons'
 
 /**
@@ -19,28 +20,6 @@ export interface AuthoredCard {
   card: Card
 }
 
-/** The glyphs a card face may carry — pickable in the Workshop, checked on pack import. */
-export const CARD_GLYPHS: GlyphName[] = [
-  'coins',
-  'briefcase',
-  'home',
-  'receipt',
-  'trend',
-  'vault',
-  'percent',
-  'raise',
-  'stamp',
-  'car',
-  'building',
-  'bank',
-  'bundle',
-  'cash',
-]
-
-export function isCardGlyph(value: unknown): value is GlyphName {
-  return typeof value === 'string' && (CARD_GLYPHS as string[]).includes(value)
-}
-
 /** The kinds a blank card can start as. A hand is composed on the table, not authored. */
 export const AUTHORABLE_KINDS = ['source', 'drain', 'asset', 'debt', 'rule'] as const
 export type AuthorableKind = (typeof AUTHORABLE_KINDS)[number]
@@ -52,32 +31,33 @@ export type AuthorableKind = (typeof AUTHORABLE_KINDS)[number]
  */
 export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
   const id = `new-${kind}-${uid}`
+  const glyph = KIND_GLYPHS[kind]
   switch (kind) {
     case 'source':
       return {
         id,
-        glyph: 'coins',
+        glyph,
         description: '',
         card: { id, kind, name: 'New source', flow: { type: 'constant', value: 10_000 }, tags: [] },
       }
     case 'drain':
       return {
         id,
-        glyph: 'receipt',
+        glyph,
         description: '',
         card: { id, kind, name: 'New drain', amount: { type: 'constant', value: 5_000 }, tags: [] },
       }
     case 'asset':
       return {
         id,
-        glyph: 'trend',
+        glyph,
         description: '',
         card: { id, kind, name: 'New asset', growth: { expected: 0.05 }, take: { type: 'fixed', amountPerMonth: 1_000 }, tags: [] },
       }
     case 'debt':
       return {
         id,
-        glyph: 'bank',
+        glyph,
         description: '',
         card: {
           id,
@@ -92,7 +72,7 @@ export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
     case 'rule':
       return {
         id,
-        glyph: 'percent',
+        glyph,
         description: '',
         card: {
           id,
@@ -113,7 +93,7 @@ export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
 /**
  * Deal a playable card from an authored template: a deep clone with every id
  * (nested hands and rule ids included) suffixed fresh, so the same design can
- * sit on the table many times.
+ * sit on the table many times. The dealt card wears the design's glyph.
  */
 export function instantiate(authored: AuthoredCard, uid: string): Card {
   const card = structuredClone(authored.card)
@@ -123,7 +103,7 @@ export function instantiate(authored: AuthoredCard, uid: string): Card {
     if (c.kind === 'hand') c.children.forEach(rewrite)
   }
   rewrite(card)
-  return card
+  return withGlyph(card, authored.glyph)
 }
 
 /** Validate an authored card's template with the engine's own table validator. */
@@ -190,7 +170,7 @@ export function headlineFor(card: Card): string {
   }
 }
 
-/** A per-month take/payment, as a face stat value. */
-export function takeLabel(take: { type: 'fixed'; amountPerMonth: number } | { type: 'percent'; percent: number }): string {
+/** A take/payment as it reads on a card face: "10 % of subtotal" or "1 000 /mo". */
+export function takeLabel(take: Take): string {
   return take.type === 'percent' ? `${formatPercent(take.percent, 0)} of subtotal` : formatPerMonth(take.amountPerMonth)
 }

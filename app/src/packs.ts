@@ -1,5 +1,6 @@
 import type { SampledData, ScheduledRule } from '@finsim/engine'
-import { isCardGlyph, validateAuthored, type AuthoredCard } from './authored'
+import { validateAuthored, type AuthoredCard } from './authored'
+import { isCardGlyph } from './glyph'
 
 /**
  * The pack format — the unit of sharing (DESIGN.md §3). A pack is a data

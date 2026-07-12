@@ -18,13 +18,17 @@ export function allCards(root: HandCard): Card[] {
   return root.children.flatMap((c) => (c.kind === 'hand' ? [c, ...allCards(c)] : [c]))
 }
 
+/** Assert the card exists, then clone — tables are plain JSON by design (DESIGN.md §3), so a JSON round-trip is a faithful clone. */
+function cloneWithCard(table: Table, cardId: string, who: string): Table {
+  if (!findCard(table.root, cardId)) {
+    throw new Error(`${who}: unknown card "${cardId}"`)
+  }
+  return JSON.parse(JSON.stringify(table)) as Table
+}
+
 /** Returns a copy of the table with one card removed — the per-card ghost is just another `simulate` call. */
 export function withoutCard(table: Table, cardId: string): Table {
-  if (!findCard(table.root, cardId)) {
-    throw new Error(`withoutCard: unknown card "${cardId}"`)
-  }
-  // tables are plain JSON by design (DESIGN.md §3); JSON round-trip is a faithful clone
-  const next = JSON.parse(JSON.stringify(table)) as Table
+  const next = cloneWithCard(table, cardId, 'withoutCard')
   const prune = (hand: HandCard): void => {
     hand.children = hand.children.filter((c) => c.id !== cardId)
     for (const child of hand.children) if (child.kind === 'hand') prune(child)
@@ -35,12 +39,7 @@ export function withoutCard(table: Table, cardId: string): Table {
 
 /** Returns a copy of the table with one card set aside or brought back — ghost compares are just two `simulate` calls. */
 export function setCardEnabled(table: Table, cardId: string, enabled: boolean): Table {
-  if (!findCard(table.root, cardId)) {
-    throw new Error(`setCardEnabled: unknown card "${cardId}"`)
-  }
-  // tables are plain JSON by design (DESIGN.md §3); JSON round-trip is a faithful clone
-  const next = JSON.parse(JSON.stringify(table)) as Table
-  const card = findCard(next.root, cardId)!
-  card.enabled = enabled
+  const next = cloneWithCard(table, cardId, 'setCardEnabled')
+  findCard(next.root, cardId)!.enabled = enabled
   return next
 }

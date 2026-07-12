@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { Glyph, type GlyphName } from '../icons'
+import type { Verdict } from '../verdict'
 import { Sparkline } from './Sparkline'
 
 /**
@@ -24,7 +25,7 @@ export interface CardFace {
   /** Front-of-card stat rows: the numbers that matter, at a glance. */
   stats?: CardStat[]
   /** The card's time-to-goal verdict, same shape the hand stacks carry. */
-  verdict?: { text: string; cls: 'pos' | 'neg'; tooltip: string }
+  verdict?: Verdict
 }
 
 interface Props {

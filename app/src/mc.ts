@@ -1,7 +1,6 @@
 import {
   allCards,
   crossingMonths,
-  goalProbability,
   monteCarlo,
   percentileBand,
   quantile,
@@ -78,8 +77,8 @@ function hasVolatility(table: Table, world: World, to: number): boolean {
 export function runMc(doc: Doc): Mc | null {
   // the same tuned table runSim plays — the fan and the line must live in one world
   const { table, world } = playedTable(doc)
-  if (!hasVolatility(table, world, doc.from + doc.horizonMonths - 1)) return null
   const to = doc.from + doc.horizonMonths - 1
+  if (!hasVolatility(table, world, to)) return null
   const opts = { paths: MC_PATHS, seed: MC_SEED }
 
   const active = monteCarlo(table, world, doc.from, to, opts)
@@ -118,6 +117,3 @@ export function runMc(doc: Doc): Mc | null {
     ranges,
   }
 }
-
-/** Re-export for callers that only need the run itself (tests). */
-export type { MonteCarloRun }

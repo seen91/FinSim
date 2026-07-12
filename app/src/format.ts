@@ -41,3 +41,10 @@ export function parseCompact(text: string): number | null {
   const mult = m[2] === undefined ? 1 : m[2].toLowerCase() === 'k' ? 1e3 : 1e6
   return Number(m[1]) * mult
 }
+
+export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/** A thrown value as it reads to a human. */
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}

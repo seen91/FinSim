@@ -1,9 +1,11 @@
 import { formatMonth, type SampledData } from '@finsim/engine'
 import { useRef, useState, type ReactElement } from 'react'
 import type { AuthoredCard } from '../authored'
+import { errorMessage } from '../format'
 import { Glyph } from '../icons'
 import type { Doc } from '../model'
 import { mintPricedDesign, parseMonthText, parseSeriesText, seriesInUse } from '../seriesImport'
+import { newUid } from '../uid'
 import type { WorkshopFocus } from './Workshop'
 
 /**
@@ -58,12 +60,12 @@ export function DataBench({ doc, update, library, onLibraryChange, onFocus }: Pr
       setFirstMonth('')
       setText('')
       if (mint) {
-        const design = mintPricedDesign(trimmed, data, crypto.randomUUID().slice(0, 8))
+        const design = mintPricedDesign(trimmed, data, newUid())
         onLibraryChange([...library, design])
         onFocus({ where: 'library', id: design.id })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(errorMessage(err))
     }
   }
 
