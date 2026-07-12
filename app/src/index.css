@@ -319,6 +319,13 @@ button:not(:disabled):hover {
   fill: var(--gold-deep);
 }
 
+/* the percentile fan: the middle 80 % of futures, a wash of the same ink */
+.timeline .fan {
+  fill: var(--ink);
+  opacity: 0.08;
+  stroke: none;
+}
+
 .timeline .curve {
   fill: none;
   stroke-linejoin: round;
@@ -368,6 +375,16 @@ button:not(:disabled):hover {
 
 .chart-verdict-text.pos { color: var(--money-pos); }
 .chart-verdict-text.neg { color: var(--money-neg); }
+
+/* the goal-probability read under the plan's verdict — quieter than the date */
+.chart-verdict-odds {
+  font-size: 0.78rem;
+  font-weight: 600;
+  pointer-events: auto;
+}
+
+.chart-verdict-odds.pos { color: var(--money-pos); }
+.chart-verdict-odds.neg { color: var(--money-neg); }
 
 /* ---- playing cards: parchment, gold frame, engraved sigil ---- */
 .pcard {
@@ -819,6 +836,16 @@ input[type='range'].tuned {
 .hub-delta.pos { color: var(--money-pos); }
 .hub-delta.neg { color: var(--money-neg); }
 
+/* the Monte Carlo range under the verdict — the same read, in futures */
+.hub-range {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.hub-range.pos { color: var(--money-pos); }
+.hub-range.neg { color: var(--money-neg); }
+
 .hub-remove,
 .hub-toggle {
   margin-top: 0.2rem;
@@ -924,6 +951,18 @@ input[type='range'].tuned {
 
 .hand-stack-delta.pos { color: var(--money-pos); }
 .hand-stack-delta.neg { color: var(--money-neg); }
+
+/* the same verdict spoken in futures, when the table carries volatility */
+.hand-stack-range {
+  align-self: flex-end;
+  text-align: right;
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.hand-stack-range.pos { color: var(--money-pos); }
+.hand-stack-range.neg { color: var(--money-neg); }
 
 /* ---- the pipeline's mouth: a brass plaque stacked above the draw pile,
    one fixture column in the right corner. Not a card. ---- */

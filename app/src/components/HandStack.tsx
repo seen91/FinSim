@@ -2,8 +2,9 @@ import { valueAt, type HandCard } from '@finsim/engine'
 import type { ReactElement } from 'react'
 import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
+import type { BundleRange } from '../mc'
 import type { CardCompare, Sim } from '../model'
-import { deltaVerdict } from '../verdict'
+import { deltaVerdict, rangeVerdict } from '../verdict'
 
 /** A hand at rest: a pile of stacked cards. Tap it to open the hand. */
 
@@ -34,12 +35,27 @@ export function handHeld(hand: HandCard, sim: Sim, scrub: number): number | null
   return has ? sum : null
 }
 
-export function HandStack({ hand, sim, scrub, from, compare }: { hand: HandCard; sim: Sim; scrub: number; from: number; compare?: CardCompare }): ReactElement {
+export function HandStack({
+  hand,
+  sim,
+  scrub,
+  from,
+  compare,
+  range,
+}: {
+  hand: HandCard
+  sim: Sim
+  scrub: number
+  from: number
+  compare?: CardCompare
+  range?: BundleRange
+}): ReactElement {
   const cards = countCards(hand)
   const net = sim.active.contributions.find((s) => s.id === hand.id)
   const netValue = net ? valueAt(net, scrub) : null
   const held = handHeld(hand, sim, scrub)
   const verdict = compare ? deltaVerdict(compare, from) : null
+  const mcRange = rangeVerdict(range)
   return (
     <div className={`hand-stack${hand.enabled === false ? ' muted' : ''}`} title="Open this hand">
       <span className="hand-stack-under u2" />
@@ -63,6 +79,11 @@ export function HandStack({ hand, sim, scrub, from, compare }: { hand: HandCard;
         {verdict && (
           <span className={`hand-stack-delta num ${verdict.cls}`} title={verdict.tooltip}>
             {verdict.text}
+          </span>
+        )}
+        {mcRange && (
+          <span className={`hand-stack-range num ${mcRange.cls}`} title={mcRange.tooltip}>
+            {mcRange.text}
           </span>
         )}
       </div>

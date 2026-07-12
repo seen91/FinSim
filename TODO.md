@@ -66,25 +66,25 @@ plays, replaceCard, pack round-trip/version-rejection/merge), headless Chrome ru
 — slider edit moves the chart verdict live, blank→author→play→export→burn→import
 round-trip, golden baseline "goal in 20 yr 6 mo" intact.
 
-## M3 — Simulator complete: verification + Monte Carlo ❌ not started
+## M3 — Simulator complete: verification + Monte Carlo 🟡 (a) + (b) done 2026-07-12; (c) open
 
 Spec: DESIGN §13 M3 (build order re-ordered 2026-07-12, §0): finish the core
 product — confident answers to "how much does this cost me relative to my
 goal" — before any game work. Two kinds of confidence, in order:
 
-**(a) The software computes the right number** (engine/UI correctness):
+**(a) The software computes the right number** (engine/UI correctness): ✅
 
-- [ ] Custom-cards acceptance pass: the M1 question answered end-to-end through the M2 path — author *every* card fresh in the Workshop (no starter pack), build the table, play a car bundle, verdict matches a hand-checked expectation
-- [ ] Pin that pass as a headless test beside the existing golden baseline (`app/test/app.test.ts`)
+- [x] Custom-cards acceptance pass: the M1 question answered end-to-end through the M2 path — every card born as a Workshop blank (no starter pack, no presets), edited to the golden numbers, validated, round-tripped through a pack export/import, dealt with fresh ids and played onto an empty table with the app's own gestures (`addCard`/`moveCard`); the verdict reproduces the hand-checked closed-form answer (car = 1 yr 3 mo, 2045-06 → 2046-09)
+- [x] Pinned beside the golden baseline: `app/test/acceptance.workshop.test.ts`
 
-**(b) The number reflects an uncertain world** (Monte Carlo):
+**(b) The number reflects an uncertain world** (Monte Carlo): ✅
 
-- [ ] Decide §14.5 first: per-fund volatility sources + correlated draws across funds (independent draws across overlapping index markets would understate risk — worse than deterministic)
-- [ ] Engine: seeded Monte Carlo runs over `(expected, volatility)` — percentile bands, goal-probability curve; deterministic mode untouched
-- [ ] App: percentile fan on the arena chart; bundle verdicts gain a range read ("+1–2.5 yr in 80 % of futures")
-- [ ] Document return semantics: `expected` is CAGR, so the deterministic path ≈ median path (volatility drag) — a Rulebook line / assumptions footnote, not code
+- [x] §14.5 decided (recorded in DESIGN.md §0 "Monte Carlo model"): volatility is card-authored (`growth.volatility`, annual σ); correlation is one shared market factor with per-card loading `growth.correlation`, default 1 — overlapping funds move as one unless the author says otherwise
+- [x] Engine: `monteCarlo(table, world, from, to, {paths, seed})` — seeded paths via a shock hook on `simulate` (deterministic mode untouched), `percentileBand`, `crossingMonths`, `goalProbability`, `quantile`; streams seeded by (seed, path, card id) so ghost tables share shocks — per-path deltas are noise-free (common random numbers). Tested in `engine/test/montecarlo.test.ts`
+- [x] App: P10–P90 fan behind the net-worth line (`mc.ts`, 200 paths, one fixed seed, computed deferred so the deterministic line stays instant); the plan's verdict gains "in NN % of futures"; hand bundles gain the range read ("+1 yr – 2 yr 6 mo in 80 % of futures", falling back to a goal-odds shift when few paths cross both ways); "moves with market" (correlation) editable on the asset's back
+- [x] Return semantics documented: `expected` is CAGR ≈ the median path, volatility drag stated — Rulebook section "The fan: futures, not promises" + the index-fund card's footnote
 
-**(c) Simulator polish pass:** whatever daily use surfaces once (a) and (b) exist.
+**(c) Simulator polish pass:** whatever daily use surfaces once (a) and (b) exist — open, by design; it accrues from Sebastian using the table.
 
 ## M4 — Game prototype, hot-seat ❌ not started
 

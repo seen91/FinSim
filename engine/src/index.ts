@@ -9,11 +9,20 @@
 
 export * from './types.js'
 export { ym, fromMonthIndex, formatMonth, formatMonthsDelta } from './month.js'
-export { createRng, shuffle, type Rng } from './rng.js'
+export { createRng, hashString, shuffle, type Rng } from './rng.js'
 export { compileExpression, type CompiledExpr, type ExprVars } from './expression.js'
 export { evalCurve, monthlyFactor, periodsPerMonth, resolveSampled, sampleAt, type CurveContext } from './curves.js'
 export { findCard, allCards, setCardEnabled, withoutCard } from './tree.js'
 export { validateTable, CASH_ID } from './validate.js'
-export { simulate } from './simulate.js'
+export { simulate, type ShockFn } from './simulate.js'
+export {
+  monteCarlo,
+  percentileBand,
+  crossingMonths,
+  goalProbability,
+  quantile,
+  type MonteCarloOptions,
+  type MonteCarloRun,
+} from './montecarlo.js'
 export { firstCrossing, firstTouch, goalDelta, type GoalDelta } from './goals.js'
 export { toReal, valueAt } from './series.js'

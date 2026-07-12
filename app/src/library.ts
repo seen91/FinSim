@@ -85,7 +85,7 @@ export const LIBRARY: Blueprint[] = [
     kind: 'asset',
     glyph: 'trend',
     headline: '7 % /yr · takes 10 %',
-    description: 'Broad, boring, compounding. Takes 10 % of what remains at its position.',
+    description: 'Broad, boring, compounding. Takes 10 % of what remains at its position. 7 % CAGR ± 15 %/yr ≈ broad global equity over the long run; the fan on the chart shows what the ± does.',
     make: (uid) => ({
       id: `fund-${uid}`,
       name: 'Index fund',

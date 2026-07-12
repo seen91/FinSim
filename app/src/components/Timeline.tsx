@@ -1,13 +1,15 @@
 import { firstCrossing, formatMonth, fromMonthIndex, valueAt, type Series } from '@finsim/engine'
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactElement, type RefObject } from 'react'
 import { formatCompact } from '../format'
+import type { Mc } from '../mc'
 import type { Sim } from '../model'
-import { linePath, scaleLinear } from '../scale'
+import { bandPath, linePath, scaleLinear } from '../scale'
 
 /**
  * The chart: one honest net-worth line, the goal line annotated with the date
- * it is crossed, and a time scrubber. Nothing else — the per-bundle
- * time-to-goal deltas live on the bundle stacks themselves.
+ * it is crossed, and a time scrubber — plus, when the table carries
+ * volatility, the P10–P90 percentile fan behind the line (M3b). The
+ * per-bundle time-to-goal deltas live on the bundle stacks themselves.
  */
 interface Props {
   sim: Sim
@@ -18,6 +20,8 @@ interface Props {
   onScrub: (month: number) => void
   /** Workshop focus: chart this one card's curve instead — no goal line, y scaled to the curve. */
   focus?: Series
+  /** Monte Carlo bands, when the table has volatility to show. */
+  mc?: Mc | null
 }
 
 const MARGIN = { top: 24, right: 20, bottom: 30, left: 16 }
@@ -37,14 +41,16 @@ function useSize(): [RefObject<HTMLDivElement | null>, { width: number; height: 
   return [ref, size]
 }
 
-export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub, focus }: Props): ReactElement {
+export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub, focus, mc }: Props): ReactElement {
   const [ref, { width, height }] = useSize()
   const to = from + horizonMonths - 1
 
   const curve = focus ?? sim.active.netWorth
   const nw = curve.points
-  const yMax = (focus ? Math.max(1, ...nw) : Math.max(goal, ...nw)) * 1.06
-  const yMin = Math.min(0, ...nw)
+  // a stale fan (the deferred Monte Carlo lags one edit behind) must never stretch the axes
+  const fan = !focus && mc && mc.bands.p10.points.length === nw.length ? mc.bands : null
+  const yMax = (focus ? Math.max(1, ...nw) : Math.max(goal, ...nw, ...(fan ? fan.p90.points : []))) * 1.06
+  const yMin = Math.min(0, ...nw, ...(fan ? fan.p10.points : []))
 
   const x = scaleLinear([from, to], [MARGIN.left, width - MARGIN.right])
   const y = scaleLinear([yMin, yMax], [height - MARGIN.bottom, MARGIN.top])
@@ -94,7 +100,10 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub, focus
           </>
         )}
 
-        {/* the one honest net-worth curve */}
+        {/* the fan: the middle 80 % of simulated futures, behind the line */}
+        {fan && <path className="fan" d={bandPath(fan.p90.points, fan.p10.points, (i) => x(from + i), y)} />}
+
+        {/* the one honest net-worth curve (≈ the median future — expected returns are CAGR) */}
         <path className="curve active" d={path(nw)} />
         {activeCross !== null && <circle className="cross active" cx={x(activeCross)} cy={y(goal)} r={3.5} />}
 

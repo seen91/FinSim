@@ -18,3 +18,13 @@ export function scaleLinear([d0, d1]: [number, number], [r0, r1]: [number, numbe
 export function linePath(points: number[], x: (index: number) => number, y: (value: number) => number): string {
   return points.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('')
 }
+
+/** Closed SVG path between two same-length polylines — the percentile fan's band. */
+export function bandPath(upper: number[], lower: number[], x: (index: number) => number, y: (value: number) => number): string {
+  const down = upper.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('')
+  const back = [...lower.keys()]
+    .reverse()
+    .map((i) => `L${x(i).toFixed(1)},${y(lower[i]!).toFixed(1)}`)
+    .join('')
+  return `${down}${back}Z`
+}

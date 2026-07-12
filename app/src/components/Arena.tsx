@@ -2,8 +2,9 @@ import { firstCrossing, formatMonth, formatMonthsDelta, valueAt, type HandCard, 
 import { useState, type ReactElement } from 'react'
 import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
+import type { Mc } from '../mc'
 import type { Doc, Sim } from '../model'
-import { deltaVerdict } from '../verdict'
+import { deltaVerdict, rangeVerdict } from '../verdict'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
 import { HandStack, countCards, handHeld } from './HandStack'
@@ -25,6 +26,8 @@ export interface ArenaFocus {
 interface Props {
   doc: Doc
   sim: Sim
+  /** Monte Carlo results, when the table carries volatility (null otherwise). */
+  mc: Mc | null
   scrub: number
   onScrub: (month: number) => void
   /** Workshop focus: chart only this card, whatever else is open. */
@@ -76,7 +79,7 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
 }
 
 export function Arena(props: Props): ReactElement {
-  const { doc, sim, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, onRenameHand } = props
+  const { doc, sim, mc, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, onRenameHand } = props
   const hand = trail[trail.length - 1]
 
   // the Workshop's focus stage: the chart holds one card's curve, nothing else
@@ -98,7 +101,7 @@ export function Arena(props: Props): ReactElement {
     const cross = firstCrossing(sim.active, doc.goal)
     return (
       <section className="arena">
-        <Timeline sim={sim} goal={doc.goal} from={doc.from} horizonMonths={doc.horizonMonths} scrub={scrub} onScrub={onScrub} />
+        <Timeline sim={sim} goal={doc.goal} from={doc.from} horizonMonths={doc.horizonMonths} scrub={scrub} onScrub={onScrub} mc={mc} />
         <div className="chart-verdict">
           {cross !== null ? (
             <span className="chart-verdict-text num pos" title={`the whole table reaches the goal ${formatMonth(cross)}`}>
@@ -107,6 +110,14 @@ export function Arena(props: Props): ReactElement {
           ) : (
             <span className="chart-verdict-text num neg" title="the whole table never reaches the goal within the horizon">
               goal out of reach
+            </span>
+          )}
+          {mc && (
+            <span
+              className={`chart-verdict-odds num${mc.goalProbability >= 0.5 ? ' pos' : ' neg'}`}
+              title="share of simulated futures that reach the goal within the horizon — the shaded fan on the chart is the middle 80 % of them"
+            >
+              in {Math.round(mc.goalProbability * 100)} % of futures
             </span>
           )}
         </div>
@@ -119,6 +130,7 @@ export function Arena(props: Props): ReactElement {
   const held = handHeld(hand, sim, scrub)
   const compare = sim.compares.find((c) => c.cardId === hand.id)
   const verdict = compare ? deltaVerdict(compare, doc.from) : null
+  const range = rangeVerdict(mc?.ranges.get(hand.id))
   const parent = trail[trail.length - 2]
 
   return (
@@ -144,7 +156,7 @@ export function Arena(props: Props): ReactElement {
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
-              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} />
+              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} range={mc?.ranges.get(card.id)} />
             ) : (
               <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} size="hand" onRemove={onRemoveCard} onToggle={onToggleCard} />
             )
@@ -166,6 +178,11 @@ export function Arena(props: Props): ReactElement {
           {verdict && (
             <span className={`hub-delta num ${verdict.cls}`} title={verdict.tooltip}>
               {verdict.text}
+            </span>
+          )}
+          {range && (
+            <span className={`hub-range num ${range.cls}`} title={range.tooltip}>
+              {range.text}
             </span>
           )}
           <button

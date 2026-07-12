@@ -7,13 +7,26 @@
 export type Kind = 'source' | 'drain' | 'asset' | 'debt' | 'hand' | 'rule'
 
 /**
- * Growth is `(expected, volatility?)` from day one. The deterministic v1
- * engine uses only `expected`; volatility is carried for the later Monte
- * Carlo mode (DESIGN.md §8). Rates are annual, e.g. 0.07 = 7 %/yr.
+ * Growth is `(expected, volatility?)` from day one. The deterministic engine
+ * uses only `expected`; Monte Carlo mode (DESIGN.md §13 M3) samples the rest.
+ * Rates are annual, e.g. 0.07 = 7 %/yr.
+ *
+ * `expected` is a CAGR: the deterministic path is (approximately) the median
+ * of the Monte Carlo paths, not their mean — volatility drag is real and the
+ * fan is honest about it.
+ *
+ * `correlation` is the card's loading on the one shared market factor
+ * (§14.5, decided 2026-07-12): each month every path draws one market shock
+ * Z, and a card's own shock is ρ·Z + √(1−ρ²)·ε with ε private to the card,
+ * so two cards co-move with correlation ρᵢ·ρⱼ. Default 1 — index funds
+ * tracking overlapping markets move as one; independent draws would badly
+ * understate risk. Authors lower it for true diversifiers.
  */
 export interface GrowthParam {
   expected: number
   volatility?: number
+  /** Correlation with the shared market factor, −1..1. Default 1. */
+  correlation?: number
 }
 
 /** A real historical monthly series. `startMonth` is an absolute month index. */

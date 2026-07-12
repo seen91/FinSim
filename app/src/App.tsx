@@ -1,5 +1,5 @@
 import { findCard, formatMonth, ym, type HandCard } from '@finsim/engine'
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { instantiate, type AuthoredCard } from './authored'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
@@ -16,6 +16,7 @@ import { formatCompact, parseCompact } from './format'
 import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import { Glyph } from './icons'
 import type { Blueprint } from './library'
+import { runMc } from './mc'
 import { cardFocusSeries, migrateDoc, runSim, useDoc } from './model'
 import type { HandPreset, PresetCard } from './presets'
 import { starterDoc } from './starter'
@@ -102,6 +103,10 @@ export function App(): ReactElement {
   }, [library])
 
   const sim = useMemo(() => runSim(doc), [doc])
+  // the Monte Carlo pass rides a deferred value: the deterministic line
+  // answers every gesture instantly, the fan follows a beat later
+  const deferredDoc = useDeferredValue(doc)
+  const mc = useMemo(() => runMc(deferredDoc), [deferredDoc])
   const to = doc.from + doc.horizonMonths - 1
   const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
   const root = doc.table.root
@@ -274,6 +279,7 @@ export function App(): ReactElement {
       <Arena
         doc={doc}
         sim={sim}
+        mc={mc}
         scrub={scrub}
         onScrub={setScrub}
         focus={arenaFocus}
@@ -300,7 +306,7 @@ export function App(): ReactElement {
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
-              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} />
+              <HandStack hand={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} range={mc?.ranges.get(card.id)} />
             ) : (
               <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} onRemove={handleRemoveCard} onToggle={handleToggleCard} />
             )

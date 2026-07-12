@@ -550,7 +550,36 @@ function AssetEditor({ card, onChange }: { card: AssetCard; onChange: (c: Engine
         <>
           <Money label="Already holds" path="initialBalance" value={card.initialBalance ?? 0} onCommit={(v) => onChange(withOptional(card, 'initialBalance', v || undefined))} />
           <RateField label="Grows" path="growth.expected" value={card.growth?.expected ?? 0} onCommit={(expected) => onChange({ ...card, growth: { ...card.growth, expected } })} />
-          <RateField label="Volatility" path="growth.volatility" value={card.growth?.volatility ?? 0} onCommit={(v) => onChange({ ...card, growth: { expected: card.growth?.expected ?? 0, ...(v > 0 ? { volatility: v } : {}) } })} />
+          <RateField
+            label="Volatility"
+            path="growth.volatility"
+            value={card.growth?.volatility ?? 0}
+            onCommit={(v) =>
+              onChange({
+                ...card,
+                growth: {
+                  expected: card.growth?.expected ?? 0,
+                  // no volatility, no correlation — there is nothing left to correlate
+                  ...(v > 0 ? { volatility: v } : {}),
+                  ...(v > 0 && card.growth?.correlation !== undefined ? { correlation: card.growth.correlation } : {}),
+                },
+              })
+            }
+          />
+          {(card.growth?.volatility ?? 0) > 0 && (
+            <Num
+              label="Moves with market"
+              path="growth.correlation"
+              value={card.growth?.correlation ?? 1}
+              onCommit={(v) => {
+                const rho = Math.max(-1, Math.min(1, v))
+                const growth = { expected: card.growth?.expected ?? 0, volatility: card.growth?.volatility ?? 0, ...(rho !== 1 ? { correlation: rho } : {}) }
+                onChange({ ...card, growth })
+              }}
+              scale={100}
+              unit="%"
+            />
+          )}
           <RateField label="Fee" path="fee" value={card.fee ?? 0} onCommit={(v) => onChange(withOptional(card, 'fee', v > 0 ? v : undefined))} />
         </>
       )}

@@ -48,9 +48,19 @@ import { CASH_ID, validateTable } from './validate.js'
  *     `max(0, total)` at their position.
  */
 
+/**
+ * Monte Carlo's hook into the tick: a standard-normal draw for a growth-rate
+ * asset at series index `i`. The month's growth factor becomes
+ * factor × exp(σ/√12 · z) — median 1, so `expected` stays the CAGR of the
+ * median path. Absent (the deterministic mode), nothing changes.
+ */
+export type ShockFn = (card: AssetCard, i: number) => number
+
 interface AssetState {
   card: AssetCard
   factor: number
+  /** σ/√12 — the monthly log-shock scale Monte Carlo samples with. */
+  sigmaMonthly: number
   data: SampledData | null
   balance: number
   units: number
@@ -121,7 +131,7 @@ function neg(x: number): number {
   return x === 0 ? 0 : -x
 }
 
-export function simulate(table: Table, world: World, from: number, to: number): SimResult {
+export function simulate(table: Table, world: World, from: number, to: number, shocks?: ShockFn): SimResult {
   if (!Number.isInteger(from) || !Number.isInteger(to) || from > to) {
     throw new Error(`simulate: invalid range ${from}..${to}`)
   }
@@ -170,6 +180,7 @@ export function simulate(table: Table, world: World, from: number, to: number): 
       assetStates.set(card.id, {
         card,
         factor: monthlyFactor(card.growth?.expected ?? 0) * monthlyFactor(-(card.fee ?? 0)),
+        sigmaMonthly: (card.growth?.volatility ?? 0) / Math.sqrt(12),
         data: card.price ? resolveSampled(card.price, world, `Asset "${card.id}" price`) : null,
         balance: 0,
         units: 0,
@@ -244,7 +255,11 @@ export function simulate(table: Table, world: World, from: number, to: number): 
             state.balance = state.units * price
           } else {
             if (month === state.start) state.balance = card.initialBalance ?? 0
-            else state.balance *= state.factor
+            else {
+              state.balance *= state.factor
+              // no growth on the start month — so no shock on it either
+              if (shocks && state.sigmaMonthly > 0) state.balance *= Math.exp(state.sigmaMonthly * shocks(card, i))
+            }
             const deposit = card.take ? takeAmount(card.take, total) : 0
             state.balance += deposit
             total -= deposit

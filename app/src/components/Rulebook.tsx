@@ -113,6 +113,26 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
           </section>
 
           <section>
+            <h3>The fan: futures, not promises</h3>
+            <p>
+              A growth number like <em>7 % /yr</em> is a <strong>CAGR — the middle future, not a guarantee</strong>. Give an asset a volatility on its back
+              and the table simulates hundreds of seeded futures: the shaded fan on the chart holds the middle 80 % of them, and the drawn line is
+              (almost exactly) the median future. The average future actually runs <em>above</em> the line — a few lucky runs pull it up — which is why
+              honest planning reads the fan, not the average.
+            </p>
+            <p>
+              Volatile assets <strong>move together</strong> unless you say otherwise: &ldquo;moves with market&rdquo; on the card&rsquo;s back is its tie to
+              the one shared market (100 % by default — index funds tracking overlapping markets do not diversify each other). Lower it for things that
+              genuinely march to their own drum.
+            </p>
+            <p>
+              Verdicts speak the same language: the plan&rsquo;s goal date gains <em>&ldquo;in NN % of futures&rdquo;</em>, and a bundle&rsquo;s
+              time-to-goal cost becomes a range — &ldquo;+1 yr – 2 yr 6 mo in 80 % of futures&rdquo; — measured under identical market draws with and
+              without the bundle, so the range is the decision&rsquo;s, not the dice&rsquo;s.
+            </p>
+          </section>
+
+          <section>
             <h3>Cash</h3>
             <p>
               Cash is the vessel at the bottom of the root hand: whatever survives the pipeline each month lands there. It is not a card you play — it is

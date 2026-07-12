@@ -1,4 +1,4 @@
-import type { Card, Curve, HandCard, Table } from './types.js'
+import type { Card, Curve, GrowthParam, HandCard, Table } from './types.js'
 
 /**
  * Structural validation of a table — the kind system as code (DESIGN.md §7).
@@ -18,6 +18,16 @@ function validateCurveShape(curve: Curve, where: string, errors: string[]): void
         break
       }
     }
+  }
+}
+
+function validateGrowth(growth: GrowthParam | undefined, where: string, errors: string[]): void {
+  if (!growth) return
+  if (growth.volatility !== undefined && growth.volatility < 0) {
+    errors.push(`${where}: volatility must be ≥ 0`)
+  }
+  if (growth.correlation !== undefined && (growth.correlation < -1 || growth.correlation > 1)) {
+    errors.push(`${where}: correlation must be within −1..1`)
   }
 }
 
@@ -48,6 +58,7 @@ function validateCard(card: Card, errors: string[]): void {
       break
     }
     case 'asset':
+      validateGrowth(card.growth, `Card "${card.id}"`, errors)
       if (card.price && card.growth) {
         errors.push(`Card "${card.id}": an asset has either a growth rate or a price curve, not both`)
       }

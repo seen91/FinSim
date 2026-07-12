@@ -11,6 +11,8 @@ export interface Rng {
   next(): number
   /** Integer in [0, n). */
   int(n: number): number
+  /** Standard normal draw (mean 0, variance 1). */
+  normal(): number
 }
 
 /** mulberry32 — small, fast, well-distributed 32-bit PRNG. */
@@ -23,13 +25,37 @@ export function createRng(seed: number): Rng {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+  // Box–Muller produces normals in pairs; the spare is kept for the next call
+  let spare: number | null = null
   return {
     next,
     int(n: number): number {
       if (!Number.isInteger(n) || n <= 0) throw new Error(`rng.int(${n}): n must be a positive integer`)
       return Math.floor(next() * n)
     },
+    normal(): number {
+      if (spare !== null) {
+        const z = spare
+        spare = null
+        return z
+      }
+      const u = 1 - next() // (0, 1] — log(0) must be unreachable
+      const v = next()
+      const r = Math.sqrt(-2 * Math.log(u))
+      spare = r * Math.sin(2 * Math.PI * v)
+      return r * Math.cos(2 * Math.PI * v)
+    },
   }
+}
+
+/** FNV-1a — a stable 32-bit hash, for deriving per-card RNG streams from ids. */
+export function hashString(s: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
 }
 
 /** Fisher–Yates shuffle. Returns a new array; the input is not mutated. */

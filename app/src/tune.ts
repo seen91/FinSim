@@ -29,14 +29,16 @@ export function withTune(card: Card, path: string, pct: number): Card {
   return next
 }
 
-/** Shares live in 0..1; month counts and unit counts stay whole. */
+/** Shares live in 0..1; correlations in −1..1; month counts and unit counts stay whole. */
 const SHARE = /(^|\.)(percent|rate)$/
+const CORRELATION = /(^|\.)correlation$/
 const WHOLE = /(^|\.)(atMonth|periodMonths|initialUnits)$/
 
 /** What the table actually plays: the authored number scaled by its dial. */
 export function effectiveValue(path: string, base: number, pct: number): number {
   let v = base * (1 + pct / 100)
   if (SHARE.test(path)) v = Math.min(1, Math.max(0, v))
+  if (CORRELATION.test(path)) v = Math.min(1, Math.max(-1, v))
   if (WHOLE.test(path)) v = Math.max(path.endsWith('atMonth') || path.endsWith('periodMonths') ? 1 : 0, Math.round(v))
   return v
 }
