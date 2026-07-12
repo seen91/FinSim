@@ -18,6 +18,13 @@ export function formatPercent(value: number, decimals = 1): string {
 
 const dec = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 })
 
+const editNum = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 3 })
+
+/** A number as it reads in an editable field: grouped digits, up to 3 decimals. */
+export function formatNumber(value: number): string {
+  return editNum.format(value)
+}
+
 /** Compact money: 10 000 000 → "10 M", 1 500 000 → "1,5 M", 10 000 → "10 k". */
 export function formatCompact(value: number): string {
   const abs = Math.abs(value)

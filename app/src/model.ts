@@ -84,6 +84,22 @@ export function runSim(doc: Doc): Sim {
   return { active, remainder, compares }
 }
 
+/**
+ * What the Workshop's focused card puts on the chart: an asset or debt shows
+ * its balance; anything else shows its cumulative contribution — what the
+ * card has added to (or taken from) the table so far, in its position. Both
+ * read straight off the active sim, so edits answer live.
+ */
+export function cardFocusSeries(sim: Sim, card: Card): Series | null {
+  if (card.kind === 'asset' || card.kind === 'debt') {
+    return sim.active.balances.find((b) => b.id === card.id) ?? null
+  }
+  const c = sim.active.contributions.find((s) => s.id === card.id)
+  if (!c) return null
+  let acc = 0
+  return { id: `${card.id}-cumulative`, role: 'net', startMonth: c.startMonth, points: c.points.map((v) => (acc += v)) }
+}
+
 export interface DocStore {
   doc: Doc
   /** Apply a mutation to a fresh clone of the current document. */

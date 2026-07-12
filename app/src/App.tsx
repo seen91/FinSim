@@ -1,17 +1,20 @@
 import { findCard, formatMonth, ym, type HandCard } from '@finsim/engine'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { instantiate, type AuthoredCard } from './authored'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
 import { CashDock } from './components/CashDock'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
 import { HandStack } from './components/HandStack'
-import { loadDoc, saveDoc } from './db'
+import { Workshop, type WorkshopFocus } from './components/Workshop'
+import type { ArenaFocus } from './components/Arena'
+import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
 import { deserializeDoc, serializeDoc } from './exchange'
 import { formatCompact, parseCompact } from './format'
 import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import type { Blueprint } from './library'
-import { migrateDoc, runSim, useDoc } from './model'
+import { cardFocusSeries, migrateDoc, runSim, useDoc } from './model'
 import type { HandPreset, PresetCard } from './presets'
 import { starterDoc } from './starter'
 
@@ -51,8 +54,12 @@ export function App(): ReactElement {
   const { doc } = store
   const [scrubRaw, setScrub] = useState(doc.from)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [workshopOpen, setWorkshopOpen] = useState(false)
+  const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
+  const [library, setLibrary] = useState<AuthoredCard[]>([])
   const [openHandId, setOpenHandId] = useState<string | null>(null)
   const loaded = useRef(false)
+  const libraryLoaded = useRef(false)
   const importInput = useRef<HTMLInputElement>(null)
 
   // local-first: load once, then save (debounced) on every change.
@@ -78,6 +85,19 @@ export function App(): ReactElement {
     return () => clearTimeout(timer)
   }, [doc])
 
+  // the Workshop's authored cards persist too — even under ?fresh, designs survive
+  useEffect(() => {
+    void loadLibrary().then((saved) => {
+      if (saved) setLibrary(saved)
+      libraryLoaded.current = true
+    })
+  }, [])
+  useEffect(() => {
+    if (!libraryLoaded.current) return
+    const timer = setTimeout(() => void saveLibrary(library), 400)
+    return () => clearTimeout(timer)
+  }, [library])
+
   const sim = useMemo(() => runSim(doc), [doc])
   const to = doc.from + doc.horizonMonths - 1
   const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
@@ -96,15 +116,35 @@ export function App(): ReactElement {
   }, [opened, root])
   const openHand = trail[trail.length - 1] ?? null
 
+  // the Workshop's focus, mirrored onto the chart: one card, one curve.
+  // In play → its balance / cumulative effect from the live sim; a design →
+  // a fresh solo sim, the card alone on an empty table.
+  const arenaFocus = useMemo((): ArenaFocus | null => {
+    if (!workshopOpen || !workshopFocus) return null
+    if (workshopFocus.where === 'table') {
+      const card = findCard(root, workshopFocus.id)
+      const series = card ? cardFocusSeries(sim, card) : null
+      if (!card || !series) return null
+      const what = card.kind === 'asset' || card.kind === 'debt' ? 'its balance, in place on the table' : 'what it has moved so far, in place on the table'
+      return { name: card.name ?? card.id, note: what, series }
+    }
+    const authored = library.find((a) => a.id === workshopFocus.id)
+    if (!authored) return null
+    const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } })
+    return { name: authored.card.name ?? authored.id, note: 'played alone on an empty table', series: solo.active.netWorth }
+  }, [workshopOpen, workshopFocus, root, sim, library, doc])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return
       if (drawerOpen) setDrawerOpen(false)
+      else if (workshopFocus) setWorkshopFocus(null) // focus → back to browsing
+      else if (workshopOpen) setWorkshopOpen(false)
       else if (trail.length > 0) setOpenHandId(trail[trail.length - 2]?.id ?? null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [drawerOpen, trail])
+  }, [drawerOpen, workshopOpen, workshopFocus, trail])
 
   const targetId = openHand?.id ?? null
 
@@ -123,6 +163,13 @@ export function App(): ReactElement {
   const handleImportCard = (card: PresetCard): void => {
     const uid = crypto.randomUUID().slice(0, 8)
     store.update((d) => addCard(d, targetId, card.make(uid)))
+    setDrawerOpen(false)
+  }
+
+  // deal a fresh copy of a Workshop design into the open hand
+  const playAuthored = (authored: AuthoredCard): void => {
+    const uid = crypto.randomUUID().slice(0, 8)
+    store.update((d) => addCard(d, targetId, instantiate(authored, uid)))
     setDrawerOpen(false)
   }
 
@@ -218,6 +265,7 @@ export function App(): ReactElement {
         sim={sim}
         scrub={scrub}
         onScrub={setScrub}
+        focus={arenaFocus}
         trail={trail}
         onNavigate={setOpenHandId}
         onReorder={handleReorder}
@@ -255,11 +303,32 @@ export function App(): ReactElement {
       <DrawPile
         open={drawerOpen}
         targetName={openHand ? (openHand.name ?? openHand.id) : (root.name ?? 'Your plan')}
+        authored={library}
         onOpen={() => setDrawerOpen(true)}
         onClose={() => setDrawerOpen(false)}
         onChoose={playCard}
+        onChooseAuthored={playAuthored}
         onImportHand={handleImportHand}
         onImportCard={handleImportCard}
+        onWorkshop={() => {
+          setDrawerOpen(false)
+          setWorkshopOpen(true)
+        }}
+      />
+
+      <Workshop
+        open={workshopOpen}
+        onClose={() => {
+          setWorkshopOpen(false)
+          setWorkshopFocus(null)
+        }}
+        doc={doc}
+        update={store.update}
+        library={library}
+        onLibraryChange={setLibrary}
+        onPlay={playAuthored}
+        focus={workshopFocus}
+        onFocus={setWorkshopFocus}
       />
     </div>
   )

@@ -1,4 +1,4 @@
-import { firstCrossing, formatMonth, formatMonthsDelta, valueAt, type HandCard } from '@finsim/engine'
+import { firstCrossing, formatMonth, formatMonthsDelta, valueAt, type HandCard, type Series } from '@finsim/engine'
 import { useState, type ReactElement } from 'react'
 import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
@@ -15,11 +15,20 @@ import { Timeline } from './Timeline'
  */
 const CIRCLE: FanGeometry = { radius: 300, maxStep: 16, maxSpread: 336, visibleTo: 105, cardWidth: 124 }
 
+/** What the Workshop's focused card puts in the arena: one curve, one name. */
+export interface ArenaFocus {
+  name: string
+  note: string
+  series: Series
+}
+
 interface Props {
   doc: Doc
   sim: Sim
   scrub: number
   onScrub: (month: number) => void
+  /** Workshop focus: chart only this card, whatever else is open. */
+  focus?: ArenaFocus | null
   /** The opened hand, root → … → innermost. Empty = chart mode. */
   trail: HandCard[]
   onNavigate: (handId: string | null) => void
@@ -67,8 +76,21 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
 }
 
 export function Arena(props: Props): ReactElement {
-  const { doc, sim, scrub, onScrub, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, onRenameHand } = props
+  const { doc, sim, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, onRenameHand } = props
   const hand = trail[trail.length - 1]
+
+  // the Workshop's focus stage: the chart holds one card's curve, nothing else
+  if (focus) {
+    return (
+      <section className="arena">
+        <Timeline sim={sim} goal={doc.goal} from={doc.from} horizonMonths={doc.horizonMonths} scrub={scrub} onScrub={onScrub} focus={focus.series} />
+        <div className="chart-verdict">
+          <span className="chart-focus">{focus.name}</span>
+          <span className="chart-focus-note">{focus.note}</span>
+        </div>
+      </section>
+    )
+  }
 
   if (!hand) {
     // the whole plan's verdict, in the same shape the hand stacks use —

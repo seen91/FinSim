@@ -1,4 +1,4 @@
-import { firstCrossing, formatMonth, fromMonthIndex, valueAt } from '@finsim/engine'
+import { firstCrossing, formatMonth, fromMonthIndex, valueAt, type Series } from '@finsim/engine'
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactElement, type RefObject } from 'react'
 import { formatCompact } from '../format'
 import type { Sim } from '../model'
@@ -16,6 +16,8 @@ interface Props {
   horizonMonths: number
   scrub: number
   onScrub: (month: number) => void
+  /** Workshop focus: chart this one card's curve instead — no goal line, y scaled to the curve. */
+  focus?: Series
 }
 
 const MARGIN = { top: 24, right: 20, bottom: 30, left: 16 }
@@ -35,12 +37,13 @@ function useSize(): [RefObject<HTMLDivElement | null>, { width: number; height: 
   return [ref, size]
 }
 
-export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Props): ReactElement {
+export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub, focus }: Props): ReactElement {
   const [ref, { width, height }] = useSize()
   const to = from + horizonMonths - 1
 
-  const nw = sim.active.netWorth.points
-  const yMax = Math.max(goal, ...nw) * 1.06
+  const curve = focus ?? sim.active.netWorth
+  const nw = curve.points
+  const yMax = (focus ? Math.max(1, ...nw) : Math.max(goal, ...nw)) * 1.06
   const yMin = Math.min(0, ...nw)
 
   const x = scaleLinear([from, to], [MARGIN.left, width - MARGIN.right])
@@ -54,9 +57,9 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
     if (year * 12 >= from) xTicks.push(year * 12)
   }
 
-  const activeCross = firstCrossing(sim.active, goal)
+  const activeCross = focus ? null : firstCrossing(sim.active, goal)
   const scrubX = x(scrub)
-  const scrubNw = valueAt(sim.active.netWorth, scrub)
+  const scrubNw = valueAt(curve, scrub)
 
   const handlePointer = (e: PointerEvent<SVGSVGElement>): void => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -80,12 +83,16 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub }: Pro
           </text>
         ))}
 
-        {/* goal line + crossing date */}
-        <line className="goal-line" x1={MARGIN.left} x2={width - MARGIN.right} y1={y(goal)} y2={y(goal)} />
-        <text className="goal-label" x={MARGIN.left + 2} y={y(goal) - 5}>
-          {formatCompact(goal)}
-          {activeCross !== null ? ` · reached ${formatMonth(activeCross)}` : ' · not reached in horizon'}
-        </text>
+        {/* goal line + crossing date (the whole table's business — not a single card's) */}
+        {!focus && (
+          <>
+            <line className="goal-line" x1={MARGIN.left} x2={width - MARGIN.right} y1={y(goal)} y2={y(goal)} />
+            <text className="goal-label" x={MARGIN.left + 2} y={y(goal) - 5}>
+              {formatCompact(goal)}
+              {activeCross !== null ? ` · reached ${formatMonth(activeCross)}` : ' · not reached in horizon'}
+            </text>
+          </>
+        )}
 
         {/* the one honest net-worth curve */}
         <path className="curve active" d={path(nw)} />

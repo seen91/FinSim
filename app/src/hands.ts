@@ -42,6 +42,15 @@ export function removeCard(doc: Doc, cardId: string): void {
   parent.children = parent.children.filter((c) => c.id !== cardId)
 }
 
+/** Swap a card in place with an edited version of itself (same id) — the Workshop's commit. */
+export function replaceCard(doc: Doc, card: Card): void {
+  if (card.id === doc.table.root.id) return // the root hand is fixture, not card
+  const parent = findParentHand(doc.table.root, card.id)
+  if (!parent) return
+  const i = parent.children.findIndex((c) => c.id === card.id)
+  if (i >= 0) parent.children[i] = card
+}
+
 /**
  * Drag-reorder: move a card to `toIndex` within its own hand. Cross-hand
  * moves don't exist — a card leaves a hand only via the draw pile.

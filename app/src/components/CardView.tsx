@@ -8,7 +8,7 @@ import { Card, type CardStat } from './Card'
 
 /** An engine card dressed for the table: glyph, live headline, stat rows. */
 
-function glyphFor(card: EngineCard): GlyphName {
+export function glyphFor(card: EngineCard): GlyphName {
   const name = (card.name ?? '').toLowerCase()
   switch (card.kind) {
     case 'debt':

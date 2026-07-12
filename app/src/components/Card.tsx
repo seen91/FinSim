@@ -29,7 +29,7 @@ export interface CardFace {
 
 interface Props {
   face: CardFace
-  size?: 'hand' | 'table'
+  size?: 'hand' | 'table' | 'work'
   flipped?: boolean
   onFlip?: () => void
   /** Back-face content (parameter sliders etc.). Card is flippable iff present. */
@@ -70,7 +70,7 @@ export function Card({ face, size = 'table', flipped = false, onFlip, back, mute
               <Sparkline points={face.sparkline} />
             </div>
           )}
-          {face.description !== undefined && size === 'hand' && <p className="pcard-desc">{face.description}</p>}
+          {face.description !== undefined && size !== 'table' && <p className="pcard-desc">{face.description}</p>}
         </div>
         {back !== undefined && (
           <div className="pcard-face pcard-back">
@@ -83,7 +83,7 @@ export function Card({ face, size = 'table', flipped = false, onFlip, back, mute
               onClick={(e) => {
                 // sliders and buttons are for editing; anywhere else flips back
                 e.stopPropagation()
-                if (!(e.target as HTMLElement).closest('input, button')) onFlip?.()
+                if (!(e.target as HTMLElement).closest('input, button, select, textarea, label')) onFlip?.()
               }}
             >
               {back}

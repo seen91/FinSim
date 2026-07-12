@@ -42,17 +42,29 @@ Remaining gaps (both resolved 2026-07-12):
 - [x] `editors.ts` **deleted** (not wired) so the Workshop starts clean — see the M2 note below about bringing back a quick what-if tool afterwards
 - [x] Taxes-as-cards decision recorded in DESIGN.md §0/§7/§8 (plus §7 Anatomy aligned with the v3 "tuning lives in the Workshop" rule)
 
-## M2 — Workshop v1 ❌ not started
+## M2 — Workshop v1 ✅ done (2026-07-12)
 
-The Workshop button in the draw pile is a disabled placeholder (`DrawPile.tsx`).
-Spec: DESIGN §3.
+Spec: DESIGN §3. The Workshop opens from the diamond button in the draw pile:
+a workbench (`Workshop.tsx`) that unfolds over the lower table, leaving the
+chart visible above. It works in **two stages** so each holds one thought:
+**browse** (one shelf of small cards — blank card first, then everything;
+cards currently in play wear a small 'in play' plaque instead of their own section) and
+**focus** (click a card and everything else clears: the bench holds only that
+card's face and back-editor, and the chart above holds only that card's curve —
+balance or cumulative effect for cards in play, a solo run for designs).
+Escape steps back out: focus → browse → closed.
 
-- [ ] Card back as editor: flip a card, tune parameters with live sliders (built fresh — the old `editors.ts` was deleted 2026-07-12 so it wouldn't shape the Workshop)
-- [ ] Blank-card authoring: pick kind → curve primitive → parameters → front (name, icon, tags) → assumptions footnote
-- [ ] Personal library (authored cards persisted alongside the table doc)
-- [ ] **Pack format** (JSON: instrument cards, locale rules, data series, scenarios) — decide versioning *first* (open question §14.4)
-- [ ] Pack export/import as files
-- [ ] **After the Workshop is done:** bring back something like the deleted `editors.ts` sliders as a quick **what-if tool on the table** — the main use case is cheap experimentation ("what if this fund returns 7 % instead of 6 %, what effect does that have?"), *not* permanently changing cards (permanent edits live in the Workshop)
+- [x] Card back as editor (`CardEditor.tsx`, built fresh): every card on the table flips to its math — name, tags, kind-specific parameters as live slider+field pairs, all curve primitives editable (constant, linear, compound, step, sinusoidal, sampled-by-id, expression with compile-guarded commit so a broken formula never reaches the sim), cadence, takes, rule schedule/target/effect
+- [x] Blank-card authoring: blank tile → pick kind (source/drain/asset/debt/rule; hands are composed on the table) → tune math → front matter (sigil picker, description, assumptions footnote). Blanks are born structurally valid (`blankCard` tested against `validateTable`)
+- [x] Personal library (`authored.ts`): designs persist in IndexedDB alongside the table doc (`library-v1` key, `db.ts`), survive `?fresh`, play with fresh ids (`instantiate`), and show under "Your designs" in the draw pile
+- [x] **Pack format** (`packs.ts`) — **versioning decided (§14.4, mirrors the table file): `format: 'finsim-pack'` + one integer `version`; additive optional fields never bump it (readers ignore unknown fields, writers keep them); breaking shape changes bump it and must migrate-or-reject with a readable message; readers reject newer versions.** v1 carries instrument cards (engine template + front matter) and data series; `rules`/`scenarios` fields are reserved for the game layers (the simulator plays rules as cards). ⚠ Decision made in code + TODO — record it in DESIGN.md §0 once Sebastian confirms.
+- [x] Pack export/import as files (Workshop header; import merges cards by id and pack series into `world.series`)
+- [ ] **Next:** bring back something like the deleted `editors.ts` sliders as a quick **what-if tool on the table** — the main use case is cheap experimentation ("what if this fund returns 7 % instead of 6 %?"), *not* permanently changing cards (permanent edits live in the Workshop)
+
+Verified: 128 unit tests green (`workshop.test.ts` covers blank validity, fresh-id
+plays, replaceCard, pack round-trip/version-rejection/merge), headless Chrome run
+— slider edit moves the chart verdict live, blank→author→play→export→burn→import
+round-trip, golden baseline "goal in 20 yr 6 mo" intact.
 
 ## M3 — Game prototype, hot-seat ❌ not started
 

@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from 'react'
+import { headlineFor, type AuthoredCard } from '../authored'
 import { Glyph } from '../icons'
 import { LIBRARY, type Blueprint } from '../library'
 import { PRESETS, type HandPreset, type PresetCard } from '../presets'
@@ -7,18 +8,23 @@ import { Card } from './Card'
 /**
  * The draw pile: a face-down deck in the corner of the table. Open it and
  * everything not in play spreads out in a grid — whole hands first (import
- * them as one, or take single cards), then the loose cards. Click a card to
- * draw it; it plays into whichever hand is open (the main hand by default).
+ * them as one, or take single cards), then your own designs, then the loose
+ * cards. Click a card to draw it; it plays into whichever hand is open (the
+ * main hand by default).
  */
 interface Props {
   open: boolean
   /** Name of the hand a drawn card will play into. */
   targetName: string
+  /** The Workshop's authored cards, drawable like any other. */
+  authored: AuthoredCard[]
   onOpen: () => void
   onClose: () => void
   onChoose: (bp: Blueprint) => void
+  onChooseAuthored: (authored: AuthoredCard) => void
   onImportHand: (preset: HandPreset) => void
   onImportCard: (card: PresetCard) => void
+  onWorkshop: () => void
 }
 
 function DrawerCard({ bp, onChoose }: { bp: Blueprint; onChoose: (bp: Blueprint) => void }): ReactElement {
@@ -80,7 +86,25 @@ function PresetTile({
   )
 }
 
-export function DrawPile({ open, targetName, onOpen, onClose, onChoose, onImportHand, onImportCard }: Props): ReactElement {
+function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose: (a: AuthoredCard) => void }): ReactElement {
+  return (
+    <button className="drawer-slot" onClick={() => onChoose(authored)} title="Draw a copy — joins the right end of the open hand">
+      <Card
+        size="hand"
+        face={{
+          kind: authored.card.kind,
+          name: authored.card.name ?? authored.id,
+          glyph: authored.glyph,
+          headline: headlineFor(authored.card),
+          headlineClass: authored.card.kind === 'source' ? 'pos' : authored.card.kind === 'drain' ? 'neg' : '',
+          ...(authored.description ? { description: authored.description } : {}),
+        }}
+      />
+    </button>
+  )
+}
+
+export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose, onChooseAuthored, onImportHand, onImportCard, onWorkshop }: Props): ReactElement {
   return (
     <>
       <button className="pile" onClick={onOpen} title="Open the draw pile" aria-label="Open the draw pile">
@@ -100,11 +124,12 @@ export function DrawPile({ open, targetName, onOpen, onClose, onChoose, onImport
               <p className="drawer-hint">
                 click to draw into <strong>{targetName}</strong> · order matters — a hand plays left to right
               </p>
-              <button className="workshop" disabled title="The Workshop — card authoring, coming in M2">
-                <span>
-                  Work
-                  <br />
-                  shop
+              {/* the tavern sign: a yellow board swinging from a wooden bracket */}
+              <button className="workshop" onClick={onWorkshop} title="The Workshop — author cards, tune the ones in play, share packs">
+                <span className="workshop-hanger" aria-hidden />
+                <span className="workshop-board">
+                  <Glyph name="hammer" size={15} />
+                  Workshop
                 </span>
               </button>
               <button className="drawer-close" onClick={onClose} aria-label="Close">
@@ -117,6 +142,16 @@ export function DrawPile({ open, targetName, onOpen, onClose, onChoose, onImport
                 <PresetTile key={preset.id} preset={preset} onImportHand={onImportHand} onImportCard={onImportCard} />
               ))}
             </div>
+            {authored.length > 0 && (
+              <>
+                <h3 className="drawer-section">Your designs</h3>
+                <div className="drawer-grid">
+                  {authored.map((a) => (
+                    <AuthoredSlot key={a.id} authored={a} onChoose={onChooseAuthored} />
+                  ))}
+                </div>
+              </>
+            )}
             <h3 className="drawer-section">Cards</h3>
             <div className="drawer-grid">
               {LIBRARY.map((bp) => (
