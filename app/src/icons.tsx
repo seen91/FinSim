@@ -24,6 +24,8 @@ export type GlyphName =
   | 'play'
   | 'hammer'
   | 'book'
+  | 'export'
+  | 'import'
 
 const PATHS: Record<GlyphName, ReactElement> = {
   coins: (
@@ -143,6 +145,18 @@ const PATHS: Record<GlyphName, ReactElement> = {
     <>
       <path d="M12 6.8C10.4 5.2 8.3 4.6 4.5 4.6v13.2c3.8 0 5.9.6 7.5 2.2 1.6-1.6 3.7-2.2 7.5-2.2V4.6c-3.8 0-5.9.6-7.5 2.2Z" />
       <path d="M12 6.8V20" />
+    </>
+  ),
+  export: (
+    <>
+      <path d="M12 14.5V4.5M8.5 8 12 4.5 15.5 8" />
+      <path d="M4.5 14v4a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-4" />
+    </>
+  ),
+  import: (
+    <>
+      <path d="M12 4.5v10M8.5 11 12 14.5 15.5 11" />
+      <path d="M4.5 14v4a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-4" />
     </>
   ),
 }

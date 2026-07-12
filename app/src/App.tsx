@@ -14,6 +14,7 @@ import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
 import { deserializeDoc, serializeDoc } from './exchange'
 import { formatCompact, parseCompact } from './format'
 import { addCard, findParentHand, moveCard, removeCard } from './hands'
+import { Glyph } from './icons'
 import type { Blueprint } from './library'
 import { cardFocusSeries, migrateDoc, runSim, useDoc } from './model'
 import type { HandPreset, PresetCard } from './presets'
@@ -243,13 +244,17 @@ export function App(): ReactElement {
           />
         </label>
         <div className="topbar-actions">
-          <button onClick={() => setRulebookOpen(true)} title="how the table plays — the rules, written down">
+          {/* planked wooden boards on the rail, kin to the Workshop's sign */}
+          <button className="sign" onClick={() => setRulebookOpen(true)} title="how the table plays — the rules, written down">
+            <Glyph name="book" size={14} />
             Rulebook
           </button>
-          <button onClick={handleExport} title="download the whole table as a JSON file — the backup/share path">
+          <button className="sign" onClick={handleExport} title="download the whole table as a JSON file — the backup/share path">
+            <Glyph name="export" size={13} />
             Export
           </button>
-          <button onClick={() => importInput.current?.click()} title="replace the table with a previously exported JSON file">
+          <button className="sign" onClick={() => importInput.current?.click()} title="replace the table with a previously exported JSON file">
+            <Glyph name="import" size={13} />
             Import
           </button>
           <input

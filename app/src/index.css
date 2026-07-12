@@ -176,6 +176,38 @@ button:not(:disabled):hover {
   border-color: var(--gold);
 }
 
+/* Rulebook / Export / Import: planked wooden boards on the rail, kin to the
+   Workshop's sign board — but plain dark wood with gilt lettering, so the
+   Workshop's signal yellow stays the one loud thing on the table. */
+.topbar-actions .sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  padding: 0.26rem 0.65rem 0.24rem;
+  font-family: var(--display);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--gold) 72%, var(--wood-ink));
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0 1.5px, transparent 1.5px 7px),
+    radial-gradient(ellipse at 30% 20%, rgba(255, 220, 150, 0.12), transparent 60%),
+    linear-gradient(170deg, #6a4526, #482a11);
+  border: 1.5px solid #2b1808;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px var(--shadow), inset 0 1px 0 rgba(255, 220, 150, 0.14);
+}
+
+.topbar-actions .sign .glyph {
+  opacity: 0.8;
+}
+
+.topbar-actions .sign:not(:disabled):hover {
+  color: var(--gold);
+  border-color: #2b1808;
+  box-shadow: 0 3px 6px var(--shadow), inset 0 1px 0 rgba(255, 220, 150, 0.22);
+}
+
 /* ---- the arena: a parchment map pinned to the table ---- */
 .arena {
   position: relative;
@@ -889,29 +921,37 @@ input[type='range'] {
   justify-content: flex-end;
 }
 
+/* an actual brass plate: brushed gradient, beveled edges, the figures
+   engraved (dark ink, light catch below) */
 .dock-plaque {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.6rem 0.3rem 0.55rem;
+  gap: 0.55rem;
+  padding: 0.45rem 0.85rem 0.4rem 0.75rem;
   background:
-    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.14) 0 2px, transparent 2px 9px),
-    repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.14) 0 2px, transparent 2px 9px),
-    #4c3018;
-  border: 1.5px solid var(--gold-deep);
-  border-radius: 9px;
-  box-shadow: 0 2px 6px var(--shadow);
-  color: var(--wood-ink);
+    radial-gradient(ellipse at 30% 0%, rgba(255, 244, 205, 0.5), transparent 65%),
+    linear-gradient(168deg, #c9a24d 0%, #ab8138 55%, #8f6a2a 100%);
+  border: 1px solid #55401a;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 195, 0.55),
+    inset 0 -1px 1px rgba(55, 38, 8, 0.5),
+    0 2px 6px var(--shadow);
+  color: #33240c;
 }
 
 .dock-plaque:not(:disabled):hover {
-  border-color: var(--gold);
+  border-color: #33240c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 195, 0.7),
+    inset 0 -1px 1px rgba(55, 38, 8, 0.5),
+    0 3px 8px var(--shadow);
 }
 
 .dock-plaque .glyph {
   flex-shrink: 0;
-  color: var(--gold);
-  opacity: 0.85;
+  color: #55401a;
+  opacity: 0.9;
 }
 
 .dock-rows {
@@ -931,16 +971,18 @@ input[type='range'] {
   font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--wood-ink-soft);
+  color: #6d5423;
+  text-shadow: 0 1px 0 rgba(255, 240, 195, 0.4);
 }
 
 .dock-value {
   font-size: 0.8rem;
+  text-shadow: 0 1px 0 rgba(255, 240, 195, 0.45);
 }
 
-/* money direction, lightened just enough to read on the dark leather */
-.dock-value.pos { color: color-mix(in srgb, var(--money-pos) 45%, var(--wood-ink)); }
-.dock-value.neg { color: color-mix(in srgb, var(--money-neg) 45%, var(--wood-ink)); }
+/* a negative month, engraved deep — brass is bright, so the ink goes darker
+   than the parchment red to keep contrast */
+.dock-value.neg { color: #6e150c; }
 
 /* the editing panel: a parchment slip that unfolds above the plaque */
 .dock-panel {
@@ -1002,7 +1044,7 @@ input[type='range'] {
     #4c3018;
   border: 1.5px solid var(--gold-deep);
   border-radius: 9px;
-  box-shadow: 0 2px 6px var(--shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 6px var(--shadow);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1016,10 +1058,30 @@ input[type='range'] {
   transform: translate(3px, 4px) rotate(-1.5deg);
 }
 
+/* the tooled inner frame on the face-down back — only the top card earns it */
+.pile-top::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+/* the maker's mark: f(t) in a double-ring gold medallion */
 .pile-top em {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
   font-family: var(--display);
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   color: var(--gold);
+  border: 1.5px solid color-mix(in srgb, var(--gold) 65%, transparent);
+  border-radius: 50%;
+  outline: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  outline-offset: 3px;
+  background: radial-gradient(circle, rgba(255, 220, 150, 0.08), transparent 70%);
 }
 
 .pile-label {

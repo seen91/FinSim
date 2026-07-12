@@ -102,7 +102,8 @@ export function CashDock({
           </span>
           <span className="dock-row">
             <span className="dock-label">monthly</span>
-            <span className={`dock-value num${flow > 0 ? ' pos' : flow < 0 ? ' neg' : ''}`}>{formatPerMonth(flow)}</span>
+            {/* engraved ink like the cash figure; red only when the month runs negative */}
+            <span className={`dock-value num${flow < 0 ? ' neg' : ''}`}>{formatPerMonth(flow)}</span>
           </span>
         </span>
       </button>
