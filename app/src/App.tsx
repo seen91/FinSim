@@ -1,6 +1,6 @@
 import { findCard, formatMonth, type Card, type HandCard, type SampledData } from '@finsim/engine'
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { instantiate, type AuthoredCard } from './authored'
+import { instantiate, mergeLibrary, type AuthoredCard } from './authored'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
 import { CashDock } from './components/CashDock'
@@ -99,15 +99,36 @@ export function App(): ReactElement {
   // the Workshop's authored cards persist too — even under ?fresh, designs survive
   useEffect(() => {
     void loadLibrary().then((saved) => {
-      if (saved) setLibrary(saved)
+      // a design made before the load lands must survive it — merge, don't clobber
+      if (saved) setLibrary((current) => (current.length > 0 ? mergeLibrary(saved, current) : saved))
       libraryLoaded.current = true
     })
   }, [])
   useEffect(() => {
     if (!libraryLoaded.current) return
-    const timer = setTimeout(() => void saveLibrary(library), 400)
-    return () => clearTimeout(timer)
+    // no debounce: designs are few and precious — a fresh one must hit disk
+    // before any reload can eat it (the doc keeps its debounce; it churns)
+    void saveLibrary(library)
   }, [library])
+
+  // the debounced saves lose the last change when the page goes away inside
+  // their 400 ms window (a reload right after authoring ate the fresh design) —
+  // flush whatever is pending on the way out
+  const latest = useRef({ doc, library })
+  latest.current = { doc, library }
+  useEffect(() => {
+    const flush = (): void => {
+      if (document.visibilityState !== 'hidden') return
+      if (loaded.current) void saveDoc(latest.current.doc)
+      if (libraryLoaded.current) void saveLibrary(latest.current.library)
+    }
+    document.addEventListener('visibilitychange', flush)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', flush)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [])
 
   // a table can still fail to play — a start before a series begins, a bogus
   // series id: keep the last good sim on screen and say why

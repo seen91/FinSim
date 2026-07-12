@@ -12,13 +12,21 @@ const STORE = 'docs'
 const KEY = 'table-v3' // v3: the pipeline model — one root hand, played top to bottom
 const LIBRARY_KEY = 'library-v1' // the Workshop's authored cards
 
+// one connection for the session — a write issued while the page is going
+// away (the pagehide flush) only stands a chance if it needn't open first
+let dbPromise: Promise<IDBDatabase> | null = null
+
 function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1)
+      req.onupgradeneeded = () => req.result.createObjectStore(STORE)
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+    dbPromise.catch(() => (dbPromise = null)) // a failed open may be retried
+  }
+  return dbPromise
 }
 
 async function load<T>(key: string): Promise<T | undefined> {
