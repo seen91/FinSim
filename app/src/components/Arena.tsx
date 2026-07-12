@@ -39,6 +39,8 @@ interface Props {
   onRemoveCard: (cardId: string) => void
   onToggleCard: (cardId: string) => void
   onRenameHand: (handId: string, name: string) => void
+  /** Unfold the fan: open the futures report. */
+  onOpenReport: () => void
 }
 
 function HandName({ name, onRename }: { name: string; onRename: (name: string) => void }): ReactElement {
@@ -79,7 +81,7 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
 }
 
 export function Arena(props: Props): ReactElement {
-  const { doc, sim, mc, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, onRenameHand } = props
+  const { doc, sim, mc, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, onRenameHand, onOpenReport } = props
   const hand = trail[trail.length - 1]
 
   // the Workshop's focus stage: the chart holds one card's curve, nothing else
@@ -113,12 +115,14 @@ export function Arena(props: Props): ReactElement {
             </span>
           )}
           {mc && (
-            <span
+            <button
               className={`chart-verdict-odds num${mc.goalProbability >= 0.5 ? ' pos' : ' neg'}`}
-              title="share of simulated futures that reach the goal within the horizon — the shaded fan on the chart is the middle 80 % of them"
+              onClick={onOpenReport}
+              title="share of simulated futures that reach the goal within the horizon — click to unfold the full futures report"
             >
               in {Math.round(mc.goalProbability * 100)} % of futures
-            </span>
+              <Glyph name="book" size={10} />
+            </button>
           )}
         </div>
       </section>

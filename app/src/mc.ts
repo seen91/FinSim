@@ -43,6 +43,10 @@ export interface BundleRange {
 }
 
 export interface Mc {
+  /** The raw run behind everything below — the futures report reads it directly. */
+  run: MonteCarloRun
+  /** Per path, the month the goal is first sustainably reached (null where never). */
+  crossings: (number | null)[]
   /** The fan: per-month P10/P50/P90 of net worth across paths. */
   bands: { p10: Series; p50: Series; p90: Series }
   /** Share of paths that sustainably reach the goal within the horizon. */
@@ -96,6 +100,8 @@ export function runMc(doc: Doc): Mc | null {
   }
 
   return {
+    run: active,
+    crossings: activeCrossings,
     bands: { p10: percentileBand(active, 0.1), p50: percentileBand(active, 0.5), p90: percentileBand(active, 0.9) },
     goalProbability: activeCrossings.filter((m) => m !== null).length / opts.paths,
     ranges,

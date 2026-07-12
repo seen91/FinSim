@@ -115,6 +115,12 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
           <section>
             <h3>The fan: futures, not promises</h3>
             <p>
+              There is <strong>no simulate button</strong> — the table simulates on every edit, automatically. But it only has something to show when at
+              least one asset in play carries a <strong>volatility</strong> (the <em>±&nbsp;%/yr</em> on its back): without one, every future is the same
+              line, so no fan is drawn, no odds are given, and verdicts stay single numbers. If you expect a fan and see none, check the volatility on your
+              assets — a table saved before its assets had one plays deterministic until you add it.
+            </p>
+            <p>
               A growth number like <em>7 % /yr</em> is a <strong>CAGR — the middle future, not a guarantee</strong>. Give an asset a volatility on its back
               and the table simulates hundreds of seeded futures: the shaded fan on the chart holds the middle 80 % of them, and the drawn line is
               (almost exactly) the median future. The average future actually runs <em>above</em> the line — a few lucky runs pull it up — which is why
@@ -129,6 +135,11 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
               Verdicts speak the same language: the plan&rsquo;s goal date gains <em>&ldquo;in NN % of futures&rdquo;</em>, and a bundle&rsquo;s
               time-to-goal cost becomes a range — &ldquo;+1 yr – 2 yr 6 mo in 80 % of futures&rdquo; — measured under identical market draws with and
               without the bundle, so the range is the decision&rsquo;s, not the dice&rsquo;s.
+            </p>
+            <p>
+              And the fan unfolds: <strong>click the &ldquo;in NN % of futures&rdquo; odds under the chart</strong> to open the futures report — when the
+              goal tends to land year by year, how the horizon can close from the unlucky tenth to the lucky one, and what each bundle costs across
+              futures, all read from the same dealt set.
             </p>
           </section>
 

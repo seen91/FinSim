@@ -6,6 +6,7 @@ import { CardView } from './components/CardView'
 import { CashDock } from './components/CashDock'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
+import { FuturesReport } from './components/FuturesReport'
 import { HandStack } from './components/HandStack'
 import { Rulebook } from './components/Rulebook'
 import { Workshop, type WorkshopFocus } from './components/Workshop'
@@ -58,6 +59,7 @@ export function App(): ReactElement {
   const [scrubRaw, setScrub] = useState(doc.from)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [rulebookOpen, setRulebookOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const [workshopOpen, setWorkshopOpen] = useState(false)
   const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
   const [library, setLibrary] = useState<AuthoredCard[]>([])
@@ -145,7 +147,8 @@ export function App(): ReactElement {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return
-      if (rulebookOpen) setRulebookOpen(false)
+      if (reportOpen) setReportOpen(false)
+      else if (rulebookOpen) setRulebookOpen(false)
       else if (drawerOpen) setDrawerOpen(false)
       else if (workshopFocus) setWorkshopFocus(null) // focus → back to browsing
       else if (workshopOpen) setWorkshopOpen(false)
@@ -153,7 +156,7 @@ export function App(): ReactElement {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rulebookOpen, drawerOpen, workshopOpen, workshopFocus, trail])
+  }, [reportOpen, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, trail])
 
   const targetId = openHand?.id ?? null
 
@@ -294,6 +297,7 @@ export function App(): ReactElement {
             if (hand?.kind === 'hand') hand.name = name
           })
         }}
+        onOpenReport={() => setReportOpen(true)}
       />
 
       <footer className="hand-strip">
@@ -318,6 +322,8 @@ export function App(): ReactElement {
       <CashDock doc={doc} sim={sim} scrub={scrub} onEdit={store.update} />
 
       <Rulebook open={rulebookOpen} onClose={() => setRulebookOpen(false)} />
+
+      <FuturesReport open={reportOpen} mc={mc} doc={doc} onClose={() => setReportOpen(false)} />
 
       <DrawPile
         open={drawerOpen}
