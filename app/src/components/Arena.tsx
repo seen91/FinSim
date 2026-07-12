@@ -1,4 +1,4 @@
-import { firstCrossing, formatMonth, formatMonthsDelta, type HandCard, type Series } from '@finsim/engine'
+import { firstCrossing, formatMonth, formatMonthsDelta, type Card as EngineCard, type HandCard, type Series } from '@finsim/engine'
 import { useState, type ReactElement } from 'react'
 import { formatPercent } from '../format'
 import { Glyph } from '../icons'
@@ -37,6 +37,10 @@ interface Props {
   onReorder: (cardId: string, toIndex: number) => void
   onRemoveCard: (cardId: string) => void
   onToggleCard: (cardId: string) => void
+  /** The one card currently showing its what-if dials (a tap turns it). */
+  flippedId: string | null
+  onFlipCard: (cardId: string) => void
+  onTuneCard: (next: EngineCard) => void
   onRenameHand: (handId: string, name: string) => void
   /** Unfold the fan: open the futures report. */
   onOpenReport: () => void
@@ -80,7 +84,7 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
 }
 
 export function Arena(props: Props): ReactElement {
-  const { doc, sim, mc, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, onRenameHand, onOpenReport } = props
+  const { doc, sim, mc, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, flippedId, onFlipCard, onTuneCard, onRenameHand, onOpenReport } = props
   const hand = trail[trail.length - 1]
 
   // the Workshop's focus stage: the chart holds one card's curve, nothing else
@@ -153,6 +157,7 @@ export function Arena(props: Props): ReactElement {
           onReorder={onReorder}
           onItemClick={(card) => {
             if (card.kind === 'hand') onNavigate(card.id)
+            else onFlipCard(card.id)
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
@@ -167,7 +172,18 @@ export function Arena(props: Props): ReactElement {
                 onToggle={onToggleCard}
               />
             ) : (
-              <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} size="hand" onRemove={onRemoveCard} onToggle={onToggleCard} />
+              <CardView
+                card={card}
+                sim={sim}
+                scrub={scrub}
+                from={doc.from}
+                compare={sim.compares.find((c) => c.cardId === card.id)}
+                size="hand"
+                flipped={flippedId === card.id}
+                onRemove={onRemoveCard}
+                onToggle={onToggleCard}
+                onTune={onTuneCard}
+              />
             )
           }
         />

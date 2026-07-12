@@ -7,6 +7,7 @@ import type { CardCompare, Sim } from '../model'
 import { deltaVerdict } from '../verdict'
 import { Card, type CardStat } from './Card'
 import { CardShelf } from './CardShelf'
+import { TuneDials, dialsOf } from './TuneDials'
 
 /** An engine card dressed for the table: glyph, live headline, stat rows. */
 
@@ -55,8 +56,10 @@ export function CardView({
   from,
   compare,
   size = 'table',
+  flipped = false,
   onRemove,
   onToggle,
+  onTune,
 }: {
   card: EngineCard
   sim: Sim
@@ -64,8 +67,12 @@ export function CardView({
   from: number
   compare?: CardCompare
   size?: 'hand' | 'table'
+  /** Turned face-down (the what-if dials) — the tap that turns it lives in the Fan. */
+  flipped?: boolean
   onRemove: (cardId: string) => void
   onToggle: (cardId: string) => void
+  /** Commit a re-dialed card back onto the table; absent = the back stays sealed. */
+  onTune?: (next: EngineCard) => void
 }): ReactElement {
   const setAside = card.enabled === false
   const contribution = sim.active.contributions.find((s) => s.id === card.id)
@@ -76,12 +83,14 @@ export function CardView({
   const value = isBalance ? (balanceSeries ? valueAt(balanceSeries, scrub) : 0) : contribution ? valueAt(contribution, scrub) : 0
   const sparkline = isRule ? undefined : isBalance ? balanceSeries?.points : contribution?.points
   const verdict = compare ? deltaVerdict(compare, from) : null
+  const back = onTune && dialsOf(card).length > 0 ? <TuneDials card={card} onChange={onTune} /> : undefined
 
   return (
     <div className={`stack${setAside ? ' set-aside' : ''}`}>
       <Card
         size={size}
         muted={setAside}
+        {...(back !== undefined ? { back, flipped } : {})}
         face={{
           kind: card.kind,
           name: card.name ?? card.id,

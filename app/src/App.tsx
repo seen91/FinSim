@@ -15,7 +15,7 @@ import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
 import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
 import { errorMessage, formatCompact, parseCompact } from './format'
-import { addCard, findParentHand, moveCard, removeCard } from './hands'
+import { addCard, findParentHand, moveCard, removeCard, replaceCard } from './hands'
 import { Glyph } from './icons'
 import { runMc } from './mc'
 import { cardFocusSeries, migrateDoc, runSim, useDoc, type Sim } from './model'
@@ -65,6 +65,8 @@ export function App(): ReactElement {
   const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
   const [library, setLibrary] = useState<AuthoredCard[]>([])
   const [openHandId, setOpenHandId] = useState<string | null>(null)
+  // the one card turned face-down to its what-if dials — tap to turn, tap to turn back
+  const [flippedId, setFlippedId] = useState<string | null>(null)
   const loaded = useRef(false)
   const libraryLoaded = useRef(false)
   const importInput = useRef<HTMLInputElement>(null)
@@ -177,11 +179,12 @@ export function App(): ReactElement {
       else if (drawerOpen) setDrawerOpen(false)
       else if (workshopFocus) setWorkshopFocus(null) // focus → back to browsing
       else if (workshopOpen) setWorkshopOpen(false)
+      else if (flippedId) setFlippedId(null) // a turned card turns back first
       else if (trail.length > 0) setOpenHandId(trail[trail.length - 2]?.id ?? null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [reportOpen, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, trail])
+  }, [reportOpen, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, flippedId, trail])
 
   const targetId = openHand?.id ?? null
 
@@ -204,6 +207,15 @@ export function App(): ReactElement {
 
   const handleRemoveCard = (cardId: string): void => {
     store.update((d) => removeCard(d, cardId))
+  }
+
+  // a tap on a card in play turns it over to its what-if dials (hands open instead)
+  const handleFlipCard = (cardId: string): void => {
+    setFlippedId((f) => (f === cardId ? null : cardId))
+  }
+
+  const handleTuneCard = (next: Card): void => {
+    store.update((d) => replaceCard(d, next))
   }
 
   // set aside / bring back: the card stays on the table, the sim plays without it
@@ -304,6 +316,9 @@ export function App(): ReactElement {
         onReorder={handleReorder}
         onRemoveCard={handleRemoveCard}
         onToggleCard={handleToggleCard}
+        flippedId={flippedId}
+        onFlipCard={handleFlipCard}
+        onTuneCard={handleTuneCard}
         onRenameHand={(handId, name) => {
           store.update((d) => {
             const hand = findCard(d.table.root, handId)
@@ -320,6 +335,7 @@ export function App(): ReactElement {
           onReorder={handleReorder}
           onItemClick={(card) => {
             if (card.kind === 'hand') setOpenHandId(card.id)
+            else handleFlipCard(card.id)
           }}
           renderItem={(card) =>
             card.kind === 'hand' ? (
@@ -334,7 +350,17 @@ export function App(): ReactElement {
                 onToggle={handleToggleCard}
               />
             ) : (
-              <CardView card={card} sim={sim} scrub={scrub} from={doc.from} compare={sim.compares.find((c) => c.cardId === card.id)} onRemove={handleRemoveCard} onToggle={handleToggleCard} />
+              <CardView
+                card={card}
+                sim={sim}
+                scrub={scrub}
+                from={doc.from}
+                compare={sim.compares.find((c) => c.cardId === card.id)}
+                flipped={flippedId === card.id}
+                onRemove={handleRemoveCard}
+                onToggle={handleToggleCard}
+                onTune={handleTuneCard}
+              />
             )
           }
         />

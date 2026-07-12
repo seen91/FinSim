@@ -641,6 +641,15 @@ input[type='range'].tuned {
   font-variant-numeric: tabular-nums;
 }
 
+/* the fine print under a turned card's dials */
+.tune-hint {
+  margin: auto 0 0;
+  padding-top: 0.3rem;
+  font-size: 0.58rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
 .card-action {
   margin-top: 0.3rem;
   font-size: 0.7rem;
