@@ -1,4 +1,4 @@
-import { findCard, formatMonth, formatMonthsDelta, replayCoverage, ym, type HandCard } from '@finsim/engine'
+import { findCard, formatMonth, ym, type HandCard } from '@finsim/engine'
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { instantiate, type AuthoredCard } from './authored'
 import { Arena } from './components/Arena'
@@ -20,6 +20,7 @@ import type { Blueprint } from './library'
 import { runMc } from './mc'
 import { cardFocusSeries, migrateDoc, runSim, useDoc, type Doc, type Sim } from './model'
 import type { HandPreset, PresetCard } from './presets'
+import { addSeries } from './seriesImport'
 import { starterDoc } from './starter'
 
 /** The main hand at the bottom of the screen: a wide, gentle arc. */
@@ -50,55 +51,6 @@ function GoalInput({ goal, onCommit }: { goal: number; onCommit: (v: number) => 
         if (e.key === 'Escape') setDraft(formatCompact(goal))
       }}
     />
-  )
-}
-
-/**
- * The replay control (DESIGN.md §0 "Backtesting"), beside the start-date
- * editing — both are statements about time. Only there when the table
- * references historical data; only offers months the data can cover.
- */
-function ReplayControl({ doc, onSet }: { doc: Doc; onSet: (month: number | undefined) => void }): ReactElement | null {
-  const to = doc.from + doc.horizonMonths - 1
-  const coverage = useMemo(() => replayCoverage(doc.world ?? {}, doc.table, doc.from, to), [doc, to])
-  if (coverage.series.length === 0) return null
-  const spans = coverage.series.map((s) => `${s.seriesId} ${formatMonth(s.first)} … ${formatMonth(s.last)}`).join(' · ')
-  const { anchors } = coverage
-  if (!anchors) {
-    return (
-      <label className="goal-input replay-input" title={`data covers ${spans} — too short for a ${formatMonthsDelta(doc.horizonMonths)} horizon`}>
-        Replay
-        <span className="replay-none">data shorter than horizon</span>
-      </label>
-    )
-  }
-  const hint =
-    `the next ${formatMonthsDelta(doc.horizonMonths)} play out like this month onward did. ` +
-    `Data covers ${spans}; a ${formatMonthsDelta(doc.horizonMonths)} horizon can start ${formatMonth(anchors.first)} … ${formatMonth(anchors.last)}`
-  return (
-    <label className="goal-input replay-input" title={hint}>
-      Replay
-      <input
-        type="month"
-        min={formatMonth(anchors.first)}
-        max={formatMonth(anchors.last)}
-        value={doc.replayFrom !== undefined ? formatMonth(doc.replayFrom) : ''}
-        onChange={(e) => {
-          if (!e.target.value) {
-            onSet(undefined)
-            return
-          }
-          const [y, m] = e.target.value.split('-').map(Number)
-          if (!y || !m) return
-          onSet(Math.max(anchors.first, Math.min(anchors.last, ym(y, m))))
-        }}
-      />
-      {doc.replayFrom !== undefined && (
-        <button className="replay-clear" title="Clear the replay — back to the authored world" onClick={() => onSet(undefined)}>
-          ×
-        </button>
-      )}
-    </label>
   )
 }
 
@@ -153,8 +105,8 @@ export function App(): ReactElement {
     return () => clearTimeout(timer)
   }, [library])
 
-  // a table can outrun its data — a priced card played before a replay date
-  // is picked, a bogus series id: keep the last good sim on screen and say why
+  // a table can still fail to play — a start before a series begins, a bogus
+  // series id: keep the last good sim on screen and say why
   const simState = useMemo(() => {
     try {
       return { sim: runSim(doc), error: null as string | null }
@@ -211,7 +163,7 @@ export function App(): ReactElement {
       const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } })
       return { name: authored.card.name ?? authored.id, note: 'played alone on an empty table', series: solo.active.netWorth }
     } catch {
-      return null // a design can outrun its data (no replay on an unpicked date) — no curve, not a crash
+      return null // a design can start before its data begins — no curve, not a crash
     }
   }, [workshopOpen, workshopFocus, root, sim, library, doc])
 
@@ -233,19 +185,28 @@ export function App(): ReactElement {
 
   const playCard = (bp: Blueprint): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update((d) => addCard(d, targetId, bp.make(uid)))
+    store.update((d) => {
+      addSeries(d, bp.series)
+      addCard(d, targetId, bp.make(uid))
+    })
     setDrawerOpen(false)
   }
 
   const handleImportHand = (preset: HandPreset): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update((d) => addCard(d, targetId, preset.build(uid)))
+    store.update((d) => {
+      addSeries(d, preset.series)
+      addCard(d, targetId, preset.build(uid))
+    })
     setDrawerOpen(false)
   }
 
   const handleImportCard = (card: PresetCard): void => {
     const uid = crypto.randomUUID().slice(0, 8)
-    store.update((d) => addCard(d, targetId, card.make(uid)))
+    store.update((d) => {
+      addSeries(d, card.series)
+      addCard(d, targetId, card.make(uid))
+    })
     setDrawerOpen(false)
   }
 
@@ -310,7 +271,7 @@ export function App(): ReactElement {
             }}
           />
         </label>
-        <label className="goal-input">
+        <label className="goal-input" title="the table's first month — set it in the past to backtest against historical data">
           Start
           <input
             type="month"
@@ -322,15 +283,6 @@ export function App(): ReactElement {
             }}
           />
         </label>
-        <ReplayControl
-          doc={doc}
-          onSet={(month) => {
-            store.update((d) => {
-              if (month === undefined) delete d.replayFrom
-              else d.replayFrom = month
-            })
-          }}
-        />
         <div className="topbar-actions">
           {/* planked wooden boards on the rail, kin to the Workshop's sign */}
           <button className="sign" onClick={() => setRulebookOpen(true)} title="how the table plays — the rules, written down">
@@ -362,7 +314,7 @@ export function App(): ReactElement {
       {simState.error && (
         <div className="sim-error" role="alert">
           the table cannot play: {simState.error}
-          {simState.error.includes('no data for') && ' — pick a replay date the data covers, or move the table’s start'}
+          {simState.error.includes('no data for') && ' — move the table’s start into the months the data covers'}
         </div>
       )}
 

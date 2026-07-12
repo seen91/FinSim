@@ -62,6 +62,8 @@ interface AssetState {
   /** σ/√12 — the monthly log-shock scale Monte Carlo samples with. */
   sigmaMonthly: number
   data: SampledData | null
+  /** A priced asset's current price — sampled inside the data, extrapolated by `factor` beyond it. */
+  price: number | null
   balance: number
   units: number
   start: number
@@ -182,6 +184,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
         factor: monthlyFactor(card.growth?.expected ?? 0) * monthlyFactor(-(card.fee ?? 0)),
         sigmaMonthly: (card.growth?.volatility ?? 0) / Math.sqrt(12),
         data: card.price ? resolveSampled(card.price, world, `Asset "${card.id}" price`) : null,
+        price: null,
         balance: 0,
         units: 0,
         start: card.startMonth ?? from,
@@ -243,7 +246,21 @@ export function simulate(table: Table, world: World, from: number, to: number, s
         case 'asset': {
           const state = assetStates.get(card.id)!
           if (state.data) {
-            const price = sampleAt(state.data, month, `Asset "${card.id}" price`)
+            // Inside the data the price is history, exact and never shocked.
+            // Beyond its end the card's growth component takes over from the
+            // last price (frozen without one) — that stretch is simulated
+            // future, so it is also the only stretch the dice may touch.
+            // Before the data starts there is nothing to fall back FROM:
+            // sampleAt throws, readably.
+            if (month <= state.data.startMonth + state.data.values.length - 1) {
+              state.price = sampleAt(state.data, month, `Asset "${card.id}" price`)
+            } else if (state.price === null) {
+              state.price = state.data.values[state.data.values.length - 1]!
+            } else if (month > state.start) {
+              state.price *= state.factor
+              if (shocks && state.sigmaMonthly > 0) state.price *= Math.exp(state.sigmaMonthly * shocks(card, i))
+            }
+            const price = state.price
             if (month === state.start) state.units = card.initialUnits ?? (card.initialBalance ?? 0) / price
             const deposit = card.take ? takeAmount(card.take, total) : 0
             if (deposit !== 0) {
@@ -312,7 +329,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
         if (month >= state.start && ruleApplies(r, state.card, month)) {
           if (state.data) {
             state.units = applyBalanceEffect(rule.effect, state.units, rule.id)
-            state.balance = state.units * sampleAt(state.data, month, `Asset "${state.card.id}" price`)
+            state.balance = state.units * (state.price ?? sampleAt(state.data, month, `Asset "${state.card.id}" price`))
           } else {
             state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
           }

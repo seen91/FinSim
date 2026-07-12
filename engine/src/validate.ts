@@ -59,9 +59,6 @@ function validateCard(card: Card, errors: string[]): void {
     }
     case 'asset':
       validateGrowth(card.growth, `Card "${card.id}"`, errors)
-      if (card.price && card.growth) {
-        errors.push(`Card "${card.id}": an asset has either a growth rate or a price curve, not both`)
-      }
       if (!card.price && card.initialUnits !== undefined) {
         errors.push(`Card "${card.id}": initialUnits requires a price curve`)
       }

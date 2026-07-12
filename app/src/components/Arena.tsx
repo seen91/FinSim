@@ -105,11 +105,6 @@ export function Arena(props: Props): ReactElement {
       <section className="arena">
         <Timeline sim={sim} goal={doc.goal} from={doc.from} horizonMonths={doc.horizonMonths} scrub={scrub} onScrub={onScrub} mc={mc} />
         <div className="chart-verdict">
-          {doc.replayFrom !== undefined && (
-            <span className="chart-replay num" title="historical replay: every data series plays as if this past month were the table's start — one real past, not a fan of futures">
-              replaying {formatMonth(doc.replayFrom)} →
-            </span>
-          )}
           {cross !== null ? (
             <span className="chart-verdict-text num pos" title={`the whole table reaches the goal ${formatMonth(cross)}`}>
               goal in {formatMonthsDelta(cross - doc.from)}

@@ -40,8 +40,6 @@ export function deserializeDoc(json: string): Doc {
   if (!Number.isInteger(doc.from)) throw new Error('table file has an invalid start month')
   if (!Number.isInteger(doc.horizonMonths) || doc.horizonMonths < 1) throw new Error('table file has an invalid horizon')
   if (typeof doc.goal !== 'number' || !(doc.goal > 0)) throw new Error('table file has an invalid goal')
-  // additive optional field (no version bump): the historical replay anchor
-  if (doc.replayFrom !== undefined && !Number.isInteger(doc.replayFrom)) throw new Error('table file has an invalid replay anchor')
   if (typeof doc.table !== 'object' || doc.table === null) throw new Error('table file has no table')
   migrateDoc(doc as Doc)
   const errors = validateTable(doc.table)

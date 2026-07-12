@@ -1877,34 +1877,7 @@ input[type='range'].tuned {
   color: var(--ink);
 }
 
-/* ---- backtesting: the replay control, its chart caption, the data bench ---- */
-
-/* the quiet mode caption above the plan's verdict — the ledger notes it is reading a real past */
-.chart-replay {
-  font-size: 0.72rem;
-  font-style: italic;
-  color: var(--ink-soft);
-  pointer-events: auto;
-}
-
-.replay-input {
-  position: relative;
-}
-
-.replay-input .replay-none {
-  font-size: 0.72rem;
-  font-style: italic;
-  color: var(--ink-soft);
-}
-
-.replay-input .replay-clear {
-  padding: 0 0.3rem;
-  font-size: 0.9rem;
-  line-height: 1;
-  color: var(--ink-soft);
-  background: none;
-  border-color: transparent;
-}
+/* ---- backtesting: the data bench and the cannot-play banner ---- */
 
 /* when the table cannot play, the last good chart stays and the reason hangs over it */
 .sim-error {

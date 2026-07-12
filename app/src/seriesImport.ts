@@ -70,6 +70,19 @@ export function parseSeriesText(text: string): ParsedSeries {
   return { startMonth: null, values: tokens.map((t, i) => parseNumber(t, `value ${i + 1}`)) }
 }
 
+/**
+ * Land a preset's (or pack's) series on the table alongside its cards. A
+ * series already there keeps its data — an import never silently rewrites
+ * history the user brought in themselves.
+ */
+export function addSeries(doc: { world?: { series?: Record<string, SampledData> } }, series?: Record<string, SampledData>): void {
+  if (!series) return
+  for (const [id, data] of Object.entries(series)) {
+    if (doc.world?.series?.[id]) continue
+    doc.world = { ...doc.world, series: { ...doc.world?.series, [id]: data } }
+  }
+}
+
 /** Every named world series a card (template) references, nested hands included. */
 export function seriesIdsIn(card: Card): string[] {
   switch (card.kind) {
@@ -94,7 +107,10 @@ export function seriesInUse(seriesId: string, table: Table, library: AuthoredCar
 /**
  * The "import → real card" half of the flow: a priced-asset design wearing
  * the imported series, footnoted with the coverage and the two data traps
- * (total return, currency) so the assumptions travel with the card.
+ * (total return, currency) so the assumptions travel with the card. The
+ * generic 7 % ± 15 % growth is the post-data fallback — when the history
+ * runs out mid-horizon it takes over from the last real price (edit or
+ * remove it on the card; without one the price freezes).
  */
 export function mintPricedDesign(seriesId: string, data: SampledData, uid: string): AuthoredCard {
   const id = `series-${seriesId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${uid}`
@@ -103,7 +119,8 @@ export function mintPricedDesign(seriesId: string, data: SampledData, uid: strin
     id,
     glyph: 'trend',
     description:
-      `Priced by the imported series “${seriesId}” (${formatMonth(data.startMonth)} … ${formatMonth(last)}, ${String(data.values.length)} points). ` +
+      `Priced by the imported series “${seriesId}” (${formatMonth(data.startMonth)} … ${formatMonth(last)}, ${String(data.values.length)} points); ` +
+      'when the data ends, the generic 7 % ± 15 % growth takes over. ' +
       'Assumes total-return data — a price-only series understates returns by dividends — in whatever currency the series is denominated in (FX is not modeled).',
     card: {
       id,
@@ -111,6 +128,7 @@ export function mintPricedDesign(seriesId: string, data: SampledData, uid: strin
       name: seriesId,
       tags: [],
       price: { seriesId },
+      growth: { expected: 0.07, volatility: 0.15 },
       take: { type: 'fixed', amountPerMonth: 1_000 },
     },
   }

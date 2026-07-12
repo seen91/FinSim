@@ -57,9 +57,9 @@ describe('curve primitives', () => {
     expect(at(byRef, 1, start + 1, world)).toBe(2.4)
   })
 
-  it('sampled data out of range is an error, not a guess', () => {
+  it('a sampled flow ends at 0 when its data runs out; before the data is an error, not a guess', () => {
     const c: Curve = { type: 'sampled', data: { startMonth: ym(1993, 1), values: [2.3] } }
-    expect(() => at(c, 1, ym(1993, 2))).toThrow(/no data for 1993-02/)
+    expect(at(c, 1, ym(1993, 2))).toBe(0)
     expect(() => at(c, -1, ym(1992, 12))).toThrow(/no data/)
     expect(() => at({ type: 'sampled', seriesId: 'missing' }, 0, 0, { series: {} })).toThrow(/not found/)
   })

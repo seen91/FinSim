@@ -100,7 +100,11 @@ export type Take =
  * A balance with a growth curve. Either a growth-rate asset (funds, savings:
  * `initialBalance` + `growth`, with an optional annual `fee` drag) or a
  * priced asset (stocks, property: a price curve plus units; deposits buy
- * units at the current price). `take` is its monthly deposit.
+ * units at the current price). `take` is its monthly deposit. On a priced
+ * asset, `growth` is the generic component that takes over when the price
+ * data runs out: the price extrapolates at that rate from the last real
+ * price — and only that simulated stretch may be shocked by Monte Carlo.
+ * Without one the price freezes.
  */
 export interface AssetCard extends CardBase {
   kind: 'asset'

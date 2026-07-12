@@ -132,8 +132,9 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
               genuinely march to their own drum.
             </p>
             <p>
-              Only growth-rate assets are ever shocked. A card <strong>priced by historical data</strong> follows its series exactly, in every future — its
-              past already happened, so the dice never touch it. Flows, debts and cash stay deterministic too.
+              A card <strong>priced by historical data</strong> follows its series exactly, in every future — its past already happened, so the dice never
+              touch it there. Only once its data ends and its generic growth takes over do the shocks apply, to that simulated stretch alone. Flows, debts
+              and cash stay deterministic throughout.
             </p>
             <p>
               Verdicts speak the same language: the plan&rsquo;s goal date gains <em>&ldquo;in NN % of futures&rdquo;</em>, and a bundle&rsquo;s
@@ -148,24 +149,18 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
           </section>
 
           <section>
-            <h3>Replays: one real past, not a fan of futures</h3>
+            <h3>Backtesting: the start date is the time machine</h3>
             <p>
               Import historical monthly data in the Workshop (the <strong>Data</strong> bench) and it becomes a card priced by the real series — deposits
-              buy units at each month&rsquo;s actual price. Play one and a <strong>Replay</strong> picker appears beside the start date: pick a past month
-              and every historical series on the table shifts <em>together</em> so that month lines up with your start — &ldquo;the next 20 years play out
-              like 1999 onward did.&rdquo; Your goal, dates, ghosts and verdicts stay on the present timeline; only the data&rsquo;s past is borrowed. The
-              picker only offers months the data can cover for your whole horizon.
+              buy units at each month&rsquo;s actual price. To backtest, <strong>move the table&rsquo;s Start into the past</strong>: every historical card
+              plays its real dates (cross-asset co-movement through a crash included), and every other card — growth funds, salaries, loans — computes
+              exactly as it always does, from that start. Theoretical and historical cards mix freely on one table.
             </p>
             <p>
-              A replay is <strong>one real past</strong> — it answers &ldquo;what would this plan have done through that stretch of history,&rdquo; not
-              &ldquo;what might happen.&rdquo; The fan keeps coming from growth-rate cards with volatility only: a table of only historical cards draws a
-              single deterministic line, and the futures report keeps speaking about simulated futures, never about the replayed past.
-            </p>
-            <p>
-              The anchor is part of the table: it saves, exports and imports with everything else. Clear it (the <strong>×</strong> beside the picker) and
-              the authored world returns exactly — the replay never rewrote a number. And if a historical card is asked for a month its data does not
-              cover — played before a date is picked, or a horizon longer than the series — the table says so in plain words above the chart instead of
-              guessing: pick a replay date the data covers, or move the table&rsquo;s start.
+              When a card&rsquo;s history <strong>runs out mid-horizon</strong>, its generic growth component (the <em>%&nbsp;/yr ±</em> on its back) takes
+              over from the last real price — and from there the Monte Carlo dice apply, so the fan opens exactly where the data ends. A card without a
+              generic component simply freezes at its last price. A sampled <em>flow</em> whose data ends just stops at zero. Only a start <em>before</em> a
+              series begins cannot play — the table says so in plain words above the chart: move the start into the months the data covers.
             </p>
             <p>
               Two data traps: use <strong>total-return</strong> series (a price-only index understates returns by leaving out dividends), and amounts are

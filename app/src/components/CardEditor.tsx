@@ -533,6 +533,45 @@ function DrainEditor({ card, onChange }: { card: DrainCard; onChange: (c: Engine
   )
 }
 
+/** The growth trio, shared by both asset shapes — on a priced card it is the post-data fallback. */
+function GrowthFields({ card, onChange, label }: { card: AssetCard; onChange: (c: EngineCard) => void; label: string }): ReactElement {
+  return (
+    <>
+      <RateField label={label} path="growth.expected" value={card.growth?.expected ?? 0} onCommit={(expected) => onChange({ ...card, growth: { ...card.growth, expected } })} />
+      <RateField
+        label="Volatility"
+        path="growth.volatility"
+        value={card.growth?.volatility ?? 0}
+        onCommit={(v) =>
+          onChange({
+            ...card,
+            growth: {
+              expected: card.growth?.expected ?? 0,
+              // no volatility, no correlation — there is nothing left to correlate
+              ...(v > 0 ? { volatility: v } : {}),
+              ...(v > 0 && card.growth?.correlation !== undefined ? { correlation: card.growth.correlation } : {}),
+            },
+          })
+        }
+      />
+      {(card.growth?.volatility ?? 0) > 0 && (
+        <Num
+          label="Moves with market"
+          path="growth.correlation"
+          value={card.growth?.correlation ?? 1}
+          onCommit={(v) => {
+            const rho = Math.max(-1, Math.min(1, v))
+            const growth = { expected: card.growth?.expected ?? 0, volatility: card.growth?.volatility ?? 0, ...(rho !== 1 ? { correlation: rho } : {}) }
+            onChange({ ...card, growth })
+          }}
+          scale={100}
+          unit="%"
+        />
+      )}
+    </>
+  )
+}
+
 function AssetEditor({ card, onChange }: { card: AssetCard; onChange: (c: EngineCard) => void }): ReactElement {
   return (
     <>
@@ -545,41 +584,13 @@ function AssetEditor({ card, onChange }: { card: AssetCard; onChange: (c: Engine
             onCommit={(seriesId) => onChange({ ...card, price: { ...card.price, seriesId } })}
           />
           <Num label="Units held" path="initialUnits" value={card.initialUnits ?? 0} onCommit={(initialUnits) => onChange({ ...card, initialUnits })} />
+          {/* when the series runs out mid-horizon, this generic component takes over from the last real price */}
+          <GrowthFields card={card} onChange={onChange} label="After data" />
         </>
       ) : (
         <>
           <Money label="Already holds" path="initialBalance" value={card.initialBalance ?? 0} onCommit={(v) => onChange(withOptional(card, 'initialBalance', v || undefined))} />
-          <RateField label="Grows" path="growth.expected" value={card.growth?.expected ?? 0} onCommit={(expected) => onChange({ ...card, growth: { ...card.growth, expected } })} />
-          <RateField
-            label="Volatility"
-            path="growth.volatility"
-            value={card.growth?.volatility ?? 0}
-            onCommit={(v) =>
-              onChange({
-                ...card,
-                growth: {
-                  expected: card.growth?.expected ?? 0,
-                  // no volatility, no correlation — there is nothing left to correlate
-                  ...(v > 0 ? { volatility: v } : {}),
-                  ...(v > 0 && card.growth?.correlation !== undefined ? { correlation: card.growth.correlation } : {}),
-                },
-              })
-            }
-          />
-          {(card.growth?.volatility ?? 0) > 0 && (
-            <Num
-              label="Moves with market"
-              path="growth.correlation"
-              value={card.growth?.correlation ?? 1}
-              onCommit={(v) => {
-                const rho = Math.max(-1, Math.min(1, v))
-                const growth = { expected: card.growth?.expected ?? 0, volatility: card.growth?.volatility ?? 0, ...(rho !== 1 ? { correlation: rho } : {}) }
-                onChange({ ...card, growth })
-              }}
-              scale={100}
-              unit="%"
-            />
-          )}
+          <GrowthFields card={card} onChange={onChange} label="Grows" />
           <RateField label="Fee" path="fee" value={card.fee ?? 0} onCommit={(v) => onChange(withOptional(card, 'fee', v > 0 ? v : undefined))} />
         </>
       )}

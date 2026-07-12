@@ -1,8 +1,13 @@
-import { allCards, firstCrossing, goalDelta, reanchor, simulate, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
+import { allCards, firstCrossing, goalDelta, simulate, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
 import { useCallback, useState } from 'react'
 import { applyTuneTable } from './tune'
 
-/** The one small immutable document the whole table serializes to (DESIGN.md §2). */
+/**
+ * The one small immutable document the whole table serializes to (DESIGN.md
+ * §2). Backtesting has no field of its own: `from` IS the backtest control —
+ * a table started in the past samples its historical series on their real
+ * dates, and every other card computes as usual.
+ */
 export interface Doc {
   table: Table
   /** Rules and data series the table plays under (locale packs, events). */
@@ -10,30 +15,28 @@ export interface Doc {
   goal: number
   from: number
   horizonMonths: number
-  /**
-   * Historical replay anchor (DESIGN.md §0 "Backtesting"): the past month
-   * that lines up with `from`, shifting every historical series together at
-   * the sim boundary. Absent = the authored world, untouched.
-   */
-  replayFrom?: number
 }
 
 /**
- * What the sim actually plays: the tuned table (dials applied, stripped) and,
- * under a replay anchor, the re-anchored world — both applied at the boundary
- * so the authored doc never moves.
+ * What the sim actually plays: the tuned table (dials applied, stripped) —
+ * applied at the boundary so the authored doc never moves.
  */
 export function playedTable(doc: Doc): { table: Table; world: World } {
-  const table = applyTuneTable(doc.table)
-  const world = doc.world ?? {}
-  return doc.replayFrom === undefined ? { table, world } : reanchor(world, table, doc.replayFrom, doc.from)
+  return { table: applyTuneTable(doc.table), world: doc.world ?? {} }
 }
 
 /**
  * Lift old vocabulary in saved/imported docs, in place: the playable 'event'
- * kind became 'rule' when its scope turned positional (cards below it).
+ * kind became 'rule' when its scope turned positional (cards below it), and
+ * the short-lived replay anchor (`replayFrom`, 2026-07-12) became the start
+ * date itself — same months sampled, goal dates on the historical timeline.
  */
 export function migrateDoc(doc: Doc): Doc {
+  const legacy = doc as Doc & { replayFrom?: number }
+  if (typeof legacy.replayFrom === 'number' && Number.isInteger(legacy.replayFrom)) {
+    doc.from = legacy.replayFrom
+    delete legacy.replayFrom
+  }
   const lift = (card: Card): void => {
     if ((card.kind as string) === 'event') (card as { kind: string }).kind = 'rule'
     if (card.kind === 'hand') card.children.forEach(lift)

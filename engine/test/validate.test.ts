@@ -43,9 +43,9 @@ describe('validateTable (the kind system)', () => {
     expect(validateTable(ok)).toEqual([])
   })
 
-  it('rejects an asset with both growth and a price curve, and bad takes', () => {
+  it('accepts growth beside a price curve (the post-data fallback); rejects bad takes', () => {
     const both = table([{ id: 'x', kind: 'asset', growth: { expected: 0.07 }, price: { data: { startMonth: 0, values: [1] } } }])
-    expect(validateTable(both)).toContainEqual(expect.stringContaining('not both'))
+    expect(validateTable(both)).toEqual([])
     expect(validateTable(table([{ id: 'x', kind: 'asset', initialUnits: 3 }]))).toContainEqual(expect.stringContaining('requires a price curve'))
     expect(validateTable(table([{ id: 'x', kind: 'asset', take: { type: 'percent', percent: -0.1 } }]))).toContainEqual(
       expect.stringContaining('0..1'),

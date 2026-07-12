@@ -1,4 +1,5 @@
-import type { Card } from '@finsim/engine'
+import type { Card, SampledData } from '@finsim/engine'
+import { DEMO_SERIES_ID, demoSeriesData } from './demoSeries'
 import type { GlyphName } from './icons'
 
 /**
@@ -19,6 +20,8 @@ export interface Blueprint {
   description: string
   /** Instantiate a fresh engine card. */
   make: (uid: string) => Card
+  /** Series the card samples — merged into `world.series` when it is played (like a pack). */
+  series?: Record<string, SampledData>
 }
 
 export const LIBRARY: Blueprint[] = [
@@ -92,6 +95,25 @@ export const LIBRARY: Blueprint[] = [
       kind: 'asset',
       growth: { expected: 0.07, volatility: 0.15 },
       take: { type: 'percent', percent: 0.1 },
+      tags: ['equity', 'fund'],
+    }),
+  },
+  {
+    id: 'demo-history',
+    name: 'Demo index fund',
+    kind: 'asset',
+    glyph: 'trend',
+    headline: 'priced 1970–2025 · 5 000 /mo',
+    description:
+      'A fund priced by 56 years of synthetic monthly history — deposits buy units at each month’s real price. Move the table’s start into the past to backtest through it; when the data ends, its generic 7 % ± 15 % takes over.',
+    series: { [DEMO_SERIES_ID]: demoSeriesData() },
+    make: (uid) => ({
+      id: `demo-history-${uid}`,
+      name: 'Demo index fund',
+      kind: 'asset',
+      price: { seriesId: DEMO_SERIES_ID },
+      growth: { expected: 0.07, volatility: 0.15 },
+      take: { type: 'fixed', amountPerMonth: 5_000 },
       tags: ['equity', 'fund'],
     }),
   },

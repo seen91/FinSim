@@ -9,6 +9,7 @@ import {
   type MonteCarloRun,
   type Series,
   type Table,
+  type World,
 } from '@finsim/engine'
 import { playedTable, type Doc } from './model'
 
@@ -54,9 +55,20 @@ export interface Mc {
   ranges: Map<string, BundleRange>
 }
 
-/** Volatility anywhere on the table? Without it every path is the same line — no fan to draw. */
-function hasVolatility(table: Table): boolean {
-  return allCards(table.root).some((card) => card.kind === 'asset' && card.enabled !== false && (card.growth?.volatility ?? 0) > 0)
+/**
+ * Volatility anywhere on the table? Without it every path is the same line —
+ * no fan to draw. A priced card's volatility only counts once the horizon
+ * outruns its data: inside the data the price is history and the dice never
+ * touch it.
+ */
+function hasVolatility(table: Table, world: World, to: number): boolean {
+  return allCards(table.root).some((card) => {
+    if (card.kind !== 'asset' || card.enabled === false || (card.growth?.volatility ?? 0) === 0) return false
+    if (!card.price) return true
+    const data = card.price.data ?? (card.price.seriesId ? world.series?.[card.price.seriesId] : undefined)
+    if (!data) return true // an unresolvable series is the table's problem, not the fan's
+    return to > data.startMonth + data.values.length - 1
+  })
 }
 
 /**
@@ -64,9 +76,9 @@ function hasVolatility(table: Table): boolean {
  * volatility — the deterministic line already tells the whole story.
  */
 export function runMc(doc: Doc): Mc | null {
-  // the same tuned, re-anchored table runSim plays — the fan and the line must live in one world
+  // the same tuned table runSim plays — the fan and the line must live in one world
   const { table, world } = playedTable(doc)
-  if (!hasVolatility(table)) return null
+  if (!hasVolatility(table, world, doc.from + doc.horizonMonths - 1)) return null
   const to = doc.from + doc.horizonMonths - 1
   const opts = { paths: MC_PATHS, seed: MC_SEED }
 

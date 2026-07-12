@@ -1,4 +1,4 @@
-import type { Card, HandCard } from '@finsim/engine'
+import type { Card, HandCard, SampledData } from '@finsim/engine'
 import type { GlyphName } from './icons'
 
 /**
@@ -6,6 +6,10 @@ import type { GlyphName } from './icons'
  * pile — whole, or card by card. A preset builds fresh engine cards with
  * unique ids on every import. Nested hands ("Financing" inside "Buy the
  * car") come out of the same mechanism — hands all the way down.
+ *
+ * Like a pack, a preset carries the series its cards wear (`series`):
+ * importing the card lands the data in `world.series` too, so a priced
+ * preset works on any table — fresh or long-saved.
  */
 export interface PresetCard {
   key: string
@@ -13,6 +17,8 @@ export interface PresetCard {
   glyph: GlyphName
   headline: string
   make: (uid: string) => Card
+  /** Series this card samples — merged into `world.series` on import. */
+  series?: Record<string, SampledData>
 }
 
 export interface HandPreset {
@@ -22,6 +28,8 @@ export interface HandPreset {
   description: string
   cards: PresetCard[]
   build: (uid: string) => HandCard
+  /** Series the hand's cards sample — merged into `world.series` on import. */
+  series?: Record<string, SampledData>
 }
 
 const salary: PresetCard = {
