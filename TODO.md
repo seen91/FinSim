@@ -57,16 +57,36 @@ Escape steps back out: focus → browse → closed.
 - [x] Card back as editor (`CardEditor.tsx`, built fresh): every card on the table flips to its math — name, tags, kind-specific parameters as live slider+field pairs, all curve primitives editable (constant, linear, compound, step, sinusoidal, sampled-by-id, expression with compile-guarded commit so a broken formula never reaches the sim), cadence, takes, rule schedule/target/effect
 - [x] Blank-card authoring: blank tile → pick kind (source/drain/asset/debt/rule; hands are composed on the table) → tune math → front matter (sigil picker, description, assumptions footnote). Blanks are born structurally valid (`blankCard` tested against `validateTable`)
 - [x] Personal library (`authored.ts`): designs persist in IndexedDB alongside the table doc (`library-v1` key, `db.ts`), survive `?fresh`, play with fresh ids (`instantiate`), and show under "Your designs" in the draw pile
-- [x] **Pack format** (`packs.ts`) — **versioning decided (§14.4, mirrors the table file): `format: 'finsim-pack'` + one integer `version`; additive optional fields never bump it (readers ignore unknown fields, writers keep them); breaking shape changes bump it and must migrate-or-reject with a readable message; readers reject newer versions.** v1 carries instrument cards (engine template + front matter) and data series; `rules`/`scenarios` fields are reserved for the game layers (the simulator plays rules as cards). ⚠ Decision made in code + TODO — record it in DESIGN.md §0 once Sebastian confirms.
+- [x] **Pack format** (`packs.ts`) — **versioning decided (§14.4, mirrors the table file): `format: 'finsim-pack'` + one integer `version`; additive optional fields never bump it (readers ignore unknown fields, writers keep them); breaking shape changes bump it and must migrate-or-reject with a readable message; readers reject newer versions.** v1 carries instrument cards (engine template + front matter) and data series; `rules`/`scenarios` fields are reserved for the game layers (the simulator plays rules as cards). Recorded in DESIGN.md §0 (2026-07-12).
 - [x] Pack export/import as files (Workshop header; import merges cards by id and pack series into `world.series`)
-- [ ] **Next:** bring back something like the deleted `editors.ts` sliders as a quick **what-if tool on the table** — the main use case is cheap experimentation ("what if this fund returns 7 % instead of 6 %?"), *not* permanently changing cards (permanent edits live in the Workshop)
+- [x] What-if tool on the table: **tuning dials** (`tune.ts`, commit `be350c6`) — the slider under each editor parameter scrubs a −100..+100 % dial kept separately on the card JSON and stripped at the sim boundary; the authored value never moves, double-click re-centers
 
 Verified: 128 unit tests green (`workshop.test.ts` covers blank validity, fresh-id
 plays, replaceCard, pack round-trip/version-rejection/merge), headless Chrome run
 — slider edit moves the chart verdict live, blank→author→play→export→burn→import
 round-trip, golden baseline "goal in 20 yr 6 mo" intact.
 
-## M3 — Game prototype, hot-seat ❌ not started
+## M3 — Simulator complete: verification + Monte Carlo ❌ not started
+
+Spec: DESIGN §13 M3 (build order re-ordered 2026-07-12, §0): finish the core
+product — confident answers to "how much does this cost me relative to my
+goal" — before any game work. Two kinds of confidence, in order:
+
+**(a) The software computes the right number** (engine/UI correctness):
+
+- [ ] Custom-cards acceptance pass: the M1 question answered end-to-end through the M2 path — author *every* card fresh in the Workshop (no starter pack), build the table, play a car bundle, verdict matches a hand-checked expectation
+- [ ] Pin that pass as a headless test beside the existing golden baseline (`app/test/app.test.ts`)
+
+**(b) The number reflects an uncertain world** (Monte Carlo):
+
+- [ ] Decide §14.5 first: per-fund volatility sources + correlated draws across funds (independent draws across overlapping index markets would understate risk — worse than deterministic)
+- [ ] Engine: seeded Monte Carlo runs over `(expected, volatility)` — percentile bands, goal-probability curve; deterministic mode untouched
+- [ ] App: percentile fan on the arena chart; bundle verdicts gain a range read ("+1–2.5 yr in 80 % of futures")
+- [ ] Document return semantics: `expected` is CAGR, so the deterministic path ≈ median path (volatility drag) — a Rulebook line / assumptions footnote, not code
+
+**(c) Simulator polish pass:** whatever daily use surfaces once (a) and (b) exist.
+
+## M4 — Game prototype, hot-seat ❌ not started
 
 Spec: DESIGN §4–5. Purpose: find out if the game is fun before building sync.
 
@@ -76,18 +96,18 @@ Spec: DESIGN §4–5. Purpose: find out if the game is fun before building sync.
 - [ ] Final scoring + real-history epilogue (2000–2002 scroll)
 - [ ] Decide open question §14.1: selling rules (courtage + tax only, or sell cap per year)
 
-## M4 — Own-devices multiplayer ❌ not started
+## M5 — Own-devices multiplayer ❌ not started
 
 Spec: DESIGN §9. Room codes, `/table` host + `/hand` player routes, WebSocket relay (stores nothing), host-authoritative simulation, market replay done properly.
 
-## M5 — FI scenario + Sweden pack deep ❌ not started
+## M6 — FI scenario + Sweden pack deep ❌ not started
 
 Spec: DESIGN §6. Full locale rules (ISK, ränteavdrag, amorteringskrav, jobbskatteavdrag), shared world events, life cards. Decide open questions §14.2 (FI deck / life-card win conditions) and §14.3 (unfunded drafted cards).
 
-## M6 — Polish ❌ not started
+## M7 — Polish ❌ not started
 
 Epilogues, replays, sound (paper slides, monthly tick, year stamp), compare ghosts in game post-mortems.
 
 ## Later (explicitly deferred)
 
-Monte Carlo mode (percentile fans, goal probability — needs §14.5: correlated fund volatilities), solo bots, pack registry/sharing, more eras (1929, 1970s, 2008, Japan 1989, Argentina).
+Stress tests beyond Monte Carlo (sequence-of-returns, historical replay of your plan through 2008), solo bots, pack registry/sharing, more eras (1929, 1970s, 2008, Japan 1989, Argentina).
