@@ -1,0 +1,230 @@
+/* M4 hot-seat game — deliberately ugly (DESIGN.md §13): plain boxes on the
+   same wooden table, no motion budget spent. The content laws still bind:
+   tabular numerals, green/red only for money direction. */
+
+.game {
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 12px 48px;
+}
+
+.game .num {
+  font-variant-numeric: tabular-nums;
+}
+
+.game .pos {
+  color: #7fbf7f;
+}
+
+.game .neg {
+  color: #d98a7f;
+}
+
+.g-topbar {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--wood-ink-soft);
+  margin-bottom: 12px;
+}
+
+.g-screen {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.g-screen h1,
+.g-screen h2 {
+  font-family: var(--display);
+  margin: 0;
+}
+
+.g-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.g-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.g-shield {
+  align-items: center;
+  text-align: center;
+  padding-top: 18vh;
+}
+
+.g-player {
+  font-weight: 700;
+}
+
+.game button {
+  font: inherit;
+  cursor: pointer;
+  background: var(--wood-dark);
+  color: var(--wood-ink);
+  border: 1px solid var(--wood-ink-soft);
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.game button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.game .g-primary {
+  background: var(--gold-deep);
+  border-color: var(--gold);
+  color: #fff;
+  padding: 10px 16px;
+  font-size: 15px;
+  align-self: flex-start;
+}
+
+.game input {
+  font: inherit;
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 4px 6px;
+  width: 9em;
+}
+
+.g-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.g-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+  background: var(--card) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 6px;
+  padding: 8px !important;
+  min-height: 130px;
+}
+
+.g-card:disabled {
+  opacity: 1;
+}
+
+.g-card.selected {
+  outline: 3px solid var(--gold);
+}
+
+.g-card-top {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.g-risk {
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--accent-line);
+  border-radius: 3px;
+  padding: 0 4px;
+  color: var(--ink-soft);
+}
+
+.g-card-sector,
+.g-card-note {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.g-card-price {
+  font-size: 13px;
+}
+
+.g-card-price .pos {
+  color: var(--money-pos);
+}
+
+.g-card-price .neg {
+  color: var(--money-neg);
+}
+
+.g-card-blurb {
+  font-size: 12px;
+  font-family: var(--serif);
+}
+
+.g-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.g-table th,
+.g-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--wood-ink-soft);
+}
+
+.g-table th.num,
+.g-table td.num {
+  text-align: right;
+}
+
+.g-buys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.g-buy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.race-chart {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--wood-ink-soft);
+  border-radius: 6px;
+  color: var(--wood-ink);
+}
+
+.g-news {
+  margin: 0;
+  padding-left: 18px;
+  min-height: 60px;
+}
+
+.g-news li {
+  margin: 2px 0;
+}
+
+.g-error {
+  color: #d98a7f;
+  margin: 0;
+}
+
+.g-fine {
+  font-size: 12px;
+  color: var(--wood-ink-soft);
+  margin: 0;
+}

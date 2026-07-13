@@ -88,15 +88,23 @@ goal" — before any game work. Two kinds of confidence, in order:
 
 - [x] **Backtesting: historical cards + the start date as the time machine** (decision "Backtesting" in DESIGN.md §0, 2026-07-12, revised same day): import historical monthly data in the Workshop's **Data bench** (paste/file, bare values or `YYYY-MM,value` rows, consecutive-month validation, total-return + currency hints) → series lands in `world.series` and mints a priced-asset design in the library; series list with coverage + delete-only-when-unworn; pack export carries worn series; blueprints/presets can carry series too (draw pile's synthetic **Demo index fund**, 1970–2025). Backtesting is **moving `doc.from` into the past** — the short-lived `doc.replayFrom` re-anchoring (and `engine/src/replay.ts`) was replaced the same day; legacy docs lift the anchor into `from` on migrate. When a series ends mid-horizon the card's `growth` is the generic fallback (price extrapolates from the last real value; Monte Carlo shocks that stretch and only that stretch — `hasVolatility` in `mc.ts` knows); no `growth` = frozen price; a sampled flow ends at 0; a start before the data is a readable banner. Tested: `engine/test/backtest.test.ts` (hand-checked golden priced scenario on real dates, fallback/freeze/shock-boundary math), `app/test/backtest.test.ts` (parser, mint with fallback, start-date backtests, fan-opens-where-data-ends, legacy-anchor migration, doc/pack round-trips), headless Chrome pass
 
-## M4 — Game prototype, hot-seat ❌ not started
+## M4 — Game prototype, hot-seat ✅ done (2026-07-13)
 
 Spec: DESIGN §4–5. Purpose: find out if the game is fun before building sync.
+Lives behind `/#game` (the simulator route is untouched); everything under
+`app/src/game/`, playtest-ready.
 
-- [ ] "1990: The Decade Trade" scenario data pack: ~30–60 real instruments, monthly closes, listing dates, period-accurate descriptions, epistemic rule (trailing data only)
-- [ ] Round loop: DEAL → DRAFT (pick 1, pass, last card discarded) → COMMIT → SIMULATE (year replay) → INTERIM (year-winner bonus from the bank)
-- [ ] Single-device "look away" drafting, deliberately ugly
-- [ ] Final scoring + real-history epilogue (2000–2002 scroll)
-- [ ] Decide open question §14.1: selling rules (courtage + tax only, or sell cap per year)
+- [x] "1990: The Decade Trade" scenario data pack (`scenario1990.ts` + `series1990.json`): **41 real instruments** — split/dividend-adjusted monthly closes 1987–2002 fetched from Yahoo Finance, rebased to 100, listing dates ARE the data (Cisco enters 1991, Qualcomm 1992, Amazon 1997, eBay/Priceline 1998/99); the savings account compounds the real 13-week T-bill yield; four delisted names (Enron, WorldCom, AOL, Yahoo!) reconstructed from known split-adjusted anchor closes, marked + footnoted on the card. Period-accurate one-liners; epistemic rule enforced by shape (`trailing()` never reads past the in-game month; risk grade + sparkline are trailing-only). USD treated as table units — no FX in v1, said on the setup screen
+- [x] Round loop as a **pure, serializable state machine** (`game.ts`, no React): DEAL (seeded per `(seed, round)`, newly-listed instruments guaranteed a dealt copy) → DRAFT (simultaneous pick-1-pass, direction alternates by round, last card discarded face-up; drafted cards are standing options) → COMMIT (sells then buys, atomic per player) → SIMULATE (Jan-close trades, year valued monthly) → INTERIM (best return collects the bank's bonus). Every decision is recorded; a game is reproducible from `(scenario, seed, decisions)`. 19 tests in `app/test/game.test.ts`
+- [x] Single-device "look away" drafting, deliberately ugly (`GameApp.tsx`): pass-the-device shield before every private screen, plain boxes on the wooden table, race chart + curated real headlines during the year replay, game survives a reload (localStorage)
+- [x] Final scoring (net worth 31 Dec 1999) + epilogue: portfolios frozen, 2000–2002 replayed monthly with the crash headlines — the dot-com lesson delivers itself
+- [x] §14.1 decided **as a proposal for Sebastian to confirm in DESIGN.md §0**: courtage (0,5 %, min 100) + 30 % capital-gains tax on realized gains (average cost basis, losses not refunded), **no sell cap** — trading only in COMMIT already forces conviction; a per-year sell cap stays playtest fodder
+
+Verified: 90 unit tests + typecheck green; headless Chrome played a full
+2-player, 10-round game (120 picks, 20 commits) through final + epilogue,
+mid-game reload restored the interim screen, simulator golden baseline
+("goal in 20 yr 6 mo") intact. Open for playtesting: bonus size, hand size,
+copies-per-instrument, and whether unfunded options should expire (§14.3).
 
 ## M5 — Own-devices multiplayer ❌ not started
 
