@@ -24,7 +24,6 @@ interface Props {
   onChooseAuthored: (authored: AuthoredCard) => void
   onImportHand: (preset: HandPreset) => void
   onImportCard: (card: PresetCard) => void
-  onWorkshop: () => void
 }
 
 function DrawerCard({ bp, onChoose }: { bp: Blueprint; onChoose: (bp: Blueprint) => void }): ReactElement {
@@ -104,7 +103,7 @@ function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose
   )
 }
 
-export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose, onChooseAuthored, onImportHand, onImportCard, onWorkshop }: Props): ReactElement {
+export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose, onChooseAuthored, onImportHand, onImportCard }: Props): ReactElement {
   return (
     <>
       <button className="pile" onClick={onOpen} title="Open the draw pile" aria-label="Open the draw pile">
@@ -124,14 +123,6 @@ export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose
               <p className="drawer-hint">
                 click to draw into <strong>{targetName}</strong> · order matters — a hand plays left to right
               </p>
-              {/* the tavern sign: a yellow board swinging from a wooden bracket */}
-              <button className="workshop" onClick={onWorkshop} title="The Workshop — author cards, tune the ones in play, share packs">
-                <span className="workshop-hanger" aria-hidden />
-                <span className="workshop-board">
-                  <Glyph name="hammer" size={15} />
-                  Workshop
-                </span>
-              </button>
               <button className="drawer-close" onClick={onClose} aria-label="Close">
                 ×
               </button>

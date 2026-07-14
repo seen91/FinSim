@@ -297,7 +297,14 @@ export function App(): ReactElement {
           />
         </label>
         <div className="topbar-actions">
-          {/* planked wooden boards on the rail, kin to the Workshop's sign */}
+          {/* planked boards hanging from one wooden rail; the Workshop's
+              signal-yellow board stays the one loud thing on the table */}
+          <button className="workshop" onClick={() => setWorkshopOpen(true)} title="The Workshop — author cards, tune the ones in play, share packs">
+            <span className="workshop-board">
+              <Glyph name="hammer" size={15} />
+              Workshop
+            </span>
+          </button>
           <button className="sign" onClick={() => setRulebookOpen(true)} title="how the table plays — the rules, written down">
             <Glyph name="book" size={14} />
             Rulebook
@@ -410,10 +417,6 @@ export function App(): ReactElement {
         onChooseAuthored={playAuthored}
         onImportHand={(preset) => deal(preset.build, preset.series)}
         onImportCard={(card) => deal(card.make, card.series)}
-        onWorkshop={() => {
-          setDrawerOpen(false)
-          setWorkshopOpen(true)
-        }}
       />
 
       <Workshop

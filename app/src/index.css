@@ -135,9 +135,120 @@ body {
   text-align: right;
 }
 
+/* the actions hang like shop signs from one shared wooden rail; each board
+   dangles on two links, tilts a touch, and swings on hover — the Workshop's
+   yellow board among plain dark-wood kin */
 .topbar-actions {
+  position: relative;
   display: flex;
-  gap: 0.4rem;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding-top: 12px;
+}
+
+/* the rail itself */
+.topbar-actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -8px;
+  right: -8px;
+  height: 5px;
+  border-radius: 2.5px;
+  background: linear-gradient(180deg, #5d3c1d, #3c250e);
+  box-shadow: 0 1px 2px var(--shadow);
+}
+
+.topbar-actions .sign {
+  position: relative;
+  transform: rotate(-1deg);
+  transform-origin: 50% -8px;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* the two links each board hangs from */
+.topbar-actions .sign::before,
+.topbar-actions .sign::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 2.5px;
+  height: 9px;
+  border-radius: 1.5px;
+  background: #3c250e;
+}
+
+.topbar-actions .sign::before {
+  left: 18%;
+}
+
+.topbar-actions .sign::after {
+  right: 18%;
+}
+
+.topbar-actions .sign:not(:disabled):hover {
+  transform: rotate(1deg);
+}
+
+/* the Workshop's tavern sign: a road-work-yellow board hanging from the
+   topbar rail — the one loud thing on the table, so it reads from afar.
+   (Signal yellow is signage, not money — green/red stay untouched.) */
+.workshop {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  display: flex;
+}
+
+.workshop-board {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.6rem 0.2rem;
+  font-family: var(--display);
+  font-size: 0.78rem;
+  letter-spacing: 0.07em;
+  color: #3d2a08;
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 80, 10, 0.1) 0 1.5px, transparent 1.5px 7px),
+    radial-gradient(ellipse at 30% 20%, rgba(255, 240, 180, 0.6), transparent 60%),
+    #ecb31f;
+  border: 2px solid #6b4a12;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px var(--shadow), inset 0 0 6px rgba(140, 95, 10, 0.35);
+  transform: rotate(-2.5deg);
+  transform-origin: 50% -8px;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.workshop-board .glyph {
+  color: #4d3608;
+}
+
+/* the two links it hangs from */
+.workshop-board::before,
+.workshop-board::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 2.5px;
+  height: 9px;
+  border-radius: 1.5px;
+  background: #3c250e;
+}
+
+.workshop-board::before {
+  left: 18%;
+}
+
+.workshop-board::after {
+  right: 18%;
+}
+
+.workshop:hover .workshop-board {
+  transform: rotate(2deg);
 }
 
 button {
@@ -1226,79 +1337,6 @@ input[type='range'].tuned {
   margin: 0;
   font-size: 0.78rem;
   color: var(--ink-soft);
-}
-
-/* the Workshop's tavern sign: a road-work-yellow board swinging from a
-   wooden bracket — the one loud thing on the table, so it reads from afar.
-   (Signal yellow is signage, not money — green/red stay untouched.) */
-.workshop {
-  flex-shrink: 0;
-  margin: 0 0.5rem;
-  padding: 0;
-  border: none;
-  background: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.workshop-hanger {
-  width: 92px;
-  height: 5px;
-  border-radius: 2.5px;
-  background: linear-gradient(180deg, #5d3c1d, #3c250e);
-  box-shadow: 0 1px 2px var(--shadow);
-}
-
-.workshop-board {
-  position: relative;
-  margin-top: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.22rem 0.6rem 0.2rem;
-  font-family: var(--display);
-  font-size: 0.78rem;
-  letter-spacing: 0.07em;
-  color: #3d2a08;
-  background:
-    repeating-linear-gradient(0deg, rgba(120, 80, 10, 0.1) 0 1.5px, transparent 1.5px 7px),
-    radial-gradient(ellipse at 30% 20%, rgba(255, 240, 180, 0.6), transparent 60%),
-    #ecb31f;
-  border: 2px solid #6b4a12;
-  border-radius: 5px;
-  box-shadow: 0 2px 5px var(--shadow), inset 0 0 6px rgba(140, 95, 10, 0.35);
-  transform: rotate(-2.5deg);
-  transform-origin: 50% -8px;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.workshop-board .glyph {
-  color: #4d3608;
-}
-
-/* the two links it hangs from */
-.workshop-board::before,
-.workshop-board::after {
-  content: '';
-  position: absolute;
-  top: -8px;
-  width: 2.5px;
-  height: 9px;
-  border-radius: 1.5px;
-  background: #3c250e;
-}
-
-.workshop-board::before {
-  left: 18%;
-}
-
-.workshop-board::after {
-  right: 18%;
-}
-
-.workshop:hover .workshop-board {
-  transform: rotate(2deg);
 }
 
 .drawer-close {
