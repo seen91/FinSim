@@ -93,6 +93,20 @@ export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
 }
 
 /**
+ * A clone of a played card with every app-level rider off — the design stamp,
+ * the dials, the set-aside flag, the glyph. What remains is template material:
+ * the math, plus the id (rewrite it if the copy needs its own identity).
+ */
+export function stripRiders(card: Card): Card {
+  const bare = structuredClone(card) as Card & { design?: unknown; tune?: unknown; glyph?: unknown }
+  delete bare.design
+  delete bare.tune
+  delete bare.enabled
+  delete bare.glyph
+  return bare
+}
+
+/**
  * A fresh design cut from any canonical card — the Workshop's "copy" of a
  * design, and the "copy to shelf" that makes a read-only built-in editable.
  * Front matter travels; the template's ids are rewritten to the new identity.

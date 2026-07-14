@@ -18,7 +18,6 @@ import type { GlyphName } from './icons'
 export interface Blueprint {
   id: string
   name: string
-  kind: Card['kind']
   glyph: GlyphName
   /** Static headline shown on the card in the drawer, e.g. "+40 000 /mo". */
   headline: string
@@ -33,7 +32,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'salary',
     name: 'Salary',
-    kind: 'source',
     glyph: 'coins',
     headline: '+40 000 /mo',
     description: 'Gross monthly pay. Play a tax after it — nobody keeps the gross.',
@@ -48,7 +46,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'side-hustle',
     name: 'Side hustle',
-    kind: 'source',
     glyph: 'briefcase',
     headline: '+6 000 /mo',
     description: 'Evenings and weekends, invoiced.',
@@ -63,7 +60,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'income-tax',
     name: 'Income tax',
-    kind: 'drain',
     glyph: 'stamp',
     headline: '−30 %',
     description: 'Takes 30 % of whatever has flowed past so far. Position matters.',
@@ -72,7 +68,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'rent',
     name: 'Rent',
-    kind: 'drain',
     glyph: 'home',
     headline: '−12 000 /mo',
     description: 'A roof, monthly, first of the month.',
@@ -81,7 +76,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'expenses',
     name: 'Living expenses',
-    kind: 'drain',
     glyph: 'receipt',
     headline: '−18 000 /mo',
     description: 'Food, phone, gym, the works.',
@@ -90,7 +84,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'index-fund',
     name: 'Index fund',
-    kind: 'asset',
     glyph: 'trend',
     headline: '7 % /yr · takes 10 %',
     description:
@@ -107,7 +100,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'demo-history',
     name: 'Demo index fund',
-    kind: 'asset',
     glyph: 'trend',
     headline: 'priced 1970–2025 · 5 000 /mo',
     description:
@@ -126,7 +118,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'isk-tax',
     name: 'ISK tax',
-    kind: 'rule',
     glyph: 'percent',
     headline: '−0,89 % of funds /yr',
     description:
@@ -147,7 +138,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'savings',
     name: 'Savings account',
-    kind: 'asset',
     glyph: 'vault',
     headline: '2,5 % /yr · 1 000 /mo',
     description: 'Sleeps well at night.',
@@ -162,7 +152,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'nest-egg',
     name: 'Nest egg',
-    kind: 'asset',
     glyph: 'vault',
     headline: '100 000 up front',
     description: 'Money you already have. Starts on the table at full value — no waiting for deposits.',
@@ -177,7 +166,6 @@ export const LIBRARY: Blueprint[] = [
   {
     id: 'empty-hand',
     name: 'New hand',
-    kind: 'hand',
     glyph: 'bundle',
     headline: 'empty',
     description: 'A named bundle of cards. Hands can hold hands.',

@@ -1,5 +1,5 @@
 import type { Card, SampledData } from '@finsim/engine'
-import type { AuthoredCard } from './authored'
+import { stripRiders, type AuthoredCard } from './authored'
 import { LIBRARY } from './library'
 import { PRESETS } from './presets'
 
@@ -58,12 +58,8 @@ export function builtinSeriesOf(ref: string): Record<string, SampledData> | unde
  * to see a built-in behind an unedited one-off.
  */
 export function normalizedMath(card: Card): string {
-  const bare = structuredClone(card) as Card & { design?: unknown; tune?: unknown; glyph?: unknown }
+  const bare = stripRiders(card)
   delete (bare as { id?: string }).id
-  delete bare.design
-  delete bare.tune
-  delete bare.enabled
-  delete bare.glyph
   if (bare.kind === 'rule') delete (bare.rule as { id?: string }).id
   const sorted = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(sorted)

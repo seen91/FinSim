@@ -1,3 +1,4 @@
+import type { HandCard } from '@finsim/engine'
 import { findNode, isInstance, type HandNode, type TableNode } from './instances'
 import type { Doc } from './model'
 
@@ -7,11 +8,12 @@ import type { Doc } from './model'
  * add, remove, reorder.
  */
 
-export function findParentHand(hand: HandNode, cardId: string): HandNode | null {
+/** The hand that directly holds `cardId` — works on the app tree (HandNode) and the resolved engine tree (HandCard) alike. */
+export function findParentHand<H extends HandNode | HandCard>(hand: H, cardId: string): H | null {
   for (const child of hand.children) {
     if (child.id === cardId) return hand
     if (!isInstance(child) && child.kind === 'hand') {
-      const found = findParentHand(child, cardId)
+      const found = findParentHand(child as H, cardId)
       if (found) return found
     }
   }

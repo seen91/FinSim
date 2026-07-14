@@ -37,11 +37,11 @@ function DrawerCard({ bp, onChoose }: { bp: Blueprint; onChoose: (bp: Blueprint)
       <Card
         size="hand"
         face={{
-          kind: bp.kind,
+          kind: bp.card.kind,
           name: bp.name,
           glyph: bp.glyph,
           headline: bp.headline,
-          headlineClass: bp.headline.startsWith('−') ? 'neg' : bp.kind === 'source' ? 'pos' : '',
+          headlineClass: bp.headline.startsWith('−') ? 'neg' : bp.card.kind === 'source' ? 'pos' : '',
           description: bp.description,
         }}
       />

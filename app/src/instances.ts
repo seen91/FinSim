@@ -58,10 +58,14 @@ export function isInstance(node: TableNode): node is CardInstance {
   return 'ref' in node
 }
 
+/** The readable base of a ref: what follows a built-in's "pile:"/"preset:" prefix, a design id whole. */
+export function refBase(ref: string): string {
+  return ref.slice(ref.indexOf(':') + 1)
+}
+
 /** Deal a fresh instance of a canonical card: readable base + unique suffix. */
 export function instanceOf(ref: string, uid: string): CardInstance {
-  const base = ref.slice(ref.indexOf(':') + 1)
-  return { id: `${base}-${uid}`, ref }
+  return { id: `${refBase(ref)}-${uid}`, ref }
 }
 
 /**
@@ -101,17 +105,18 @@ export function resolveTable(table: AppTable, library: AuthoredCard[]): Table {
   return { ...table, root: resolveNode(table.root, library) as HandCard }
 }
 
+/** Every instance in a node's subtree (the node itself included), depth-first, in table order. */
+export function* instancesIn(node: TableNode): Generator<CardInstance> {
+  if (isInstance(node)) yield node
+  else if (node.kind === 'hand') for (const child of node.children) yield* instancesIn(child)
+}
+
 /** Every ref the table's instances play, deduplicated, in table order. */
 export function refsIn(root: HandNode): string[] {
   const refs: string[] = []
-  const walk = (node: TableNode): void => {
-    if (isInstance(node)) {
-      if (!refs.includes(node.ref)) refs.push(node.ref)
-    } else if (node.kind === 'hand') {
-      node.children.forEach(walk)
-    }
+  for (const inst of instancesIn(root)) {
+    if (!refs.includes(inst.ref)) refs.push(inst.ref)
   }
-  root.children.forEach(walk)
   return refs
 }
 
@@ -129,12 +134,7 @@ export function findNode(root: HandNode, id: string): TableNode | null {
 
 /** Re-point every instance of one canonical card at another (the built-in mint). */
 export function repointInstances(root: HandNode, fromRef: string, toRef: string): void {
-  const walk = (node: TableNode): void => {
-    if (isInstance(node)) {
-      if (node.ref === fromRef) node.ref = toRef
-    } else if (node.kind === 'hand') {
-      node.children.forEach(walk)
-    }
+  for (const inst of instancesIn(root)) {
+    if (inst.ref === fromRef) inst.ref = toRef
   }
-  root.children.forEach(walk)
 }

@@ -4,7 +4,7 @@ import { builtinOf } from '../builtins'
 import { downloadJson } from '../download'
 import { errorMessage } from '../format'
 import { Glyph } from '../icons'
-import { refsIn, repointInstances } from '../instances'
+import { refBase, refsIn, repointInstances } from '../instances'
 import type { Doc } from '../model'
 import { deserializePack, serializePack, type Pack } from '../packs'
 import { seriesIdsIn } from '../seriesImport'
@@ -76,8 +76,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
   // instance of the built-in re-pointed at it — "change once, all copies
   // change" holds by construction, and from here it is an ordinary design
   const handleCopyToShelf = (builtin: AuthoredCard): void => {
-    const base = builtin.id.slice(builtin.id.indexOf(':') + 1)
-    const design = redesign(builtin, `${base}-${newUid()}`)
+    const design = redesign(builtin, `${refBase(builtin.id)}-${newUid()}`)
     onLibraryChange([...library, design])
     update((d) => repointInstances(d.table.root, builtin.id, design.id))
     onFocus({ where: 'library', id: design.id })

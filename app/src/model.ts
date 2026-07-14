@@ -1,10 +1,11 @@
 import { allCards, firstCrossing, goalDelta, simulate, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
 import { useCallback, useState } from 'react'
-import type { AuthoredCard } from './authored'
+import { stripRiders, type AuthoredCard } from './authored'
 import { builtinMatching, normalizedMath } from './builtins'
 import { glyphOf } from './glyph'
-import { isInstance, resolveTable, type AppTable, type CardInstance, type HandNode, type TableNode } from './instances'
+import { isInstance, resolveTable, type AppTable, type CardInstance, type TableNode } from './instances'
 import { applyTuneTable, type Tune } from './tune'
+import { UID_SUFFIX } from './uid'
 
 /**
  * The one small immutable document the whole table serializes to (DESIGN.md
@@ -66,16 +67,12 @@ export function migrateDoc(doc: Doc, library: AuthoredCard[] = []): AuthoredCard
     return id
   }
 
-  const mintOrphan = (card: Card & { design?: string; tune?: Tune; glyph?: unknown }): string => {
+  const mintOrphan = (card: Card): string => {
     const math = normalizedMath(card)
     const existing = mintedByMath.get(math)
     if (existing) return existing
-    const template = structuredClone(card) as typeof card
-    delete template.design
-    delete template.tune
-    delete template.enabled
-    delete template.glyph
-    const id = designId(card.id.replace(/-[0-9a-f]{8}$/, ''))
+    const template = stripRiders(card)
+    const id = designId(card.id.replace(UID_SUFFIX, ''))
     template.id = id
     if (template.kind === 'rule') template.rule.id = `${id}-rule`
     minted.push({ id, glyph: glyphOf(card), description: '', card: template })
@@ -86,7 +83,7 @@ export function migrateDoc(doc: Doc, library: AuthoredCard[] = []): AuthoredCard
   const migrateLeaf = (card: Card & { design?: string; tune?: Tune }): CardInstance => {
     // a stamped copy follows its design; copies dealt before the stamp
     // existed carry the design's id plus one fresh suffix
-    const suffixless = card.id.replace(/-[0-9a-f]{8}$/, '')
+    const suffixless = card.id.replace(UID_SUFFIX, '')
     const ref =
       (card.design && taken.has(card.design) ? card.design : null) ??
       (suffixless !== card.id && taken.has(suffixless) ? suffixless : null) ??
@@ -148,8 +145,10 @@ export interface Sim {
  */
 export function runSim(doc: Doc, library: AuthoredCard[] = []): Sim {
   const to = doc.from + doc.horizonMonths - 1
-  // the sim plays the resolved, tuned table: canonicals swapped in, dials applied and stripped
-  const { table, world } = playedTable(doc, library)
+  // resolve once: the sim plays it tuned (dials applied and stripped), the card faces render it untuned
+  const resolved = resolveTable(doc.table, library)
+  const table = applyTuneTable(resolved)
+  const world = doc.world ?? {}
   const active = simulate(table, world, doc.from, to)
   const points = new Array<number>(doc.horizonMonths).fill(0)
   for (const child of table.root.children) {
@@ -172,7 +171,7 @@ export function runSim(doc: Doc, library: AuthoredCard[] = []): Sim {
         soloGoalMonth: firstCrossing(alone, doc.goal),
       }
     })
-  return { active, remainder, compares, resolvedRoot: resolveTable(doc.table, library).root }
+  return { active, remainder, compares, resolvedRoot: resolved.root }
 }
 
 export interface DocStore {
@@ -195,5 +194,3 @@ export function useDoc(initial: Doc): DocStore {
 
   return { doc, update, replace: setDoc }
 }
-
-export type { AppTable, CardInstance, HandNode, TableNode }

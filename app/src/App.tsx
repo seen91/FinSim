@@ -16,9 +16,9 @@ import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
 import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
 import { errorMessage, formatCompact, parseCompact } from './format'
-import { addCard, moveCard, removeCard } from './hands'
+import { addCard, findParentHand, moveCard, removeCard } from './hands'
 import { Glyph } from './icons'
-import { canonicalOf, findNode, instanceOf, isInstance, type TableNode } from './instances'
+import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, type TableNode } from './instances'
 import { runMc } from './mc'
 import { migrateDoc, runSim, useDoc, type Sim } from './model'
 import { addSeries, parseMonthText } from './seriesImport'
@@ -168,7 +168,7 @@ export function App(): ReactElement {
     let cur = opened?.kind === 'hand' ? opened : null
     while (cur && cur.id !== root.id) {
       chain.unshift(cur)
-      cur = findParentHandIn(root, cur.id)
+      cur = findParentHand(root, cur.id)
     }
     return chain
   }, [opened, root])
@@ -215,11 +215,7 @@ export function App(): ReactElement {
   const dealNode = (node: TableNode, series?: Record<string, SampledData>): void => {
     store.update((d) => {
       addSeries(d, series)
-      const landWorn = (n: TableNode): void => {
-        if (isInstance(n)) addSeries(d, builtinSeriesOf(n.ref))
-        else if (n.kind === 'hand') (n.children as TableNode[]).forEach(landWorn)
-      }
-      landWorn(node)
+      for (const inst of instancesIn(node)) addSeries(d, builtinSeriesOf(inst.ref))
       addCard(d, targetId, node)
     })
     setDrawerOpen(false)
@@ -456,16 +452,4 @@ export function App(): ReactElement {
       />
     </div>
   )
-}
-
-/** findParentHand over the RESOLVED tree (engine cards) — display-side only. */
-function findParentHandIn(hand: HandCard, cardId: string): HandCard | null {
-  for (const child of hand.children) {
-    if (child.id === cardId) return hand
-    if (child.kind === 'hand') {
-      const found = findParentHandIn(child, cardId)
-      if (found) return found
-    }
-  }
-  return null
 }
