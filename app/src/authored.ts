@@ -50,11 +50,12 @@ export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
         card: { id, kind, name: 'New drain', amount: { type: 'constant', value: 5_000 }, tags: [] },
       }
     case 'asset':
+      // the one blank with a face: a global index fund, the asset most tables want first
       return {
         id,
         glyph,
-        description: '',
-        card: { id, kind, name: 'New asset', growth: { expected: 0.05 }, take: { type: 'fixed', amountPerMonth: 1_000 }, tags: [] },
+        description: 'Broad global equity: 7 % CAGR ± 15 %/yr over the long run. Takes 80 % of the surplus that reaches it — the rest lands as cash.',
+        card: { id, kind, name: 'Index fund: Global', growth: { expected: 0.07, volatility: 0.15 }, take: { type: 'percent', percent: 0.8 }, tags: ['equity', 'fund'] },
       }
     case 'debt':
       return {
