@@ -41,6 +41,8 @@ interface Props {
   flippedId: string | null
   onFlipCard: (cardId: string) => void
   onTuneCard: (next: EngineCard) => void
+  /** Carry a card from its shelf to the Workshop bench. */
+  onWorkshopCard: (cardId: string) => void
   onRenameHand: (handId: string, name: string) => void
   /** Unfold the fan: open the futures report. */
   onOpenReport: () => void
@@ -84,7 +86,8 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
 }
 
 export function Arena(props: Props): ReactElement {
-  const { doc, sim, mc, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, flippedId, onFlipCard, onTuneCard, onRenameHand, onOpenReport } = props
+  const { doc, sim, mc, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, flippedId, onFlipCard, onTuneCard, onWorkshopCard, onRenameHand, onOpenReport } =
+    props
   const hand = trail[trail.length - 1]
 
   // the Workshop's focus stage: the chart holds one card's curve, nothing else
@@ -183,6 +186,7 @@ export function Arena(props: Props): ReactElement {
                 onRemove={onRemoveCard}
                 onToggle={onToggleCard}
                 onTune={onTuneCard}
+                onWorkshop={onWorkshopCard}
               />
             )
           }

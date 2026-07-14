@@ -1,6 +1,6 @@
 import { findCard, formatMonth, type Card, type HandCard, type SampledData } from '@finsim/engine'
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { instantiate, mergeLibrary, type AuthoredCard } from './authored'
+import { designIdOf, instantiate, mergeLibrary, type AuthoredCard } from './authored'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
 import { CashDock } from './components/CashDock'
@@ -245,6 +245,17 @@ export function App(): ReactElement {
     store.update((d) => replaceCard(d, next))
   }
 
+  // the shelf's hammer: carry the card to the Workshop — its design if the
+  // library still holds one (edits reach every copy), else the one-off itself
+  const handleWorkshopCard = (cardId: string): void => {
+    const card = findCard(root, cardId)
+    if (!card) return
+    const designId = designIdOf(card, library)
+    setWorkDraft(null)
+    setWorkshopFocus(designId ? { where: 'library', id: designId } : { where: 'table', id: cardId })
+    setWorkshopOpen(true)
+  }
+
   // set aside / bring back: the card stays on the table, the sim plays without it
   const handleToggleCard = (cardId: string): void => {
     store.update((d) => {
@@ -353,6 +364,7 @@ export function App(): ReactElement {
         flippedId={flippedId}
         onFlipCard={handleFlipCard}
         onTuneCard={handleTuneCard}
+        onWorkshopCard={handleWorkshopCard}
         onRenameHand={(handId, name) => {
           store.update((d) => {
             const hand = findCard(d.table.root, handId)
@@ -394,6 +406,7 @@ export function App(): ReactElement {
                 onRemove={handleRemoveCard}
                 onToggle={handleToggleCard}
                 onTune={handleTuneCard}
+                onWorkshop={handleWorkshopCard}
               />
             )
           }

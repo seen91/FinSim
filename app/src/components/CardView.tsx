@@ -60,6 +60,7 @@ export function CardView({
   onRemove,
   onToggle,
   onTune,
+  onWorkshop,
 }: {
   card: EngineCard
   sim: Sim
@@ -73,6 +74,8 @@ export function CardView({
   onToggle: (cardId: string) => void
   /** Commit a re-dialed card back onto the table; absent = the back stays sealed. */
   onTune?: (next: EngineCard) => void
+  /** Carry this card to the Workshop bench; absent = no hammer on the shelf. */
+  onWorkshop?: (cardId: string) => void
 }): ReactElement {
   const setAside = card.enabled === false
   const contribution = sim.active.contributions.find((s) => s.id === card.id)
@@ -106,7 +109,13 @@ export function CardView({
           ...(verdict ? { verdict } : {}),
         }}
       />
-      <CardShelf noun="card" setAside={setAside} onToggle={() => onToggle(card.id)} onRemove={() => onRemove(card.id)} />
+      <CardShelf
+        noun="card"
+        setAside={setAside}
+        onToggle={() => onToggle(card.id)}
+        onRemove={() => onRemove(card.id)}
+        {...(onWorkshop ? { onWorkshop: () => onWorkshop(card.id) } : {})}
+      />
     </div>
   )
 }

@@ -776,6 +776,21 @@ input[type='range'].tuned {
   color: color-mix(in srgb, var(--flame) 75%, black);
 }
 
+/* to the Workshop: carry the card to the bench (hover-revealed hammer) */
+.mod-workshop {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  padding: 0 0.15rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mod-workshop:hover {
+  color: var(--ink);
+}
+
 /* set aside: pause the card in place — the sim plays as if it were not there */
 .mod-toggle {
   border: none;
@@ -793,6 +808,7 @@ input[type='range'].tuned {
 
 .stack:hover .mod-remove,
 .stack:hover .mod-toggle,
+.stack:hover .mod-workshop,
 .stack.set-aside .mod-toggle,
 .hand-stack:hover .mod-remove,
 .hand-stack:hover .mod-toggle,
