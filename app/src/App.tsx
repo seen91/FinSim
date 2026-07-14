@@ -175,18 +175,25 @@ export function App(): ReactElement {
   const openHand = trail[trail.length - 1] ?? null
 
   // the Workshop's focus, mirrored onto the chart: one canonical card, played
-  // alone on an empty table — a design (or its unsaved draft), or a built-in
-  const arenaFocus = useMemo((): ArenaFocus | null => {
+  // alone on an empty table — a design (or its unsaved draft), or a built-in.
+  // The solo sim also feeds the bench card's live value at the scrub month.
+  const workshopSolo = useMemo(() => {
     if (!workshopOpen || !workshopFocus) return null
     const authored = (workDraft?.id === workshopFocus.id ? workDraft : null) ?? canonicalOf(workshopFocus.id, library)
     if (!authored) return null
     try {
       const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } }, library)
-      return { name: authored.card.name ?? authored.id, note: 'played alone on an empty table', series: solo.active.netWorth }
+      return { authored, solo }
     } catch {
       return null // a design can start before its data begins — no curve, not a crash
     }
   }, [workshopOpen, workshopFocus, library, doc, workDraft])
+
+  const arenaFocus = useMemo((): ArenaFocus | null => {
+    if (!workshopSolo) return null
+    const { authored, solo } = workshopSolo
+    return { name: authored.card.name ?? authored.id, note: 'played alone on an empty table', series: solo.active.netWorth }
+  }, [workshopSolo])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -449,6 +456,8 @@ export function App(): ReactElement {
         onFocus={setWorkshopFocus}
         draft={workDraft}
         onDraftChange={setWorkDraft}
+        focusSim={workshopSolo?.solo ?? null}
+        scrub={scrub}
       />
     </div>
   )

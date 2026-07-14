@@ -87,8 +87,9 @@ body {
 }
 
 .app {
+  --hand-row: 288px;
   display: grid;
-  grid-template-rows: auto 1fr 288px;
+  grid-template-rows: auto 1fr var(--hand-row);
   height: 100vh;
 }
 
@@ -317,6 +318,13 @@ button:not(:disabled):hover {
   overflow: hidden;
   min-height: 0;
   box-shadow: inset 0 0 70px rgba(95, 60, 15, 0.22), 0 10px 26px -10px var(--shadow);
+}
+
+/* the workbench unfolds over the lower table — shove the map's bottom edge
+   above it so the chart rescales into the visible strip instead of drawing
+   its low beginnings behind the bench (--workbench-h is measured live) */
+.app:has(.workbench) .arena {
+  margin-bottom: calc(max(0px, var(--workbench-h, 62vh) - var(--hand-row)) + 0.35rem);
 }
 
 /* the map's inner rule line */

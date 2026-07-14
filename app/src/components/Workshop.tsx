@@ -1,16 +1,18 @@
-import { useRef, useState, type ReactElement } from 'react'
+import { valueAt } from '@finsim/engine'
+import { useCallback, useRef, useState, type ReactElement } from 'react'
 import { AUTHORABLE_KINDS, blankCard, headlineFor, mergeLibrary, redesign, type AuthoredCard, type AuthorableKind } from '../authored'
 import { builtinOf } from '../builtins'
 import { downloadJson } from '../download'
-import { errorMessage } from '../format'
+import { errorMessage, formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
 import { refBase, refsIn, repointInstances } from '../instances'
-import type { Doc } from '../model'
+import type { Doc, Sim } from '../model'
 import { deserializePack, serializePack, type Pack } from '../packs'
 import { seriesIdsIn } from '../seriesImport'
 import { newUid } from '../uid'
 import { Card } from './Card'
 import { CardMathEditor, FrontMatterEditor } from './CardEditor'
+import { frontStats } from './CardView'
 import { DataBench } from './DataBench'
 
 /**
@@ -49,12 +51,32 @@ interface Props {
   /** Unsaved edits to the focused design — App holds it so the chart can preview it. */
   draft: AuthoredCard | null
   onDraftChange: (draft: AuthoredCard | null) => void
+  /** The focused card played alone — the bench face reads its value at the scrub month, like table cards do. */
+  focusSim: Sim | null
+  scrub: number
 }
 
-export function Workshop({ open, onClose, doc, update, library, onLibraryChange, onPlay, focus, onFocus, draft, onDraftChange }: Props): ReactElement | null {
+export function Workshop({ open, onClose, doc, update, library, onLibraryChange, onPlay, focus, onFocus, draft, onDraftChange, focusSim, scrub }: Props): ReactElement | null {
   const [picking, setPicking] = useState(false)
   const [dataOpen, setDataOpen] = useState(false)
   const importInput = useRef<HTMLInputElement>(null)
+
+  // the bench overlays the lower table — publish its measured height so the
+  // arena (and the chart in it) can duck above instead of drawing behind it
+  const benchObserver = useRef<ResizeObserver | null>(null)
+  const benchRef = useCallback((el: HTMLElement | null): void => {
+    benchObserver.current?.disconnect()
+    if (!el) {
+      document.querySelector<HTMLElement>('.app')?.style.removeProperty('--workbench-h')
+      return
+    }
+    benchObserver.current ??= new ResizeObserver(([entry]) => {
+      if (!entry) return
+      const app = document.querySelector<HTMLElement>('.app')
+      app?.style.setProperty('--workbench-h', `${entry.target.getBoundingClientRect().height}px`)
+    })
+    benchObserver.current.observe(el)
+  }, [])
 
   if (!open) return null
 
@@ -154,15 +176,22 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
     const canonical = focusedAuthored
     const card = canonical.card
     const inPlay = refsInPlay.includes(canonical.id)
+    // the bench face reads like a table card: scrub the chart above and the
+    // headline follows — this month's flow, or an asset/debt's balance
+    const isBalance = card.kind === 'asset' || card.kind === 'debt'
+    const liveSeries = focusSim && card.kind !== 'rule' ? (isBalance ? focusSim.active.balances : focusSim.active.contributions).find((s) => s.id === card.id) : undefined
+    const live = liveSeries ? valueAt(liveSeries, scrub) : null
     const face = {
       kind: card.kind,
       name: card.name ?? canonical.id,
       glyph: canonical.glyph,
-      headline: headlineFor(card),
+      headline: live !== null ? (isBalance ? formatAmount(live) : formatPerMonth(live)) : headlineFor(card),
+      ...(live !== null ? { headlineClass: live > 0 ? ('pos' as const) : live < 0 ? ('neg' as const) : ('' as const) } : {}),
+      stats: frontStats(card),
       ...(canonical.description ? { description: canonical.description } : {}),
     }
     return (
-      <section className="workbench workbench-focus" role="dialog" aria-label="The Workshop">
+      <section className="workbench workbench-focus" role="dialog" aria-label="The Workshop" ref={benchRef}>
         <header className="workbench-bar">
           <button
             className="sign work-back"
@@ -321,7 +350,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
   ]
 
   return (
-    <section className="workbench" role="dialog" aria-label="The Workshop">
+    <section className="workbench" role="dialog" aria-label="The Workshop" ref={benchRef}>
       <header className="workbench-bar">
         <h2>The Workshop</h2>
         <p className="drawer-hint">

@@ -22,7 +22,7 @@ function scheduleLabel(schedule: RuleSchedule): string {
   }
 }
 
-function frontStats(card: EngineCard): CardStat[] {
+export function frontStats(card: EngineCard): CardStat[] {
   const stats: CardStat[] = []
   if (card.kind === 'source' && card.flow.type === 'compound' && card.flow.annualRate.expected > 0) {
     const anchor = card.flow.holdAnchor !== undefined ? ` each ${MONTH_NAMES[card.flow.holdAnchor - 1]!.slice(0, 3)}` : ''
