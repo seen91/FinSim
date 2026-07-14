@@ -12,6 +12,7 @@ import {
   type Take,
 } from '@finsim/engine'
 import { createContext, useContext, useEffect, useRef, useState, type ReactElement } from 'react'
+import { createPortal } from 'react-dom'
 import { CADENCE_SUFFIX, type AuthoredCard } from '../authored'
 import { MONTH_NAMES, formatNumber } from '../format'
 import { CARD_GLYPHS } from '../glyph'
@@ -67,6 +68,20 @@ function parseAmount(text: string): { value: number; cadence?: Cadence } | null 
   return cadence ? { value, cadence } : null
 }
 
+/** A counted unit token, "2m" → { count: 2, unit: monthly }; a bare unit counts as one. */
+function countedUnit(token: string): { count: number; unit: Cadence } | null {
+  const m = /^(\d+)?([a-z]+)$/.exec(token)
+  const unit = m ? UNIT_TOKENS[m[2] ?? ''] : undefined
+  if (!m || !unit) return null
+  return { count: m[1] === undefined ? 1 : Math.max(1, Number(m[1])), unit }
+}
+
+/** Periods per year a rate's quote unit means: "m" → 12, "2m" → 6, "q" → 4, "2yr" → ½. */
+function quotePeriods(token: string): number | null {
+  const parsed = countedUnit(token)
+  return parsed ? PERIODS_PER_YEAR[parsed.unit] / parsed.count : null
+}
+
 /** "3 %/m" → the equivalent annual fraction (compounding); bare "%" means /yr. */
 function parseRate(text: string): number | null {
   const cleaned = text.replace(/\s+/g, '').replace(',', '.').replace('%', '')
@@ -74,20 +89,17 @@ function parseRate(text: string): number | null {
   if (!m) return null
   const r = Number(m[1]) / 100
   if (!Number.isFinite(r)) return null
-  const cadence = m[2] === undefined ? 'yearly' : UNIT_TOKENS[m[2].toLowerCase()]
-  if (!cadence) return null
-  const n = PERIODS_PER_YEAR[cadence]
+  const n = m[2] === undefined ? 1 : quotePeriods(m[2].toLowerCase())
+  if (n === null) return null
   return n === 1 ? r : Math.pow(1 + r, n) - 1
 }
 
-/** Months a landing token means: "yr" → 12, "q" → 3, "mo" → 1, "6mo" → 6. */
+/** Months a landing token means: "yr" → 12, "q" → 3, "m" → 1, "6m" → 6, "2yr" → 24. */
 function landMonths(token: string): number | null {
-  const counted = /^(\d+)mo?$/.exec(token)
-  if (counted) return Math.max(1, Number(counted[1]))
-  const cadence = UNIT_TOKENS[token]
-  if (!cadence) return null
-  // sub-monthly landings collapse to the tick
-  return Math.max(1, Math.round(12 / PERIODS_PER_YEAR[cadence]))
+  const parsed = countedUnit(token)
+  if (!parsed) return null
+  // sub-monthly landings ("w", "2w") collapse to the tick
+  return Math.max(1, Math.round((parsed.count * 12) / PERIODS_PER_YEAR[parsed.unit]))
 }
 
 /** "jan" or "january" → 1, … — the calendar month a landing is anchored to. */
@@ -104,8 +116,8 @@ interface Landing {
 }
 
 /**
- * A landing token: "mo" | "qtr" | "yr" | "6mo" (interval, anniversary-based),
- * "jan" (yearly, anchored to January), or "qtr-jan" (interval-anchor).
+ * A landing token: "m" | "q" | "yr" | "6m" (interval, anniversary-based),
+ * "jan" (yearly, anchored to January), or "q-jan" (interval-anchor).
  */
 function parseLanding(token: string): Landing | null {
   const [head, tail] = token.split('-') as [string, string?]
@@ -126,10 +138,11 @@ function parseLanding(token: string): Landing | null {
 /**
  * A growth rate on a flow states two periods: the unit it is quoted in and —
  * in parens — when it lands. "3,5 %/yr" is a yearly raise on the card's
- * anniversary; "3,5 %/yr(apr)" is that raise landing every April; "7 %/yr(mo)"
+ * anniversary; "3,5 %/yr(apr)" is that raise landing every April; "7 %/yr(m)"
  * is quoted per year but lands every month, smooth — how a fund is quoted.
- * The parens default to the quote unit; a bare number keeps the current
- * landing and anchor.
+ * Any unit takes a count: "10 %/2m" is 10 % per two months. The parens
+ * default to the quote unit; a bare number keeps the current landing and
+ * anchor.
  */
 function parseHoldRate(text: string, current: Landing): ({ annual: number } & Landing) | null {
   const cleaned = text.replace(/\s+/g, '').replace(',', '.').replace('%', '').toLowerCase()
@@ -137,19 +150,18 @@ function parseHoldRate(text: string, current: Landing): ({ annual: number } & La
   if (!m) return null
   const r = Number(m[1]) / 100
   if (!Number.isFinite(r)) return null
-  const cadence = m[2] === undefined ? 'yearly' : UNIT_TOKENS[m[2]]
-  if (!cadence) return null
-  const n = PERIODS_PER_YEAR[cadence]
+  const n = m[2] === undefined ? 1 : quotePeriods(m[2])
+  if (n === null) return null
   const annual = n === 1 ? r : Math.pow(1 + r, n) - 1
   const landing = m[3] !== undefined ? parseLanding(m[3]) : m[2] !== undefined ? parseLanding(m[2]) : current
   if (landing === null) return null
   return { annual, ...landing }
 }
 
-/** The landing parens of the canonical rate text: a bare "%/yr" is the anniversary raise, "(mo)" is smooth. */
+/** The landing parens of the canonical rate text: a bare "%/yr" is the anniversary raise, "(m)" is smooth. */
 function holdSuffix({ holdMonths, holdAnchor }: Landing): string {
-  if (holdMonths === undefined || holdMonths <= 1) return '(mo)'
-  const interval = holdMonths === 12 ? '' : holdMonths === 3 ? 'qtr' : `${String(holdMonths)}mo`
+  if (holdMonths === undefined || holdMonths <= 1) return '(m)'
+  const interval = holdMonths === 12 ? '' : holdMonths === 3 ? 'q' : `${String(holdMonths)}m`
   const anchor = holdAnchor !== undefined ? MONTH_NAMES[holdAnchor - 1]!.slice(0, 3).toLowerCase() : ''
   if (!interval && !anchor) return ''
   return `(${interval && anchor ? `${interval}-${anchor}` : interval || anchor})`
@@ -303,8 +315,10 @@ function RateField({ label, path, value, onCommit }: { label: string; path: stri
 /**
  * The rate of a compound flow: quote unit and landing in one text —
  * "3,5 %/yr" (a raise), "3,5 %/yr(apr)" (the raise lands each April),
- * "7 %/yr(mo)" (smooth, fund-style). Commits the annual rate the engine
- * keeps plus the curve's holdMonths/holdAnchor.
+ * "7 %/yr(m)" (smooth, fund-style). Commits the annual rate the engine
+ * keeps plus the curve's holdMonths/holdAnchor. A small ⓘ beside the
+ * label shows the grammar as a hover tooltip — floating, so the card
+ * back never grows or scrolls for it.
  */
 function HoldRateField({
   label,
@@ -322,6 +336,15 @@ function HoldRateField({
   const suffix = holdSuffix(landing)
   const canonical = `${round(value * 100)} %/yr${suffix}`
   const { draft, setDraft, onFocus, onBlur } = useDraft(canonical)
+  // the tooltip floats fixed and portals out to <body>: the card back is a
+  // scroll box inside the flip's rotateY, which would clip it and re-anchor fixed
+  const [hint, setHint] = useState<{ left: number; top: number } | null>(null)
+  const showHint = (e: { currentTarget: Element }): void => {
+    const r = e.currentTarget.getBoundingClientRect()
+    // below the ⓘ, or above it when the bottom of the screen is too close
+    const top = r.bottom + 110 > window.innerHeight ? r.top - 105 : r.bottom + 5
+    setHint({ left: Math.max(8, Math.min(r.left, window.innerWidth - 268)), top: Math.max(8, top) })
+  }
   const commit = (text: string): void => {
     setDraft(text)
     const parsed = parseHoldRate(text, landing)
@@ -330,12 +353,47 @@ function HoldRateField({
   return (
     <label className="param">
       <span className="param-label">
-        <span>{label}</span>
+        <span>
+          {label}
+          {/* not a <button>: the read-only fieldset must not disable the hint */}
+          <span
+            tabIndex={0}
+            className="param-info"
+            aria-label="How to write this rate"
+            onMouseEnter={showHint}
+            onMouseLeave={() => setHint(null)}
+            onFocus={showHint}
+            onBlur={() => setHint(null)}
+          >
+            i
+          </span>
+        </span>
         <span className="param-value">
           <input className="num" type="text" inputMode="decimal" value={draft} onChange={(e) => commit(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
         </span>
       </span>
       <Slide path={path} />
+      {hint &&
+        createPortal(
+          <ul className="param-hint" style={hint}>
+            <li>
+              <code>n % /nUnit(nCompounding)</code>
+            </li>
+            <li>
+              <code>7 %/yr(m)</code> — grows 7 % a year, compounded monthly
+            </li>
+            <li>
+              <code>10 %/2m(2w)</code> — 10 % every two months, credited every two weeks
+            </li>
+            <li>
+              <code>3,5 %/yr(apr)</code> — a yearly raise, credited every April
+            </li>
+            <li>
+              units: <code>w</code>, <code>m</code>, <code>q</code>, <code>yr</code> — a unit combines with a specific month: <code>(q-jan)</code>
+            </li>
+          </ul>,
+          document.body,
+        )}
       <TuneNote path={path} base={value} format={(v) => `${round(v * 100)} %/yr${suffix}`} />
     </label>
   )
@@ -454,7 +512,7 @@ function curveOfType(type: Curve['type'], from: Curve): Curve {
     case 'linear':
       return { type, base, slopePerMonth: 0 }
     case 'compound':
-      // no holdMonths: a fresh compound lands smooth, "(mo)" — the fund
+      // no holdMonths: a fresh compound lands smooth, "(m)" — the fund
       // convention; a raise is written explicitly ("/yr", "(jan)")
       return { type, base, annualRate: { expected: 0.02 } }
     case 'step':

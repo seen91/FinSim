@@ -1920,6 +1920,61 @@ input[type='range'].tuned {
   color: var(--money-neg);
 }
 
+/* the little inked ⓘ beside a label — an italic i in a hand-drawn ring
+   (a span, not a button: the Workshop's read-only fieldset must not mute it) */
+.param-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.78rem;
+  height: 0.78rem;
+  margin-left: 0.3rem;
+  vertical-align: text-bottom;
+  font-family: var(--display);
+  font-size: 0.55rem;
+  font-style: italic;
+  line-height: 1;
+  color: var(--ink-soft);
+  border: 1px solid var(--ink-soft);
+  border-radius: 50%;
+  cursor: help;
+  user-select: none;
+}
+
+.param-info:hover,
+.param-info:focus-visible {
+  color: var(--gold-deep);
+  border-color: var(--gold-deep);
+}
+
+/* the fine print the ⓘ shows on hover: one spelling of the rate grammar per
+   line. Portaled to <body> and floating fixed — the card back is a scroll box
+   inside the flip's rotateY (which clips and re-anchors fixed), and the
+   fields must never shuffle under the cursor. Above every table layer. */
+.param-hint {
+  position: fixed;
+  z-index: 110;
+  width: 16rem;
+  margin: 0;
+  padding: 0.3rem 0.4rem;
+  list-style: none;
+  font-size: 0.6rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  background: var(--card-deep);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  box-shadow: 0 2px 6px var(--shadow);
+  pointer-events: none;
+}
+
+.param-hint code {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
 .step-row {
   border-top: 1px dotted var(--line);
   padding-top: 0.25rem;
