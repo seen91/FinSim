@@ -19,7 +19,10 @@ export type GlyphName =
   | 'bank'
   | 'bundle'
   | 'cash'
+  | 'check'
   | 'flame'
+  | 'hand'
+  | 'save'
   | 'pause'
   | 'play'
   | 'hammer'
@@ -119,6 +122,19 @@ const PATHS: Record<GlyphName, ReactElement> = {
       <path d="M6.2 9.5v.01M17.8 14.5v.01" />
     </>
   ),
+  check: (
+    <>
+      <path d="M5 12.5 10 17.5 19 6.5" />
+    </>
+  ),
+  hand: (
+    <>
+      <path d="M7.5 12V6.8a1.5 1.5 0 0 1 3 0V11" />
+      <path d="M10.5 11V4.8a1.5 1.5 0 0 1 3 0V11" />
+      <path d="M13.5 11V6.3a1.5 1.5 0 0 1 3 0v3" />
+      <path d="M16.5 9.3a1.5 1.5 0 0 1 3 0v4.7a7 7 0 0 1-7 7h-1.6c-2.1 0-3.5-.7-4.7-1.9l-3-3a1.5 1.5 0 0 1 2.1-2.1l2.2 2.2" />
+    </>
+  ),
   flame: (
     <>
       <path d="M12 3.5c2.8 3.6-1.6 4.8 1.2 7.8.9-.9 1.3-1.9 1.1-3.1 1.9 1.7 3.2 3.6 3.2 5.6a5.5 5.5 0 0 1-11 0c0-3.6 3.5-5.4 5.5-10.3Z" />
@@ -145,6 +161,13 @@ const PATHS: Record<GlyphName, ReactElement> = {
     <>
       <path d="M12 6.8C10.4 5.2 8.3 4.6 4.5 4.6v13.2c3.8 0 5.9.6 7.5 2.2 1.6-1.6 3.7-2.2 7.5-2.2V4.6c-3.8 0-5.9.6-7.5 2.2Z" />
       <path d="M12 6.8V20" />
+    </>
+  ),
+  save: (
+    <>
+      <path d="M5.5 4.5h10l4 4v10a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-13a1 1 0 0 1 1-1Z" />
+      <path d="M8.5 4.5v4h6v-4" opacity="0.5" />
+      <path d="M8 19.5v-5.5h8v5.5" opacity="0.5" />
     </>
   ),
   export: (

@@ -63,6 +63,8 @@ export function App(): ReactElement {
   const [reportOpen, setReportOpen] = useState(false)
   const [workshopOpen, setWorkshopOpen] = useState(false)
   const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
+  // the Workshop's unsaved edits — held here so the chart previews the draft, not the shelf
+  const [workDraft, setWorkDraft] = useState<AuthoredCard | null>(null)
   const [library, setLibrary] = useState<AuthoredCard[]>([])
   const [openHandId, setOpenHandId] = useState<string | null>(null)
   // the one card turned face-down to its what-if dials — tap to turn, tap to turn back
@@ -182,7 +184,7 @@ export function App(): ReactElement {
       const what = card.kind === 'asset' || card.kind === 'debt' ? 'its balance, in place on the table' : 'what it has moved so far, in place on the table'
       return { name: card.name ?? card.id, note: what, series }
     }
-    const authored = library.find((a) => a.id === workshopFocus.id)
+    const authored = (workDraft?.id === workshopFocus.id ? workDraft : null) ?? library.find((a) => a.id === workshopFocus.id)
     if (!authored) return null
     try {
       const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } })
@@ -190,7 +192,7 @@ export function App(): ReactElement {
     } catch {
       return null // a design can start before its data begins — no curve, not a crash
     }
-  }, [workshopOpen, workshopFocus, root, sim, library, doc])
+  }, [workshopOpen, workshopFocus, root, sim, library, doc, workDraft])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -198,14 +200,18 @@ export function App(): ReactElement {
       if (reportOpen) setReportOpen(false)
       else if (rulebookOpen) setRulebookOpen(false)
       else if (drawerOpen) setDrawerOpen(false)
-      else if (workshopFocus) setWorkshopFocus(null) // focus → back to browsing
-      else if (workshopOpen) setWorkshopOpen(false)
+      else if (workshopFocus) {
+        // focus → back to browsing, but unsaved Workshop edits get a say first
+        if (workDraft?.id === workshopFocus.id && !window.confirm('Discard unsaved changes to this card?')) return
+        setWorkDraft(null)
+        setWorkshopFocus(null)
+      } else if (workshopOpen) setWorkshopOpen(false)
       else if (flippedId) setFlippedId(null) // a turned card turns back first
       else if (trail.length > 0) setOpenHandId(trail[trail.length - 2]?.id ?? null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [reportOpen, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, flippedId, trail])
+  }, [reportOpen, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, workDraft, flippedId, trail])
 
   const targetId = openHand?.id ?? null
 
@@ -415,6 +421,7 @@ export function App(): ReactElement {
         onClose={() => {
           setWorkshopOpen(false)
           setWorkshopFocus(null)
+          setWorkDraft(null)
         }}
         doc={doc}
         update={store.update}
@@ -423,6 +430,8 @@ export function App(): ReactElement {
         onPlay={playAuthored}
         focus={workshopFocus}
         onFocus={setWorkshopFocus}
+        draft={workDraft}
+        onDraftChange={setWorkDraft}
       />
     </div>
   )

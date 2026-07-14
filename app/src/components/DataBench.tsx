@@ -103,14 +103,14 @@ export function DataBench({ doc, update, library, onLibraryChange, onFocus }: Pr
         </label>
         {error && <p className="param-error">{error}</p>}
         <div className="data-tools">
-          <button onClick={() => fileInput.current?.click()} title="Read the values from a CSV or text file">
+          <button className="sign" onClick={() => fileInput.current?.click()} title="Read the values from a CSV or text file">
             from a file…
           </button>
           <label className="data-mint">
             <input type="checkbox" checked={mint} onChange={(e) => setMint(e.target.checked)} />
             mint a card wearing it
           </label>
-          <button className="data-add" onClick={handleImport} disabled={text.trim().length === 0} title="Add the series to this table's data">
+          <button className="sign data-add" onClick={handleImport} disabled={text.trim().length === 0} title="Add the series to this table's data">
             <Glyph name="import" size={12} /> import
           </button>
         </div>

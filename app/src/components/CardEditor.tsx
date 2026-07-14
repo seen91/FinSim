@@ -569,14 +569,14 @@ function CurveField({
                   value={step.atMonth}
                   onCommit={(atMonth) => commit({ ...curve, steps: normalizeSteps(curve.steps.map((s, j) => (j === i ? { ...s, atMonth } : s))) })}
                 />
-                <button className="card-action" onClick={() => commit({ ...curve, steps: curve.steps.filter((_, j) => j !== i) })}>
+                <button className="sign card-action" onClick={() => commit({ ...curve, steps: curve.steps.filter((_, j) => j !== i) })}>
                   remove
                 </button>
               </div>
             </div>
           ))}
           <button
-            className="card-action"
+            className="sign card-action"
             onClick={() => {
               const last = curve.steps[curve.steps.length - 1]
               commit({ ...curve, steps: normalizeSteps([...curve.steps, { atMonth: (last?.atMonth ?? 0) + 12, value: last?.value ?? curve.initial }]) })

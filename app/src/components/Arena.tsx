@@ -194,14 +194,14 @@ export function Arena(props: Props): ReactElement {
           </span>
           <HandFigures prefix="hub" hand={hand} sim={sim} scrub={scrub} from={doc.from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
           <button
-            className="hub-toggle"
+            className="sign hub-toggle"
             title={hand.enabled === false ? 'Bring this hand back into play' : 'Set aside — the table plays as if this hand were not there'}
             onClick={() => onToggleCard(hand.id)}
           >
             <Glyph name={hand.enabled === false ? 'play' : 'pause'} size={12} /> {hand.enabled === false ? 'bring back' : 'set aside'}
           </button>
           <button
-            className="hub-remove"
+            className="sign hub-remove"
             title="Discard the whole hand to the draw pile"
             onClick={() => {
               onNavigate(parent?.id ?? null)

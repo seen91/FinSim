@@ -23,7 +23,8 @@ import { DataBench } from './DataBench'
  * FOCUS — click one and everything else clears: the bench holds that card's
  * face and its back (the editor), and the chart above holds only its curve.
  * The back of a blank card is the card creator; packs move designs between
- * tables.
+ * tables. Design edits buffer as a draft until the green save commits them —
+ * a blank never touches the shelf unsaved.
  */
 
 /** What the Workshop has zoomed into — App mirrors it onto the chart. */
@@ -40,18 +41,22 @@ interface Props {
   onPlay: (authored: AuthoredCard) => void
   focus: WorkshopFocus | null
   onFocus: (focus: WorkshopFocus | null) => void
+  /** Unsaved edits to the focused design — App holds it so the chart can preview it. */
+  draft: AuthoredCard | null
+  onDraftChange: (draft: AuthoredCard | null) => void
 }
 
-export function Workshop({ open, onClose, doc, update, library, onLibraryChange, onPlay, focus, onFocus }: Props): ReactElement | null {
+export function Workshop({ open, onClose, doc, update, library, onLibraryChange, onPlay, focus, onFocus, draft, onDraftChange }: Props): ReactElement | null {
   const [picking, setPicking] = useState(false)
   const [dataOpen, setDataOpen] = useState(false)
   const importInput = useRef<HTMLInputElement>(null)
 
   if (!open) return null
 
+  // a blank starts as a draft — it reaches the shelf only when saved
   const handleNew = (kind: AuthorableKind): void => {
     const fresh = blankCard(kind, newUid())
-    onLibraryChange([...library, fresh])
+    onDraftChange(fresh)
     setPicking(false)
     onFocus({ where: 'library', id: fresh.id })
   }
@@ -112,8 +117,24 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
   }
 
   // ---- FOCUS: one card on the bench, face and back side by side ----
+  // Design edits buffer as a draft; save is the explicit act that lands them
+  // on the shelf and in every copy in play. A brand-new blank exists only as
+  // its draft until first saved.
   const focusedTable = focus?.where === 'table' ? findCard(doc.table.root, focus.id) : null
-  const focusedAuthored = focus?.where === 'library' ? (library.find((a) => a.id === focus.id) ?? null) : null
+  const savedAuthored = focus?.where === 'library' ? (library.find((a) => a.id === focus.id) ?? null) : null
+  const activeDraft = focus && draft && draft.id === focus.id ? draft : null
+  const focusedAuthored = activeDraft ?? savedAuthored
+  const isNew = focusedAuthored !== null && savedAuthored === null
+  const dirty = activeDraft !== null
+
+  const handleSave = (): void => {
+    if (!activeDraft) return
+    if (savedAuthored) patchAuthored(activeDraft)
+    else onLibraryChange([...library, activeDraft])
+    onDraftChange(null)
+  }
+
+  const confirmLeave = (): boolean => !dirty || window.confirm(isNew ? 'This card is not saved yet — discard it?' : 'Discard unsaved changes to this design?')
 
   if (focusedTable || focusedAuthored) {
     const card = focusedTable ?? focusedAuthored!.card
@@ -127,46 +148,79 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
     return (
       <section className="workbench workbench-focus" role="dialog" aria-label="The Workshop">
         <header className="workbench-bar">
-          <button className="work-back" onClick={() => onFocus(null)}>
+          <button
+            className="sign work-back"
+            onClick={() => {
+              if (!confirmLeave()) return
+              onDraftChange(null)
+              onFocus(null)
+            }}
+          >
             ← all cards
           </button>
           <p className="drawer-hint">
             {focusedTable
               ? 'a one-off on the table — edits land immediately; the chart holds only this card'
-              : 'a design — edits reach every copy in play; the chart plays it alone on an empty table'}
+              : isNew
+                ? 'a fresh card — save it to put it on your shelf; the chart plays it alone on an empty table'
+                : 'a design — save your edits to reach the shelf and every copy in play; the chart plays it alone on an empty table'}
           </p>
+          <button
+            className="drawer-close"
+            onClick={() => {
+              if (!confirmLeave()) return
+              onDraftChange(null)
+              onClose()
+            }}
+            aria-label="Close the Workshop"
+          >
+            ×
+          </button>
+        </header>
+        <div className="work-focus">
+          {/* the tools ride right above the bench — the mouse never leaves the cards */}
           {focusedAuthored && (
-            <span className="work-tools">
+            <div className="work-tools">
               <button
-                title="Deal a copy onto the table and return to it"
+                className="sign work-save"
+                disabled={!dirty}
+                aria-label={dirty ? 'Save' : 'Saved'}
+                title={dirty ? (isNew ? 'Save this card to your shelf' : 'Save — the shelf and every copy in play take the edits') : 'All changes saved to your shelf'}
+                onClick={handleSave}
+              >
+                <Glyph name={dirty ? 'save' : 'check'} size={15} />
+              </button>
+              <button
+                className="sign"
+                aria-label="Add to hand"
+                title="Save, then deal a copy into the hand on the table"
                 onClick={() => {
+                  handleSave()
                   onPlay(focusedAuthored)
                   onFocus(null)
                   onClose()
                 }}
               >
-                <Glyph name="play" size={13} /> play
+                <Glyph name="hand" size={15} />
               </button>
-              <button onClick={() => handleDuplicate(focusedAuthored)} title="Copy this design">
-                copy
-              </button>
+              {savedAuthored && (
+                <button className="sign" onClick={() => handleDuplicate(savedAuthored)} disabled={dirty} title={dirty ? 'Save your edits first' : 'Copy this design'}>
+                  copy
+                </button>
+              )}
               <button
-                className="work-burn"
-                title="Burn this design — cards already on the table stay"
+                className="sign work-burn"
+                title={isNew ? 'Burn this draft' : 'Burn this design — cards already on the table stay'}
                 onClick={() => {
                   onLibraryChange(library.filter((c) => c.id !== focusedAuthored.id))
+                  onDraftChange(null)
                   onFocus(null)
                 }}
               >
-                <Glyph name="flame" size={13} />
+                <Glyph name="flame" size={15} />
               </button>
-            </span>
+            </div>
           )}
-          <button className="drawer-close" onClick={onClose} aria-label="Close the Workshop">
-            ×
-          </button>
-        </header>
-        <div className="work-focus">
           <Card size="work" face={face} />
           <Card
             size="work"
@@ -177,8 +231,8 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
                 <CardMathEditor card={focusedTable} from={doc.from} onChange={(next: EngineCard) => update((d) => replaceCard(d, next))} />
               ) : (
                 <>
-                  <CardMathEditor card={focusedAuthored!.card} from={doc.from} onChange={(next: EngineCard) => patchAuthored({ ...focusedAuthored!, card: next })} />
-                  <FrontMatterEditor authored={focusedAuthored!} onChange={patchAuthored} />
+                  <CardMathEditor card={focusedAuthored!.card} from={doc.from} onChange={(next: EngineCard) => onDraftChange({ ...focusedAuthored!, card: next })} />
+                  <FrontMatterEditor authored={focusedAuthored!} onChange={onDraftChange} />
                 </>
               )
             }
@@ -208,14 +262,14 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
     <section className="workbench" role="dialog" aria-label="The Workshop">
       <header className="workbench-bar">
         <h2>The Workshop</h2>
-        <p className="drawer-hint">pick a card up to work on it — editing a design reaches every copy in play · packs carry your designs between tables</p>
-        <button className={dataOpen ? 'data-open' : undefined} onClick={() => setDataOpen(!dataOpen)} title="Import historical data and manage the table's series">
+        <p className="drawer-hint">pick a card up to work on it — saving a design's edits reaches every copy in play · packs carry your designs between tables</p>
+        <button className={dataOpen ? 'sign data-open' : 'sign'} onClick={() => setDataOpen(!dataOpen)} title="Import historical data and manage the table's series">
           {dataOpen ? '← cards' : 'Data'}
         </button>
-        <button onClick={handleExport} disabled={library.length === 0} title="Bundle your designs into a pack file to share">
+        <button className="sign" onClick={handleExport} disabled={library.length === 0} title="Bundle your designs into a pack file to share">
           Export pack
         </button>
-        <button onClick={() => importInput.current?.click()} title="Merge a pack file into your designs">
+        <button className="sign" onClick={() => importInput.current?.click()} title="Merge a pack file into your designs">
           Import pack
         </button>
         <input

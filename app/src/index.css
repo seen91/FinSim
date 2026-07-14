@@ -158,28 +158,11 @@ button:not(:disabled):hover {
   border-color: var(--gold-deep);
 }
 
-/* leather buttons on the wooden rail */
-.topbar button {
-  color: var(--wood-ink);
-  background: rgba(0, 0, 0, 0.25);
-  border-color: var(--gold-deep);
-}
-
-.topbar button:not(:disabled):hover {
-  border-color: var(--gold);
-}
-
-/* a lit toggle: brass pressed into the rail */
-.topbar button.toggle.on {
-  color: var(--ink);
-  background: var(--gold);
-  border-color: var(--gold);
-}
-
-/* Rulebook / Export / Import: planked wooden boards on the rail, kin to the
-   Workshop's sign board — but plain dark wood with gilt lettering, so the
-   Workshop's signal yellow stays the one loud thing on the table. */
-.topbar-actions .sign {
+/* The table's one button dress: a planked wooden board with gilt lettering,
+   kin to the Workshop's sign board — but plain dark wood, so the Workshop's
+   signal yellow stays the one loud thing on the table. Every labeled action
+   wears it; links, × closers and card-shaped things keep their own dress. */
+.sign {
   display: inline-flex;
   align-items: center;
   gap: 0.34rem;
@@ -198,11 +181,11 @@ button:not(:disabled):hover {
   box-shadow: 0 2px 5px var(--shadow), inset 0 1px 0 rgba(255, 220, 150, 0.14);
 }
 
-.topbar-actions .sign .glyph {
+.sign .glyph {
   opacity: 0.8;
 }
 
-.topbar-actions .sign:not(:disabled):hover {
+.sign:not(:disabled):hover {
   color: var(--gold);
   border-color: #2b1808;
   box-shadow: 0 3px 6px var(--shadow), inset 0 1px 0 rgba(255, 220, 150, 0.22);
@@ -880,22 +863,14 @@ input[type='range'].tuned {
 .hub-toggle {
   margin-top: 0.2rem;
   font-size: 0.7rem;
-  color: var(--ink-soft);
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
 }
 
+/* flame raised toward candlelight so it reads on the dark board */
 .hub-remove .glyph {
-  color: var(--flame);
-}
-
-.hub-remove:not(:disabled):hover {
-  color: color-mix(in srgb, var(--flame) 80%, var(--ink));
-}
-
-.hub-toggle:hover {
-  color: var(--ink);
+  color: color-mix(in srgb, var(--flame) 60%, #ffc890);
 }
 
 /* ---- a hand at rest: unmistakably a pile of several cards ---- */
@@ -1659,13 +1634,14 @@ input[type='range'].tuned {
   position: relative;
 }
 
-/* the focus stage: one card, face and back side by side */
+/* the focus stage: the tools ride above the card, face and back side by side */
 .work-focus {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: flex-start;
-  gap: 0.9rem;
-  padding: 0.7rem 0 0.2rem;
+  gap: 0.45rem 0.9rem;
+  padding: 0.4rem 0 0.2rem;
 }
 
 .work-back {
@@ -1673,7 +1649,9 @@ input[type='range'].tuned {
 }
 
 .work-tools {
-  display: inline-flex;
+  flex-basis: 100%;
+  display: flex;
+  justify-content: center;
   gap: 0.35rem;
 }
 
@@ -1681,10 +1659,27 @@ input[type='range'].tuned {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  font-size: 0.74rem;
+  padding: 0.25rem 0.6rem;
 }
 
-.work-tools .work-burn {
-  color: var(--flame);
+/* explicit save: the sanctioned non-money green (Sebastian's decree) —
+   lit while edits are unsaved, settling into a quiet "saved" after.
+   The green is raised toward candlelight so it reads on the dark board. */
+.work-tools .work-save:not(:disabled) {
+  color: color-mix(in srgb, var(--money-pos) 55%, #e8f5d8);
+  border-color: color-mix(in srgb, var(--money-pos) 55%, #2b1808);
+  font-weight: 600;
+}
+
+.work-tools .work-save:disabled {
+  font-style: italic;
+  opacity: 0.65;
+}
+
+/* flame raised toward candlelight so it reads on the dark board */
+.work-tools .work-burn:not(:disabled) {
+  color: color-mix(in srgb, var(--flame) 60%, #ffc890);
 }
 
 /* the workbench card: room enough for its math */
