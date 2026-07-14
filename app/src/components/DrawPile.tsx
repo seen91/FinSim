@@ -1,8 +1,12 @@
+import type { SampledData } from '@finsim/engine'
 import { useState, type ReactElement } from 'react'
 import { headlineFor, type AuthoredCard } from '../authored'
+import { pileRef, presetRef } from '../builtins'
 import { Glyph } from '../icons'
+import type { HandNode, TableNode } from '../instances'
 import { LIBRARY, type Blueprint } from '../library'
-import { PRESETS, type HandPreset, type PresetCard } from '../presets'
+import { PRESETS, type HandPreset } from '../presets'
+import { newUid } from '../uid'
 import { Card } from './Card'
 
 /**
@@ -10,7 +14,8 @@ import { Card } from './Card'
  * everything not in play spreads out in a grid — whole hands first (import
  * them as one, or take single cards), then your own designs, then the loose
  * cards. Click a card to draw it; it plays into whichever hand is open (the
- * main hand by default).
+ * main hand by default). Everything dealt is an INSTANCE of its canonical
+ * card (a built-in or a design) — hands come out as fresh compositions.
  */
 interface Props {
   open: boolean
@@ -20,10 +25,10 @@ interface Props {
   authored: AuthoredCard[]
   onOpen: () => void
   onClose: () => void
-  onChoose: (bp: Blueprint) => void
-  onChooseAuthored: (authored: AuthoredCard) => void
-  onImportHand: (preset: HandPreset) => void
-  onImportCard: (card: PresetCard) => void
+  /** Deal a fresh instance of a canonical card (built-in ref or design id). */
+  onChooseRef: (ref: string) => void
+  /** Deal a prebuilt node (a preset hand, an empty hand) with any series it wears. */
+  onDealNode: (node: TableNode, series?: Record<string, SampledData>) => void
 }
 
 function DrawerCard({ bp, onChoose }: { bp: Blueprint; onChoose: (bp: Blueprint) => void }): ReactElement {
@@ -51,7 +56,7 @@ function PresetTile({
 }: {
   preset: HandPreset
   onImportHand: (preset: HandPreset) => void
-  onImportCard: (card: PresetCard) => void
+  onImportCard: (key: string) => void
 }): ReactElement {
   const [openList, setOpenList] = useState(false)
   return (
@@ -72,7 +77,7 @@ function PresetTile({
         <ul className="preset-cards">
           {preset.cards.map((card) => (
             <li key={card.key}>
-              <button onClick={() => onImportCard(card)} title="Import just this card">
+              <button onClick={() => onImportCard(card.key)} title="Import just this card">
                 <Glyph name={card.glyph} size={16} />
                 <span className="preset-card-name">{card.name}</span>
                 <span className="preset-card-headline num">{card.headline}</span>
@@ -85,9 +90,9 @@ function PresetTile({
   )
 }
 
-function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose: (a: AuthoredCard) => void }): ReactElement {
+function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose: (ref: string) => void }): ReactElement {
   return (
-    <button className="drawer-slot" onClick={() => onChoose(authored)} title="Draw a copy — joins the right end of the open hand">
+    <button className="drawer-slot" onClick={() => onChoose(authored.id)} title="Draw a copy — joins the right end of the open hand">
       <Card
         size="hand"
         face={{
@@ -103,7 +108,17 @@ function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose
   )
 }
 
-export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose, onChooseAuthored, onImportHand, onImportCard }: Props): ReactElement {
+export function DrawPile({ open, targetName, authored, onOpen, onClose, onChooseRef, onDealNode }: Props): ReactElement {
+  // a hand blueprint is a composition, not a canonical — deal a fresh shape
+  const chooseBlueprint = (bp: Blueprint): void => {
+    if (bp.card.kind === 'hand') {
+      const hand: HandNode = { id: `${bp.id}-${newUid()}`, name: bp.card.name ?? bp.name, kind: 'hand', glyph: bp.glyph, children: [] }
+      onDealNode(hand, bp.series)
+    } else {
+      onChooseRef(pileRef(bp.id))
+    }
+  }
+
   return (
     <>
       <button className="pile" onClick={onOpen} title="Open the draw pile" aria-label="Open the draw pile">
@@ -130,7 +145,12 @@ export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose
             <h3 className="drawer-section">Hands</h3>
             <div className="preset-row">
               {PRESETS.map((preset) => (
-                <PresetTile key={preset.id} preset={preset} onImportHand={onImportHand} onImportCard={onImportCard} />
+                <PresetTile
+                  key={preset.id}
+                  preset={preset}
+                  onImportHand={(p) => onDealNode(p.build(newUid()), p.series)}
+                  onImportCard={(key) => onChooseRef(presetRef(key))}
+                />
               ))}
             </div>
             {authored.length > 0 && (
@@ -138,7 +158,7 @@ export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose
                 <h3 className="drawer-section">Your designs</h3>
                 <div className="drawer-grid">
                   {authored.map((a) => (
-                    <AuthoredSlot key={a.id} authored={a} onChoose={onChooseAuthored} />
+                    <AuthoredSlot key={a.id} authored={a} onChoose={onChooseRef} />
                   ))}
                 </div>
               </>
@@ -146,7 +166,7 @@ export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose
             <h3 className="drawer-section">Cards</h3>
             <div className="drawer-grid">
               {LIBRARY.map((bp) => (
-                <DrawerCard key={bp.id} bp={bp} onChoose={onChoose} />
+                <DrawerCard key={bp.id} bp={bp} onChoose={chooseBlueprint} />
               ))}
             </div>
           </div>

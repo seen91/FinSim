@@ -1,7 +1,8 @@
-import { findCard, formatMonth, formatMonthsDelta, fromMonthIndex, quantile } from '@finsim/engine'
+import { formatMonth, formatMonthsDelta, fromMonthIndex, quantile } from '@finsim/engine'
 import type { ReactElement } from 'react'
 import { formatAmount, formatPercent } from '../format'
 import { Glyph } from '../icons'
+import { findNode } from '../instances'
 import type { Mc } from '../mc'
 import type { Doc } from '../model'
 import { rangeVerdict } from '../verdict'
@@ -60,9 +61,11 @@ export function FuturesReport({ open, mc, doc, onClose }: { open: boolean; mc: M
   // one row per decision bundle in play, in table order
   const bundles = Array.from(mc.ranges.values())
     .map((range) => {
-      const card = findCard(doc.table.root, range.cardId)
+      // ranges exist only for hands, and hands keep their name on the node
+      const node = findNode(doc.table.root, range.cardId)
+      const name = node && 'name' in node ? (node.name ?? node.id) : node?.id
       const verdict = rangeVerdict(range)
-      return card && verdict ? { name: card.name ?? card.id, range, verdict } : null
+      return name !== undefined && verdict ? { name, range, verdict } : null
     })
     .filter((b) => b !== null)
 

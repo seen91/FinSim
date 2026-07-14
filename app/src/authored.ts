@@ -1,14 +1,16 @@
 import { validateTable, type Card, type Curve, type Take } from '@finsim/engine'
 import { formatAmount, formatPercent, formatPerMonth } from './format'
-import { glyphOf, KIND_GLYPHS, withGlyph } from './glyph'
+import { KIND_GLYPHS } from './glyph'
 import type { GlyphName } from './icons'
 
 /**
  * Authored cards — what the Workshop makes. An authored card is an engine
  * card template plus its front matter: the glyph and the description, which
  * doubles as the assumptions footnote (where the numbers come from,
- * DESIGN.md §3). Playing one clones the template with fresh ids; the library
- * keeps the original.
+ * DESIGN.md §3). It is one of the two canonical-card species (the other is
+ * the read-only built-in, builtins.ts): the table holds INSTANCES of it
+ * (instances.ts), so editing a design here reaches every copy in play by
+ * construction.
  */
 export interface AuthoredCard {
   /** Library identity — stable across edits, unique within a library/pack. */
@@ -90,64 +92,17 @@ export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
   }
 }
 
-/** The design stamp a dealt card wears — an app-level key the engine never reads (like `glyph`, `tune`). */
-type Designed = Card & { design?: string }
-
 /**
- * Deal a playable card from an authored template: a deep clone with every id
- * (nested hands and rule ids included) suffixed fresh, so the same design can
- * sit on the table many times. The dealt card wears the design's glyph and a
- * `design` stamp back to its original — the design stays the one true card,
- * and editing it in the Workshop reaches every copy in play.
+ * A fresh design cut from any canonical card — the Workshop's "copy" of a
+ * design, and the "copy to shelf" that makes a read-only built-in editable.
+ * Front matter travels; the template's ids are rewritten to the new identity.
  */
-export function instantiate(authored: AuthoredCard, uid: string): Card {
-  const card = structuredClone(authored.card) as Designed
-  const rewrite = (c: Card): void => {
-    c.id = `${c.id}-${uid}`
-    if (c.kind === 'rule') c.rule.id = `${c.rule.id}-${uid}`
-    if (c.kind === 'hand') c.children.forEach(rewrite)
-  }
-  rewrite(card)
-  card.design = authored.id
-  return withGlyph(card, authored.glyph)
-}
-
-/**
- * The design a played card was dealt from, if the library still holds it —
- * null for one-off cards (pile blueprints, presets) and for orphans whose
- * design was burned; those are their own originals.
- */
-export function designIdOf(card: Card, library: AuthoredCard[]): string | null {
-  const stamped = (card as Designed).design
-  if (typeof stamped === 'string') return library.some((a) => a.id === stamped) ? stamped : null
-  // copies dealt before the stamp existed carry the design's id plus one fresh suffix
-  const legacy = card.id.replace(/-[0-9a-f]{8}$/, '')
-  return legacy !== card.id && library.some((a) => a.id === legacy) ? legacy : null
-}
-
-/**
- * Adopt a one-off table card as a design: a clean template stripped of
- * play-state (design stamp, tune, set-aside — nested hands included). Stamp
- * the played card with `stampDesign` afterwards so it becomes the design's
- * first copy and future edits reach it.
- */
-export function designFrom(card: Card): AuthoredCard {
-  const template = structuredClone(card)
-  const strip = (c: Card): void => {
-    const worn = c as Designed & { tune?: unknown; glyph?: unknown }
-    delete worn.design
-    delete worn.tune
-    delete worn.enabled
-    if (c.kind === 'hand') c.children.forEach(strip)
-  }
-  strip(template)
-  delete (template as Card & { glyph?: unknown }).glyph // the design's front matter carries it
-  return { id: card.id, glyph: glyphOf(card), description: '', card: template }
-}
-
-/** Stamp a played card as a copy of a design — edits to the design reach it from now on. */
-export function stampDesign(card: Card, designId: string): void {
-  ;(card as Designed).design = designId
+export function redesign(canonical: AuthoredCard, id: string): AuthoredCard {
+  const copy = structuredClone(canonical)
+  copy.id = id
+  copy.card.id = id
+  if (copy.card.kind === 'rule') copy.card.rule.id = `${id}-rule`
+  return copy
 }
 
 /** Validate an authored card's template with the engine's own table validator. */

@@ -1766,6 +1766,15 @@ input[type='range'].tuned {
   color: color-mix(in srgb, var(--flame) 60%, #ffc890);
 }
 
+/* a built-in's math behind glass: the same editor, no writes, said quietly */
+.work-readonly {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  opacity: 0.75;
+}
+
 /* the workbench card: room enough for its math */
 .pcard-work {
   --card-w: 208px;

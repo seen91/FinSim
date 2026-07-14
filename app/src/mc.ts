@@ -10,6 +10,7 @@ import {
   type Table,
   type World,
 } from '@finsim/engine'
+import type { AuthoredCard } from './authored'
 import { playedTable, type Doc } from './model'
 
 /**
@@ -74,9 +75,9 @@ function hasVolatility(table: Table, world: World, to: number): boolean {
  * Run the fan and the per-bundle ranges. Null when the table carries no
  * volatility — the deterministic line already tells the whole story.
  */
-export function runMc(doc: Doc): Mc | null {
-  // the same tuned table runSim plays — the fan and the line must live in one world
-  const { table, world } = playedTable(doc)
+export function runMc(doc: Doc, library: AuthoredCard[] = []): Mc | null {
+  // the same resolved, tuned table runSim plays — the fan and the line must live in one world
+  const { table, world } = playedTable(doc, library)
   const to = doc.from + doc.horizonMonths - 1
   if (!hasVolatility(table, world, to)) return null
   const opts = { paths: MC_PATHS, seed: MC_SEED }

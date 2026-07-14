@@ -1,8 +1,8 @@
-import { allCards, firstCrossing, formatMonthsDelta, validateTable, ym, type AssetCard, type Card, type DebtCard, type DrainCard, type HandCard, type SourceCard } from '@finsim/engine'
+import { allCards, firstCrossing, formatMonthsDelta, validateTable, ym, type AssetCard, type Card, type DebtCard, type DrainCard, type SourceCard } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
-import { blankCard, instantiate, mergeLibrary, validateAuthored, type AuthoredCard } from '../src/authored'
+import { blankCard, mergeLibrary, validateAuthored, type AuthoredCard } from '../src/authored'
 import { addCard, moveCard } from '../src/hands'
-import { LIBRARY } from '../src/library'
+import { instanceOf, isInstance, resolveTable, type HandNode } from '../src/instances'
 import { runSim, type Doc } from '../src/model'
 import { deserializePack, serializePack } from '../src/packs'
 
@@ -85,42 +85,39 @@ describe('M3(a): the M1 question through the Workshop path, no starter pack', ()
     const packed = deserializePack(serializePack({ name: 'Authored from scratch', cards: library }))
     expect(packed.cards).toEqual(library)
 
-    // 3. Deal onto an empty table with the app's own gestures. Hands are
-    //    composed on the table (a Workshop rule), so the bundles come from
-    //    the empty-hand blueprint.
+    // 3. Deal onto an empty table with the app's own gestures: every leaf an
+    //    instance of its design. Hands are composed on the table (a Workshop
+    //    rule), so the bundles are fresh hand nodes.
     const doc = emptyDoc()
-    const emptyHand = LIBRARY.find((b) => b.id === 'empty-hand')!
     const find = (id: string): AuthoredCard => packed.cards.find((c) => c.id.includes(id))!
 
-    const budget = emptyHand.make('budget') as HandCard
-    budget.name = 'Current budget'
+    const budget: HandNode = { id: 'budget-hand', name: 'Current budget', kind: 'hand', children: [] }
     addCard(doc, null, budget)
-    addCard(doc, budget.id, instantiate(find('salary'), 'p1'))
-    addCard(doc, budget.id, instantiate(find('expenses'), 'p1'))
-    addCard(doc, budget.id, instantiate(find('tax'), 'p1'))
+    addCard(doc, budget.id, instanceOf(find('salary').id, 'p1'))
+    addCard(doc, budget.id, instanceOf(find('expenses').id, 'p1'))
+    addCard(doc, budget.id, instanceOf(find('tax').id, 'p1'))
     // played in the wrong order on purpose: drag the tax above the expenses —
     // order is load-bearing, and reordering is a table gesture too
-    const taxId = budget.children.find((c) => c.name === 'Income tax')!.id
+    const taxId = budget.children.find((c) => isInstance(c) && c.ref === find('tax').id)!.id
     moveCard(doc, taxId, 1)
-    for (let i = 1; i <= 5; i++) addCard(doc, budget.id, instantiate(find('fund'), `p${String(i)}`))
+    for (let i = 1; i <= 5; i++) addCard(doc, budget.id, instanceOf(find('fund').id, `p${String(i)}`))
 
-    const car = emptyHand.make('car') as HandCard
-    car.name = 'Buy the car'
+    const car: HandNode = { id: 'car-hand', name: 'Buy the car', kind: 'hand', children: [] }
     addCard(doc, null, car)
-    addCard(doc, car.id, instantiate(find('car-value'), 'p1'))
-    addCard(doc, car.id, instantiate(find('car-costs'), 'p1'))
-    const financing = emptyHand.make('financing') as HandCard
-    financing.name = 'Financing'
+    addCard(doc, car.id, instanceOf(find('car-value').id, 'p1'))
+    addCard(doc, car.id, instanceOf(find('car-costs').id, 'p1'))
+    const financing: HandNode = { id: 'financing-hand', name: 'Financing', kind: 'hand', children: [] }
     addCard(doc, car.id, financing)
-    addCard(doc, financing.id, instantiate(find('car-loan'), 'p1'))
+    addCard(doc, financing.id, instanceOf(find('car-loan').id, 'p1'))
 
     // the dealt table is structurally valid, with every id freshly suffixed
-    expect(validateTable(doc.table)).toEqual([])
-    const ids = allCards(doc.table.root).map((c) => c.id)
+    const resolved = resolveTable(doc.table, packed.cards)
+    expect(validateTable(resolved)).toEqual([])
+    const ids = allCards(resolved.root).map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
 
     // 4. Read the verdict off the table — the hand-checked golden answer.
-    const sim = runSim(doc)
+    const sim = runSim(doc, packed.cards)
     const verdict = sim.compares.find((c) => c.name === 'Buy the car')!
     expect(verdict.delta.baseMonth).toBe(ym(2045, 6))
     expect(verdict.delta.variantMonth).toBe(ym(2046, 9))
@@ -142,9 +139,9 @@ describe('M3(a): the M1 question through the Workshop path, no starter pack', ()
     const library = authorLibrary()
     const doc = emptyDoc()
     const fund = library.find((c) => c.id.includes('fund'))!
-    addCard(doc, null, instantiate(fund, 'first'))
-    addCard(doc, null, instantiate(fund, 'second'))
-    expect(validateTable(doc.table)).toEqual([])
+    addCard(doc, null, instanceOf(fund.id, 'first'))
+    addCard(doc, null, instanceOf(fund.id, 'second'))
+    expect(validateTable(resolveTable(doc.table, library))).toEqual([])
     expect(doc.table.root.children[0]!.id).not.toBe(doc.table.root.children[1]!.id)
   })
 })

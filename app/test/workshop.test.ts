@@ -1,25 +1,29 @@
 import { simulate, validateTable } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
-import { AUTHORABLE_KINDS, blankCard, designIdOf, headlineFor, instantiate, mergeLibrary, validateAuthored, type AuthoredCard } from '../src/authored'
-import { addCard, replaceCard } from '../src/hands'
+import { AUTHORABLE_KINDS, blankCard, headlineFor, mergeLibrary, redesign, validateAuthored, type AuthoredCard } from '../src/authored'
+import { builtinOf, pileRef, presetRef } from '../src/builtins'
+import { addCard } from '../src/hands'
+import { canonicalOf, instanceOf, isInstance, resolveInstance, resolveTable } from '../src/instances'
 import { deserializePack, serializePack, type Pack } from '../src/packs'
 import { starterDoc } from '../src/starter'
 
 /**
- * M2 — the Workshop's data layer: blank cards must be born valid, playing a
- * design must never collide ids, and the pack format must round-trip exactly
- * and reject what it cannot read (DESIGN.md §3, §14.4).
+ * M2/M3c — the Workshop's data layer: blank cards must be born valid,
+ * playing a canonical card deals an INSTANCE that never collides ids, and
+ * the pack format must round-trip exactly and reject what it cannot read
+ * (DESIGN.md §3, §14.4, §0 "One card — instances").
  */
 
 describe('blank-card authoring', () => {
   it.each(AUTHORABLE_KINDS)('a blank %s is structurally valid and playable untouched', (kind) => {
     const blank = blankCard(kind, 'uid1')
     expect(validateAuthored(blank)).toEqual([])
-    // and it simulates without blowing up
+    // and its instance resolves and simulates without blowing up
     const doc = starterDoc()
-    addCard(doc, null, instantiate(blank, 'play1'))
-    expect(validateTable(doc.table)).toEqual([])
-    expect(() => simulate(doc.table, {}, doc.from, doc.from + 23)).not.toThrow()
+    addCard(doc, null, instanceOf(blank.id, 'play1'))
+    const table = resolveTable(doc.table, [blank])
+    expect(validateTable(table)).toEqual([])
+    expect(() => simulate(table, {}, doc.from, doc.from + 23)).not.toThrow()
   })
 
   it('every blank has a face headline', () => {
@@ -29,79 +33,86 @@ describe('blank-card authoring', () => {
   })
 })
 
-describe('playing a design', () => {
+describe('playing a canonical card (instances)', () => {
   it('deals fresh ids every time — the same design can sit on the table twice', () => {
     const blank = blankCard('rule', 'uid1')
-    const first = instantiate(blank, 'a')
-    const second = instantiate(blank, 'b')
+    const first = instanceOf(blank.id, 'a')
+    const second = instanceOf(blank.id, 'b')
     expect(first.id).not.toBe(blank.card.id)
     expect(first.id).not.toBe(second.id)
-    if (first.kind === 'rule' && second.kind === 'rule') {
-      expect(first.rule.id).not.toBe(second.rule.id)
-    }
-    // the template is untouched
+    expect(first.ref).toBe(blank.id)
+    // resolution rewrites the clone's ids to the instance's; the template is untouched
+    const resolved = resolveInstance(first, [blank])
+    expect(resolved.id).toBe(first.id)
+    if (resolved.kind === 'rule') expect(resolved.rule.id).toBe(`${first.id}-rule`)
     expect(blank.card.id).toBe(blank.id)
   })
 
-  it('two copies of one design on the starter table validate', () => {
+  it('two instances of one design on the starter table validate', () => {
     const doc = starterDoc()
     const blank = blankCard('asset', 'uid1')
-    addCard(doc, null, instantiate(blank, 'a'))
-    addCard(doc, null, instantiate(blank, 'b'))
-    expect(validateTable(doc.table)).toEqual([])
+    addCard(doc, null, instanceOf(blank.id, 'a'))
+    addCard(doc, null, instanceOf(blank.id, 'b'))
+    expect(validateTable(resolveTable(doc.table, [blank]))).toEqual([])
+  })
+
+  it('an instance carries exactly its per-copy state: dials, set-aside, id', () => {
+    const blank = blankCard('drain', 'uid1')
+    const inst = instanceOf(blank.id, 'a')
+    inst.tune = { 'amount.value': 50 }
+    inst.enabled = false
+    const resolved = resolveInstance(inst, [blank])
+    expect(resolved.enabled).toBe(false)
+    expect((resolved as { tune?: unknown }).tune).toEqual({ 'amount.value': 50 })
+    // everything else is the canonical card's
+    expect(resolved.name).toBe(blank.card.name)
+  })
+
+  it('a ref nothing answers to fails readably', () => {
+    expect(() => resolveInstance({ id: 'ghost-1', ref: 'burned-design' }, [])).toThrow(/plays a design this table does not know/)
   })
 })
 
-describe('the design is the one true card (designIdOf)', () => {
-  it('a dealt copy is stamped with its design and found by it', () => {
-    const design = blankCard('source', 'uid1')
-    const copy = instantiate(design, 'a')
-    expect(designIdOf(copy, [design])).toBe(design.id)
+describe('canonical cards come in two species', () => {
+  it('a library design shadows nothing: built-ins resolve by their own refs', () => {
+    const rent = builtinOf(pileRef('rent'))!
+    expect(rent.card.kind).toBe('drain')
+    expect(builtinOf(presetRef('salary'))!.card.name).toBe('Salary')
+    // pile salary and preset salary are different canonicals
+    expect(builtinOf(pileRef('salary'))!.card).not.toEqual(builtinOf(presetRef('salary'))!.card)
   })
 
-  it('an orphan whose design was burned is its own original', () => {
-    const design = blankCard('source', 'uid1')
-    const copy = instantiate(design, 'a')
-    expect(designIdOf(copy, [])).toBeNull()
+  it('canonicalOf reads the library first, then the built-ins', () => {
+    const design = blankCard('drain', 'uid1')
+    expect(canonicalOf(design.id, [design])).toBe(design)
+    expect(canonicalOf(pileRef('rent'), [design])).toEqual(builtinOf(pileRef('rent')))
+    expect(canonicalOf('nothing', [design])).toBeNull()
   })
 
-  it('a one-off card (no stamp, id not from a design) is its own original', () => {
-    const design = blankCard('source', 'uid1')
-    const salary = starterDoc().table.root.children[0]!
-    expect(designIdOf(salary, [design])).toBeNull()
+  it('hands are compositions, never canonical — the empty-hand blueprint has no builtin ref', () => {
+    expect(builtinOf(pileRef('empty-hand'))).toBeNull()
   })
 
-  it('a copy dealt before the stamp existed is matched by its id suffix', () => {
-    const design = blankCard('source', 'uid1')
-    const legacy = instantiate(design, 'deadbeef')
-    delete (legacy as { design?: string }).design
-    expect(designIdOf(legacy, [design])).toBe(design.id)
-    // even when the design itself is a duplicate, whose id ends in the same shape
-    const dupe = structuredClone(design)
-    dupe.id = `${design.id}-12345678`
-    dupe.card.id = dupe.id
-    const fromDupe = instantiate(dupe, 'cafebabe')
-    delete (fromDupe as { design?: string }).design
-    expect(designIdOf(fromDupe, [design, dupe])).toBe(dupe.id)
+  it('redesign mints an independent design: fresh ids, same math and front matter', () => {
+    const rent = builtinOf(pileRef('rent'))!
+    const mine = redesign(rent, 'rent-mine')
+    expect(mine.id).toBe('rent-mine')
+    expect(mine.card.id).toBe('rent-mine')
+    expect(mine.glyph).toBe(rent.glyph)
+    expect(mine.card).toEqual({ ...rent.card, id: 'rent-mine' })
+    // and the original template never moved
+    expect(rent.card.id).toBe('rent')
   })
 })
 
-describe('editing in place (replaceCard)', () => {
-  it('swaps a nested card by id and leaves the rest of the tree alone', () => {
+describe('the starter table is instances all the way down', () => {
+  it('every leaf is an instance of a built-in; hands stay compositions', () => {
     const doc = starterDoc()
-    const invest = doc.table.root.children.find((c) => c.kind === 'hand')!
-    const fund = invest.kind === 'hand' ? invest.children.find((c) => c.kind === 'asset')! : null!
-    replaceCard(doc, { ...fund, name: 'Renamed fund' })
-    const again = doc.table.root.children.find((c) => c.kind === 'hand')!
-    expect(again.kind === 'hand' && again.children.find((c) => c.id === fund.id)?.name).toBe('Renamed fund')
-    expect(validateTable(doc.table)).toEqual([])
-  })
-
-  it('never replaces the root hand', () => {
-    const doc = starterDoc()
-    const before = structuredClone(doc.table.root)
-    replaceCard(doc, { ...doc.table.root, name: 'Hijacked' })
-    expect(doc.table.root).toEqual(before)
+    for (const child of doc.table.root.children) {
+      if (isInstance(child)) expect(builtinOf(child.ref)).not.toBeNull()
+      else expect(child.kind).toBe('hand')
+    }
+    expect(validateTable(resolveTable(doc.table, []))).toEqual([])
   })
 })
 

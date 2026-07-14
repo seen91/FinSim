@@ -1,5 +1,6 @@
 import type { Card, SourceCard } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
+import { resolveTable } from '../src/instances'
 import { runSim, type Doc } from '../src/model'
 import { starterDoc } from '../src/starter'
 import { applyTune, applyTuneTable, effectiveValue, tuneOf, withTune } from '../src/tune'
@@ -87,12 +88,12 @@ describe('a tuned table plays the dialed values', () => {
     doc.table.root.children[0] = withTune(salary(), 'flow.value', 100)
     const dialed = runSim(doc)
     expect(dialed.active.cash.points[0]).toBe(plain.active.cash.points[0]! * 2)
-    doc.table.root.children[0] = withTune(doc.table.root.children[0]!, 'flow.value', 0)
+    doc.table.root.children[0] = withTune(doc.table.root.children[0] as Card, 'flow.value', 0)
     expect(runSim(doc).active.cash.points).toEqual(plain.active.cash.points)
   })
 
-  it('the starter table is untouched by an all-zero pass', () => {
-    const doc = starterDoc()
-    expect(applyTuneTable(doc.table)).toEqual(doc.table)
+  it('the resolved starter table is untouched by an all-zero pass', () => {
+    const table = resolveTable(starterDoc().table, [])
+    expect(applyTuneTable(table)).toEqual(table)
   })
 })

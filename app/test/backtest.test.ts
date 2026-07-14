@@ -1,9 +1,11 @@
 import { simulate, validateTable, ym, type AssetCard, type SampledData } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
-import { instantiate, validateAuthored } from '../src/authored'
+import { validateAuthored } from '../src/authored'
+import { pileRef } from '../src/builtins'
 import { demoSeriesData } from '../src/demoSeries'
 import { deserializeDoc, serializeDoc } from '../src/exchange'
 import { addCard } from '../src/hands'
+import { instanceOf, resolveTable } from '../src/instances'
 import { LIBRARY } from '../src/library'
 import { runMc } from '../src/mc'
 import { migrateDoc, runSim, type Doc } from '../src/model'
@@ -87,11 +89,13 @@ describe('minting a priced design from an imported series', () => {
     expect(design.description).toMatch(/currency/)
   })
 
-  it('plays onto a table and simulates against its series', () => {
+  it('plays onto a table (as an instance) and simulates against its series', () => {
     const doc = goldenDoc(ym(1999, 1))
-    addCard(doc, null, instantiate(mintPricedDesign('golden', data, 'uid1'), 'play1'))
-    expect(validateTable(doc.table)).toEqual([])
-    expect(() => simulate(doc.table, doc.world!, ym(1999, 1), ym(1999, 12))).not.toThrow()
+    const design = mintPricedDesign('golden', data, 'uid1')
+    addCard(doc, null, instanceOf(design.id, 'play1'))
+    const table = resolveTable(doc.table, [design])
+    expect(validateTable(table)).toEqual([])
+    expect(() => simulate(table, doc.world!, ym(1999, 1), ym(1999, 12))).not.toThrow()
   })
 
   it('seriesInUse sees both the table and the library', () => {
@@ -146,7 +150,7 @@ describe('the draw pile demo history ("Demo index fund")', () => {
   const demoDoc = (from: number, horizonMonths = 30 * 12): Doc => {
     const doc: Doc = { table: { root: { id: 'root', kind: 'hand', children: [] } }, goal: 10_000_000, from, horizonMonths }
     addSeries(doc, bp.series)
-    addCard(doc, null, bp.make('uid1'))
+    addCard(doc, null, instanceOf(pileRef(bp.id), 'uid1'))
     return doc
   }
 
@@ -160,7 +164,7 @@ describe('the draw pile demo history ("Demo index fund")', () => {
 
   it('played the way the app plays it, any start inside the data backtests for a full 30-year horizon', () => {
     const doc = demoDoc(ym(1990, 1))
-    expect(validateTable(doc.table)).toEqual([])
+    expect(validateTable(resolveTable(doc.table, []))).toEqual([])
     expect(() => runSim(doc)).not.toThrow()
     // inside the data (1990-01..2019-12): one real past, no fan
     expect(runMc(doc)).toBeNull()
@@ -189,17 +193,22 @@ describe('the draw pile demo history ("Demo index fund")', () => {
 describe('doc round-trips', () => {
   it('serialize → deserialize is exact', () => {
     const doc = goldenDoc(ym(1999, 1))
-    expect(deserializeDoc(serializeDoc(doc))).toEqual(doc)
+    expect(deserializeDoc(serializeDoc(doc)).doc).toEqual(doc)
   })
 
-  it('a legacy replay anchor is lifted into the start date', () => {
+  it('a legacy replay anchor is lifted into the start date, and the v1 cards become instances', () => {
     const legacy = { ...goldenDoc(ym(2026, 1)), replayFrom: ym(1999, 1) }
-    const doc = migrateDoc(structuredClone(legacy) as Doc)
+    const doc = structuredClone(legacy) as Doc
+    const minted = migrateDoc(doc)
     expect(doc.from).toBe(ym(1999, 1))
     expect('replayFrom' in doc).toBe(false)
-    // and the same lift happens on file import
-    const back = deserializeDoc(serializeDoc(legacy as Doc))
-    expect(back.from).toBe(ym(1999, 1))
+    // the raw salary + priced fund minted into designs their instances play
+    expect(minted.length).toBeGreaterThan(0)
+    expect(runSim(doc, minted).active.balances.find((b) => b.id === 'fund')!.points).toEqual(GOLDEN_BALANCES)
+    // and the same lift happens importing a v1 file
+    const back = deserializeDoc(JSON.stringify({ format: 'finsim-table', version: 1, doc: legacy }))
+    expect(back.doc.from).toBe(ym(1999, 1))
+    expect(runSim(back.doc, back.designs).active.balances.find((b) => b.id === 'fund')!.points).toEqual(GOLDEN_BALANCES)
   })
 
   it('a pack carries the series its designs wear', () => {

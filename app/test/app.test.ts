@@ -1,7 +1,9 @@
-import { allCards, firstCrossing, formatMonthsDelta, type HandCard, type ScheduledRule } from '@finsim/engine'
+import { allCards, firstCrossing, formatMonthsDelta, type ScheduledRule } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
+import { pileRef } from '../src/builtins'
 import { deserializeDoc, serializeDoc } from '../src/exchange'
 import { addCard } from '../src/hands'
+import { isInstance, resolveTable, type HandNode } from '../src/instances'
 import { runSim, type Doc } from '../src/model'
 import { PRESETS } from '../src/presets'
 import { starterDoc } from '../src/starter'
@@ -15,8 +17,8 @@ import { starterDoc } from '../src/starter'
  */
 
 /** The starter's "Index fund investing" hand — funds behind a 100 % take, ISK rule card on top. */
-function investingHand(doc: Doc): HandCard {
-  return doc.table.root.children.find((c): c is HandCard => c.kind === 'hand')!
+function investingHand(doc: Doc): HandNode {
+  return doc.table.root.children.find((c): c is HandNode => !isInstance(c) && c.kind === 'hand')!
 }
 
 /**
@@ -27,7 +29,7 @@ function investingHand(doc: Doc): HandCard {
 function goldenDoc(): Doc {
   const doc = starterDoc()
   const invest = investingHand(doc)
-  invest.children = invest.children.filter((c) => c.kind !== 'rule')
+  invest.children = invest.children.filter((c) => !isInstance(c) || c.ref !== pileRef('isk-tax'))
   return doc
 }
 
@@ -43,7 +45,7 @@ describe('M1 acceptance through the app model', () => {
     const doc = docWithCar()
     const sim = runSim(doc)
     // every card on the table carries a compare, nested ones included
-    expect(sim.compares).toHaveLength(allCards(doc.table.root).length)
+    expect(sim.compares).toHaveLength(allCards(resolveTable(doc.table, []).root).length)
     const compare = sim.compares.find((c) => c.name === 'Buy the car')!
     expect(compare.delta.deltaMonths).toBe(15)
     expect(formatMonthsDelta(compare.delta.deltaMonths!)).toBe('1 yr 3 mo')
@@ -79,7 +81,7 @@ describe('JSON export/import', () => {
   it('round-trips the document exactly', () => {
     const doc = docWithCar()
     doc.world = { rules: [DECEMBER_FUND_TAX] }
-    expect(deserializeDoc(serializeDoc(doc))).toEqual(doc)
+    expect(deserializeDoc(serializeDoc(doc)).doc).toEqual(doc)
   })
 
   it('rejects garbage with a human-readable reason', () => {
@@ -88,10 +90,13 @@ describe('JSON export/import', () => {
     expect(() => deserializeDoc(JSON.stringify({ format: 'finsim-table', version: 99, doc: {} }))).toThrow('version 99')
   })
 
-  it("lifts the old 'event' kind to 'rule' on import", () => {
-    const json = serializeDoc(starterDoc()).replaceAll('"kind": "rule"', '"kind": "event"')
+  it("lifts the old 'event' kind to 'rule' on a v1 import", () => {
+    // a v1 file: full engine cards on the table, the ISK card still an 'event'
+    const legacy = { ...starterDoc(), table: resolveTable(starterDoc().table, []) }
+    const json = JSON.stringify({ format: 'finsim-table', version: 1, doc: legacy }).replaceAll('"kind":"rule"', '"kind":"event"')
     const imported = deserializeDoc(json)
-    expect(investingHand(imported).children[0]!.kind).toBe('rule')
+    const isk = investingHand(imported.doc).children[0]!
+    expect(isInstance(isk) && isk.ref).toBe(pileRef('isk-tax'))
   })
 
   it('rejects a structurally invalid table via the engine validator', () => {
@@ -120,8 +125,8 @@ describe('taxes as cards', () => {
     const invest = investingHand(doc)
     expect(invest.name).toBe('Index fund investing')
     expect(invest.take).toEqual({ type: 'percent', percent: 1 })
-    expect(invest.children.filter((c) => c.kind === 'rule')).toHaveLength(1)
-    expect(invest.children[0]!.kind).toBe('rule') // on top — it only reaches the cards below it
+    const first = invest.children[0]!
+    expect(isInstance(first) && first.ref).toBe(pileRef('isk-tax')) // on top — it only reaches the cards below it
     const bare = runSim(goldenDoc())
     const taxed = runSim(doc)
     // first December in the simulation: month % 12 === 11

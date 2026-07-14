@@ -1,6 +1,7 @@
 import { findCard, formatMonth, type Card, type HandCard, type SampledData } from '@finsim/engine'
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { designIdOf, instantiate, mergeLibrary, type AuthoredCard } from './authored'
+import { mergeLibrary, type AuthoredCard } from './authored'
+import { builtinSeriesOf } from './builtins'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
 import { CashDock } from './components/CashDock'
@@ -15,12 +16,14 @@ import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
 import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
 import { errorMessage, formatCompact, parseCompact } from './format'
-import { addCard, findParentHand, moveCard, removeCard, replaceCard } from './hands'
+import { addCard, moveCard, removeCard } from './hands'
 import { Glyph } from './icons'
+import { canonicalOf, findNode, instanceOf, isInstance, type TableNode } from './instances'
 import { runMc } from './mc'
-import { cardFocusSeries, migrateDoc, runSim, useDoc, type Sim } from './model'
+import { migrateDoc, runSim, useDoc, type Sim } from './model'
 import { addSeries, parseMonthText } from './seriesImport'
 import { starterDoc } from './starter'
+import type { Tune } from './tune'
 import { newUid } from './uid'
 
 /** The main hand at the bottom of the screen: a wide, gentle arc. */
@@ -70,24 +73,27 @@ export function App(): ReactElement {
   // the one card turned face-down to its what-if dials — tap to turn, tap to turn back
   const [flippedId, setFlippedId] = useState<string | null>(null)
   const loaded = useRef(false)
-  const libraryLoaded = useRef(false)
   const importInput = useRef<HTMLInputElement>(null)
 
-  // local-first: load once, then save (debounced) on every change.
-  // ?fresh skips the saved table and deals the starter — the clean-slate path now that Reset is gone.
+  // local-first: load once, then save (debounced) on every change. The doc and
+  // the library load together because a pre-instances doc migrates against the
+  // library (design stamps → refs) and may mint designs into it.
+  // ?fresh skips the saved table and deals the starter — designs still load.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has('fresh')) {
-      loaded.current = true
-      return
-    }
-    void loadDoc().then((saved) => {
-      if (saved) {
+    const fresh = new URLSearchParams(window.location.search).has('fresh')
+    void Promise.all([fresh ? Promise.resolve(undefined) : loadDoc(), loadLibrary()]).then(([savedDoc, savedLibrary]) => {
+      let lib = savedLibrary ?? []
+      if (savedDoc) {
         // the removed Sweden-rules toggle was the only app-side writer of world
         // rules — lift what it left behind in old saves. Imported files keep
         // theirs: world rules are engine surface, and exchange round-trips them.
-        if (saved.world?.rules) delete saved.world.rules
-        store.replace(migrateDoc(saved))
+        if (savedDoc.world?.rules) delete savedDoc.world.rules
+        const minted = migrateDoc(savedDoc, lib)
+        if (minted.length > 0) lib = mergeLibrary(lib, minted)
+        store.replace(savedDoc)
       }
+      // a design made before the load lands must survive it — merge, don't clobber
+      setLibrary((current) => (current.length > 0 ? mergeLibrary(lib, current) : lib))
       loaded.current = true
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,17 +103,8 @@ export function App(): ReactElement {
     const timer = setTimeout(() => void saveDoc(doc), 400)
     return () => clearTimeout(timer)
   }, [doc])
-
-  // the Workshop's authored cards persist too — even under ?fresh, designs survive
   useEffect(() => {
-    void loadLibrary().then((saved) => {
-      // a design made before the load lands must survive it — merge, don't clobber
-      if (saved) setLibrary((current) => (current.length > 0 ? mergeLibrary(saved, current) : saved))
-      libraryLoaded.current = true
-    })
-  }, [])
-  useEffect(() => {
-    if (!libraryLoaded.current) return
+    if (!loaded.current) return
     // no debounce: designs are few and precious — a fresh one must hit disk
     // before any reload can eat it (the doc keeps its debounce; it churns)
     void saveLibrary(library)
@@ -121,8 +118,9 @@ export function App(): ReactElement {
   useEffect(() => {
     const flush = (): void => {
       if (document.visibilityState !== 'hidden') return
-      if (loaded.current) void saveDoc(latest.current.doc)
-      if (libraryLoaded.current) void saveLibrary(latest.current.library)
+      if (!loaded.current) return
+      void saveDoc(latest.current.doc)
+      void saveLibrary(latest.current.library)
     }
     document.addEventListener('visibilitychange', flush)
     window.addEventListener('pagehide', flush)
@@ -132,32 +130,36 @@ export function App(): ReactElement {
     }
   }, [])
 
-  // a table can still fail to play — a start before a series begins, a bogus
-  // series id: keep the last good sim on screen and say why
+  // a table can still fail to play — a start before a series begins, a burned
+  // design an import still references: keep the last good sim on screen and say why
   const simState = useMemo(() => {
     try {
-      return { sim: runSim(doc), error: null as string | null }
+      return { sim: runSim(doc, library), error: null as string | null }
     } catch (err) {
       return { sim: null, error: errorMessage(err) }
     }
-  }, [doc])
+  }, [doc, library])
   const lastGoodSim = useRef<Sim | null>(null)
   if (simState.sim) lastGoodSim.current = simState.sim
   const sim =
-    simState.sim ?? lastGoodSim.current ?? runSim({ goal: doc.goal, from: doc.from, horizonMonths: doc.horizonMonths, table: { root: { id: 'root', kind: 'hand', children: [] } } })
+    simState.sim ??
+    lastGoodSim.current ??
+    runSim({ goal: doc.goal, from: doc.from, horizonMonths: doc.horizonMonths, table: { root: { id: 'root', kind: 'hand', children: [] } } })
   // the Monte Carlo pass rides a deferred value: the deterministic line
   // answers every gesture instantly, the fan follows a beat later
-  const deferredDoc = useDeferredValue(doc)
+  const simInput = useMemo(() => ({ doc, library }), [doc, library])
+  const deferred = useDeferredValue(simInput)
   const mc = useMemo(() => {
     try {
-      return runMc(deferredDoc)
+      return runMc(deferred.doc, deferred.library)
     } catch {
       return null // the deterministic pass already carries the readable error
     }
-  }, [deferredDoc])
+  }, [deferred])
   const to = doc.from + doc.horizonMonths - 1
   const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
-  const root = doc.table.root
+  // what the table renders: instances resolved to their canonical cards, per-copy dials riding along
+  const root = sim.resolvedRoot
 
   // the opened hand and the chain of hands above it (a removal or import can vanish it — fall back to chart)
   const opened = openHandId ? findCard(root, openHandId) : null
@@ -166,33 +168,25 @@ export function App(): ReactElement {
     let cur = opened?.kind === 'hand' ? opened : null
     while (cur && cur.id !== root.id) {
       chain.unshift(cur)
-      cur = findParentHand(root, cur.id)
+      cur = findParentHandIn(root, cur.id)
     }
     return chain
   }, [opened, root])
   const openHand = trail[trail.length - 1] ?? null
 
-  // the Workshop's focus, mirrored onto the chart: one card, one curve.
-  // In play → its balance / cumulative effect from the live sim; a design →
-  // a fresh solo sim, the card alone on an empty table.
+  // the Workshop's focus, mirrored onto the chart: one canonical card, played
+  // alone on an empty table — a design (or its unsaved draft), or a built-in
   const arenaFocus = useMemo((): ArenaFocus | null => {
     if (!workshopOpen || !workshopFocus) return null
-    if (workshopFocus.where === 'table') {
-      const card = findCard(root, workshopFocus.id)
-      const series = card ? cardFocusSeries(sim, card) : null
-      if (!card || !series) return null
-      const what = card.kind === 'asset' || card.kind === 'debt' ? 'its balance, in place on the table' : 'what it has moved so far, in place on the table'
-      return { name: card.name ?? card.id, note: what, series }
-    }
-    const authored = (workDraft?.id === workshopFocus.id ? workDraft : null) ?? library.find((a) => a.id === workshopFocus.id)
+    const authored = (workDraft?.id === workshopFocus.id ? workDraft : null) ?? canonicalOf(workshopFocus.id, library)
     if (!authored) return null
     try {
-      const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } })
+      const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } }, library)
       return { name: authored.card.name ?? authored.id, note: 'played alone on an empty table', series: solo.active.netWorth }
     } catch {
       return null // a design can start before its data begins — no curve, not a crash
     }
-  }, [workshopOpen, workshopFocus, root, sim, library, doc, workDraft])
+  }, [workshopOpen, workshopFocus, library, doc, workDraft])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -215,18 +209,23 @@ export function App(): ReactElement {
 
   const targetId = openHand?.id ?? null
 
-  // one dealing gesture for everything the pile offers — a library blueprint,
-  // a preset card or hand, a Workshop design: land any series the card wears,
-  // then the card itself, into the open hand
-  const deal = (make: (uid: string) => Card, series?: Record<string, SampledData>): void => {
+  // one dealing gesture for everything the pile offers — a fresh instance of
+  // a canonical card (blueprint, preset member, Workshop design), or a whole
+  // preset hand of them: land any series the cards wear, then the nodes
+  const dealNode = (node: TableNode, series?: Record<string, SampledData>): void => {
     store.update((d) => {
       addSeries(d, series)
-      addCard(d, targetId, make(newUid()))
+      const landWorn = (n: TableNode): void => {
+        if (isInstance(n)) addSeries(d, builtinSeriesOf(n.ref))
+        else if (n.kind === 'hand') (n.children as TableNode[]).forEach(landWorn)
+      }
+      landWorn(node)
+      addCard(d, targetId, node)
     })
     setDrawerOpen(false)
   }
 
-  const playAuthored = (authored: AuthoredCard): void => deal((uid) => instantiate(authored, uid))
+  const dealRef = (ref: string): void => dealNode(instanceOf(ref, newUid()))
 
   const handleReorder = (cardId: string, toIndex: number): void => {
     store.update((d) => moveCard(d, cardId, toIndex))
@@ -241,42 +240,50 @@ export function App(): ReactElement {
     setFlippedId((f) => (f === cardId ? null : cardId))
   }
 
+  // the dials are per-copy state: the gesture writes the tune onto the node,
+  // never onto the canonical card the copy resolves to
   const handleTuneCard = (next: Card): void => {
-    store.update((d) => replaceCard(d, next))
+    store.update((d) => {
+      const node = findNode(d.table.root, next.id)
+      if (!node) return
+      const tune = (next as Card & { tune?: Tune }).tune
+      if (tune && Object.keys(tune).length > 0) (node as { tune?: Tune }).tune = tune
+      else delete (node as { tune?: Tune }).tune
+    })
   }
 
-  // the shelf's hammer: carry the card to the Workshop — its design if the
-  // library still holds one (edits reach every copy), else the one-off itself
+  // the shelf's hammer: carry the card to the Workshop — every copy is an
+  // instance, so the bench always holds the canonical card behind it
   const handleWorkshopCard = (cardId: string): void => {
-    const card = findCard(root, cardId)
-    if (!card) return
-    const designId = designIdOf(card, library)
+    const node = findNode(doc.table.root, cardId)
+    if (!node || !isInstance(node)) return
     setWorkDraft(null)
-    setWorkshopFocus(designId ? { where: 'library', id: designId } : { where: 'table', id: cardId })
+    setWorkshopFocus({ where: library.some((a) => a.id === node.ref) ? 'library' : 'builtin', id: node.ref })
     setWorkshopOpen(true)
   }
 
   // set aside / bring back: the card stays on the table, the sim plays without it
   const handleToggleCard = (cardId: string): void => {
     store.update((d) => {
-      const card = findCard(d.table.root, cardId)
-      if (!card) return
-      if (card.enabled === false) delete card.enabled
-      else card.enabled = false
+      const node = findNode(d.table.root, cardId)
+      if (!node) return
+      if (node.enabled === false) delete node.enabled
+      else node.enabled = false
     })
   }
 
   const handleExport = (): void => {
-    downloadJson(`finsim-${new Date().toISOString().slice(0, 10)}.json`, serializeDoc(doc))
+    downloadJson(`finsim-${new Date().toISOString().slice(0, 10)}.json`, serializeDoc(doc, library))
   }
 
   const handleImportFile = (file: File): void => {
     void file.text().then((text) => {
       try {
-        const imported = deserializeDoc(text)
-        store.replace(imported)
+        const imported = deserializeDoc(text, library)
+        if (imported.designs.length > 0) setLibrary((current) => mergeLibrary(current, imported.designs))
+        store.replace(imported.doc)
         setOpenHandId(null)
-        setScrub(imported.from)
+        setScrub(imported.doc.from)
       } catch (err) {
         alert(`Could not import: ${errorMessage(err)}`)
       }
@@ -367,8 +374,8 @@ export function App(): ReactElement {
         onWorkshopCard={handleWorkshopCard}
         onRenameHand={(handId, name) => {
           store.update((d) => {
-            const hand = findCard(d.table.root, handId)
-            if (hand?.kind === 'hand') hand.name = name
+            const hand = findNode(d.table.root, handId)
+            if (hand && !isInstance(hand) && hand.kind === 'hand') hand.name = name
           })
         }}
         onOpenReport={() => setReportOpen(true)}
@@ -426,10 +433,8 @@ export function App(): ReactElement {
         authored={library}
         onOpen={() => setDrawerOpen(true)}
         onClose={() => setDrawerOpen(false)}
-        onChoose={(bp) => deal(bp.make, bp.series)}
-        onChooseAuthored={playAuthored}
-        onImportHand={(preset) => deal(preset.build, preset.series)}
-        onImportCard={(card) => deal(card.make, card.series)}
+        onChooseRef={dealRef}
+        onDealNode={dealNode}
       />
 
       <Workshop
@@ -443,7 +448,7 @@ export function App(): ReactElement {
         update={store.update}
         library={library}
         onLibraryChange={setLibrary}
-        onPlay={playAuthored}
+        onPlay={dealRef}
         focus={workshopFocus}
         onFocus={setWorkshopFocus}
         draft={workDraft}
@@ -451,4 +456,16 @@ export function App(): ReactElement {
       />
     </div>
   )
+}
+
+/** findParentHand over the RESOLVED tree (engine cards) — display-side only. */
+function findParentHandIn(hand: HandCard, cardId: string): HandCard | null {
+  for (const child of hand.children) {
+    if (child.id === cardId) return hand
+    if (child.kind === 'hand') {
+      const found = findParentHandIn(child, cardId)
+      if (found) return found
+    }
+  }
+  return null
 }

@@ -1,6 +1,7 @@
 import { allCards, firstCrossing } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
 import { addCard } from '../src/hands'
+import { resolveTable } from '../src/instances'
 import { runMc, MC_PATHS } from '../src/mc'
 import { runSim, type Doc } from '../src/model'
 import { PRESETS } from '../src/presets'
@@ -22,8 +23,10 @@ function docWithCar(): Doc {
 
 describe('runMc', () => {
   it('a table without volatility has no fan — the line already tells the whole story', () => {
+    // resolve the starter's instances into plain cards so the volatility can be stripped per card
     const doc = starterDoc()
-    for (const card of allCards(doc.table.root)) {
+    doc.table = resolveTable(doc.table, [])
+    for (const card of allCards(doc.table.root as Parameters<typeof allCards>[0])) {
       if (card.kind === 'asset' && card.growth) delete card.growth.volatility
     }
     expect(runMc(doc)).toBeNull()
@@ -52,7 +55,7 @@ describe('runMc', () => {
     expect(firstCrossing(runSim(doc).active, doc.goal)).not.toBeNull()
 
     // every hand in play carries a range: investing, car, financing
-    const hands = allCards(doc.table.root).filter((c) => c.kind === 'hand')
+    const hands = allCards(resolveTable(doc.table, []).root).filter((c) => c.kind === 'hand')
     expect(hands.length).toBeGreaterThanOrEqual(3)
     for (const hand of hands) expect(mc.ranges.has(hand.id)).toBe(true)
 

@@ -1,5 +1,6 @@
-import { formatMonth, ym, type Card, type SampledData, type Table } from '@finsim/engine'
+import { formatMonth, ym, type Card, type SampledData } from '@finsim/engine'
 import type { AuthoredCard } from './authored'
+import { canonicalOf, isInstance, type HandNode, type TableNode } from './instances'
 
 /**
  * Importing historical data (DESIGN.md §0 "Backtesting"): a pasted or
@@ -99,9 +100,19 @@ export function seriesIdsIn(card: Card): string[] {
   }
 }
 
+/** Every named world series the table's nodes wear — instances read their canonical's card. */
+function seriesIdsInNode(node: TableNode, library: AuthoredCard[]): string[] {
+  if (isInstance(node)) {
+    const canonical = canonicalOf(node.ref, library)
+    return canonical ? seriesIdsIn(canonical.card) : []
+  }
+  if (node.kind === 'hand') return node.children.flatMap((c) => seriesIdsInNode(c, library))
+  return seriesIdsIn(node)
+}
+
 /** A series may only be deleted when neither the table nor the library wears it. */
-export function seriesInUse(seriesId: string, table: Table, library: AuthoredCard[]): boolean {
-  return seriesIdsIn(table.root).includes(seriesId) || library.some((a) => seriesIdsIn(a.card).includes(seriesId))
+export function seriesInUse(seriesId: string, table: { root: HandNode }, library: AuthoredCard[]): boolean {
+  return seriesIdsInNode(table.root, library).includes(seriesId) || library.some((a) => seriesIdsIn(a.card).includes(seriesId))
 }
 
 /**

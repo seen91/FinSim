@@ -2,10 +2,10 @@ import type { Card, Kind } from '@finsim/engine'
 import type { GlyphName } from './icons'
 
 /**
- * The glyph a card face wears. It rides on the card JSON as an app-level key
- * the engine never reads (like `tune`): blueprints, presets and authored
- * designs stamp theirs on every card they deal, so the mark survives renames
- * and round-trips. A card without one falls back to its kind's default.
+ * The glyph a card face wears. It rides on RESOLVED cards as an app-level key
+ * the engine never reads (like `tune`): the resolver stamps the canonical
+ * card's glyph onto every instance, and hand nodes carry their own. A card
+ * without one falls back to its kind's default.
  */
 
 /** The glyphs a card face may carry — pickable in the Workshop, checked on pack import. */
@@ -46,9 +46,4 @@ type Glyphed = Card & { glyph?: GlyphName }
 export function glyphOf(card: Card): GlyphName {
   const glyph = (card as Glyphed).glyph
   return isCardGlyph(glyph) ? glyph : KIND_GLYPHS[card.kind]
-}
-
-/** Stamp a glyph onto a dealt card. */
-export function withGlyph<C extends Card>(card: C, glyph: GlyphName): C {
-  return { ...card, glyph }
 }
