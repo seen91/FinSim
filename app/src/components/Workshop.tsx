@@ -263,6 +263,13 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
       <header className="workbench-bar">
         <h2>The Workshop</h2>
         <p className="drawer-hint">pick a card up to work on it — saving a design's edits reaches every copy in play · packs carry your designs between tables</p>
+        <button className="drawer-close" onClick={onClose} aria-label="Close the Workshop">
+          ×
+        </button>
+      </header>
+
+      {/* the tools ride centered above the shelf — the mouse stays with the cards */}
+      <div className="work-tools">
         <button className={dataOpen ? 'sign data-open' : 'sign'} onClick={() => setDataOpen(!dataOpen)} title="Import historical data and manage the table's series">
           {dataOpen ? '← cards' : 'Data'}
         </button>
@@ -283,10 +290,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
             e.target.value = ''
           }}
         />
-        <button className="drawer-close" onClick={onClose} aria-label="Close the Workshop">
-          ×
-        </button>
-      </header>
+      </div>
 
       {dataOpen ? (
         <DataBench

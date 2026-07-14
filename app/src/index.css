@@ -92,10 +92,12 @@ body {
   height: 100vh;
 }
 
-/* ---- top bar: a brass rail on the table's edge ---- */
+/* ---- top bar: a brass rail on the table's edge — everything gathered at
+   the middle, where the hands already are, not flung to the corners ---- */
 .topbar {
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: 1.5rem;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.4);
@@ -134,7 +136,6 @@ body {
 }
 
 .topbar-actions {
-  margin-left: auto;
   display: flex;
   gap: 0.4rem;
 }
@@ -1188,16 +1189,28 @@ input[type='range'].tuned {
   overflow-y: auto;
 }
 
-/* the header bar: title, hint, the Workshop diamond, close */
+/* the header bar: title, hint and the Workshop sign gathered at the middle
+   (shared by the draw pile, rulebook and report); only the × keeps its corner */
 .drawer-bar {
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
   border: 1.5px solid var(--gold-deep);
   border-radius: 12px;
   background: var(--card);
-  padding: 0.5rem 0.9rem;
+  padding: 0.5rem 2rem;
   margin-bottom: 0.6rem;
+}
+
+.drawer-bar .drawer-hint {
+  flex: 0 1 auto;
+}
+
+.drawer-bar .drawer-close {
+  position: absolute;
+  right: 0.9rem;
 }
 
 .drawer-bar h2 {
@@ -1444,11 +1457,13 @@ input[type='range'].tuned {
   margin: 0.9rem 0 0.5rem;
   border-bottom: 1px solid var(--accent-line);
   padding-bottom: 0.2rem;
+  text-align: center;
 }
 
 .preset-row {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
   align-items: flex-start;
 }
@@ -1542,10 +1557,10 @@ input[type='range'].tuned {
 }
 
 .drawer-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
-  justify-items: center;
 }
 
 .drawer-slot {
@@ -1585,14 +1600,17 @@ input[type='range'].tuned {
   box-shadow: 0 -14px 40px -8px rgba(0, 0, 0, 0.55);
 }
 
+/* title and hint gather at the middle like everything below; only the × keeps its corner */
 .workbench-bar {
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.7rem;
   border: 1.5px solid var(--gold-deep);
   border-radius: 10px;
   background: var(--card);
-  padding: 0.3rem 0.7rem;
+  padding: 0.3rem 2rem;
 }
 
 .workbench-bar h2 {
@@ -1604,6 +1622,7 @@ input[type='range'].tuned {
 }
 
 .workbench-bar .drawer-hint {
+  flex: 0 1 auto;
   font-size: 0.7rem;
 }
 
@@ -1613,14 +1632,18 @@ input[type='range'].tuned {
 }
 
 .workbench-bar .drawer-close {
+  position: absolute;
+  right: 0.7rem;
   font-size: 1.25rem;
   padding: 0 0.2rem;
 }
 
-/* the shelf: small cards, click to pick one up */
+/* the shelf: small cards, click to pick one up — gathered mid-screen so the
+   mouse never travels to a far corner */
 .work-grid {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.65rem 0.55rem;
   align-items: flex-start;
   padding: 0.65rem 0 0.85rem;
@@ -1653,6 +1676,11 @@ input[type='range'].tuned {
   display: flex;
   justify-content: center;
   gap: 0.35rem;
+}
+
+/* the same tools row on the BROWSE stage, standing between bar and shelf */
+.workbench > .work-tools {
+  margin-top: 0.55rem;
 }
 
 .work-tools button {
@@ -1888,6 +1916,7 @@ input[type='range'].tuned {
 .data-bench {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 1.6rem;
   padding: 0.65rem 0.2rem 0.85rem;
 }
@@ -1949,6 +1978,7 @@ input[type='range'].tuned {
 
 .data-list {
   flex: 1 1 20rem;
+  max-width: 34rem;
 }
 
 .data-row {
