@@ -867,6 +867,28 @@ input[type='range'].tuned {
   pointer-events: none;
 }
 
+/* the card a picked-up card hovers over — drop here and the two stack into a hand */
+.fan-slot.stack-target {
+  z-index: 99;
+}
+
+/* the hub whispers where a lifted card will land while it hovers over no sibling */
+.hub-eject-hint {
+  display: none;
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.circle:has(.fan-ejecting) .hub-eject-hint {
+  display: block;
+}
+
+.fan-slot.stack-target > .fan-item {
+  transform: translateY(-10px) scale(1.05);
+  filter: drop-shadow(0 0 12px rgb(255 178 64 / 0.85)) drop-shadow(0 6px 14px rgb(15 7 0 / 0.35));
+}
+
 /* the lift rides inside the rotated slot, so "up" means radially outward */
 .fan-item {
   transition: transform 0.22s ease;
@@ -909,8 +931,11 @@ input[type='range'].tuned {
   overflow: hidden;
 }
 
+/* ring and hub hang off the same 96% line, so the cards' bottom edge
+   (top + ~190px card height) stays clear of the hub top (96% − ~180px)
+   at ANY arena height — the hand's name must never sit on the cards */
 .circle .fan-anchor {
-  top: calc(96% - 320px);
+  top: calc(96% - 390px);
 }
 
 .circle .hand-empty {
@@ -930,6 +955,15 @@ input[type='range'].tuned {
   padding-bottom: 1.1rem;
   text-align: center;
   max-width: 260px;
+  /* above resting cards (z 1..n) — a small hand dangles over the hub and would
+     bury the name input — but below hovered (95) and dragged (100) cards; the
+     box stays click-through so the cards behind remain grabbable */
+  z-index: 90;
+  pointer-events: none;
+}
+
+.circle-hub > * {
+  pointer-events: auto;
 }
 
 .circle-hub .hand-name {

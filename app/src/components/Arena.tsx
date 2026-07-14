@@ -1,6 +1,7 @@
 import { firstCrossing, formatMonth, formatMonthsDelta, type Card as EngineCard, type HandCard, type Series } from '@finsim/engine'
 import { useState, type ReactElement } from 'react'
 import { formatPercent } from '../format'
+import { NEW_HAND_NAME } from '../hands'
 import { Glyph } from '../icons'
 import type { Mc } from '../mc'
 import type { Doc, Sim } from '../model'
@@ -35,6 +36,10 @@ interface Props {
   trail: HandCard[]
   onNavigate: (handId: string | null) => void
   onReorder: (cardId: string, toIndex: number) => void
+  /** A card lifted off the ring and dropped onto a sibling — stack them into a hand. */
+  onGroup: (draggedId: string, ontoId: string) => void
+  /** A card lifted off the ring and dropped on nothing — it leaves this hand for the parent. */
+  onEject: (cardId: string) => void
   onRemoveCard: (cardId: string) => void
   onToggleCard: (cardId: string) => void
   /** The one card currently showing its what-if dials (a tap turns it). */
@@ -49,7 +54,9 @@ interface Props {
 }
 
 function HandName({ name, onRename }: { name: string; onRename: (name: string) => void }): ReactElement {
-  const [editing, setEditing] = useState(false)
+  // a hand still wearing the fresh-stack name opens straight into editing —
+  // naming it IS the next move (keyed by hand id, so the state is per hand)
+  const [editing, setEditing] = useState(name === NEW_HAND_NAME)
   const [draft, setDraft] = useState(name)
   if (!editing) {
     return (
@@ -75,6 +82,7 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
       className="hand-name-input"
       value={draft}
       autoFocus
+      onFocus={(e) => e.currentTarget.select()}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
@@ -86,8 +94,27 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
 }
 
 export function Arena(props: Props): ReactElement {
-  const { doc, sim, mc, scrub, onScrub, focus, trail, onNavigate, onReorder, onRemoveCard, onToggleCard, flippedId, onFlipCard, onTuneCard, onWorkshopCard, onRenameHand, onOpenReport } =
-    props
+  const {
+    doc,
+    sim,
+    mc,
+    scrub,
+    onScrub,
+    focus,
+    trail,
+    onNavigate,
+    onReorder,
+    onGroup,
+    onEject,
+    onRemoveCard,
+    onToggleCard,
+    flippedId,
+    onFlipCard,
+    onTuneCard,
+    onWorkshopCard,
+    onRenameHand,
+    onOpenReport,
+  } = props
   const hand = trail[trail.length - 1]
 
   // the Workshop's focus stage: the chart holds one card's curve, nothing else
@@ -158,6 +185,8 @@ export function Arena(props: Props): ReactElement {
           hand={hand}
           geometry={CIRCLE}
           onReorder={onReorder}
+          onGroup={onGroup}
+          onEject={onEject}
           onItemClick={(card) => {
             if (card.kind === 'hand') onNavigate(card.id)
             else onFlipCard(card.id)
@@ -192,10 +221,12 @@ export function Arena(props: Props): ReactElement {
           }
         />
         <div className="circle-hub">
-          <HandName name={hand.name ?? hand.id} onRename={(name) => onRenameHand(hand.id, name)} />
+          <HandName key={hand.id} name={hand.name ?? hand.id} onRename={(name) => onRenameHand(hand.id, name)} />
           <span className="hub-count num">
             {cards} card{cards === 1 ? '' : 's'} · plays left to right
           </span>
+          {/* visible only while a lifted card hovers over no sibling (CSS :has on .fan-ejecting) */}
+          <span className="hub-eject-hint">drop — the card leaves this hand for {(parent ?? sim.resolvedRoot).name ?? 'the table'}</span>
           <HandFigures prefix="hub" hand={hand} sim={sim} scrub={scrub} from={doc.from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
           <button
             className="sign hub-toggle"

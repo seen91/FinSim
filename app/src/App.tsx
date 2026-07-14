@@ -16,7 +16,7 @@ import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
 import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
 import { errorMessage, formatCompact, parseCompact } from './format'
-import { addCard, findParentHand, moveCard, removeCard } from './hands'
+import { addCard, findParentHand, groupOnto, moveCard, moveOut, removeCard } from './hands'
 import { Glyph } from './icons'
 import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, type TableNode } from './instances'
 import { runMc } from './mc'
@@ -234,6 +234,22 @@ export function App(): ReactElement {
     store.update((d) => moveCard(d, cardId, toIndex))
   }
 
+  // the stack gesture: a freshly formed hand opens in the arena, its name one
+  // click away in the hub; a card dropped onto an existing hand just joins it
+  const handleGroup = (draggedId: string, ontoId: string): void => {
+    let freshHandId: string | null = null
+    store.update((d) => {
+      freshHandId = groupOnto(d, draggedId, ontoId, newUid())
+    })
+    if (freshHandId) setOpenHandId(freshHandId)
+  }
+
+  // the inverse: a card lifted out of an opened hand and dropped on nothing
+  // leaves for the parent, landing right after the hand it came from
+  const handleEject = (cardId: string): void => {
+    store.update((d) => moveOut(d, cardId))
+  }
+
   const handleRemoveCard = (cardId: string): void => {
     store.update((d) => removeCard(d, cardId))
   }
@@ -369,6 +385,8 @@ export function App(): ReactElement {
         trail={trail}
         onNavigate={setOpenHandId}
         onReorder={handleReorder}
+        onGroup={handleGroup}
+        onEject={handleEject}
         onRemoveCard={handleRemoveCard}
         onToggleCard={handleToggleCard}
         flippedId={flippedId}
@@ -389,6 +407,7 @@ export function App(): ReactElement {
           hand={root}
           geometry={MAIN_FAN}
           onReorder={handleReorder}
+          onGroup={handleGroup}
           onItemClick={(card) => {
             if (card.kind === 'hand') setOpenHandId(card.id)
             else handleFlipCard(card.id)

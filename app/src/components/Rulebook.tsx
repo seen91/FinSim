@@ -65,6 +65,11 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
               from zero — or, if the hand has a take, from money drawn out of the parent&rsquo;s total, so an &ldquo;invest the surplus&rdquo; hand can hold
               percent cards that read real money. Nesting is scoping: what happens in a hand stays in the hand until its net comes out.
             </p>
+            <p>
+              To form one, <strong>stack cards</strong>: pick a card up out of the fan (drag it off the arc) and drop it onto a neighbour — the two pile
+              into a fresh hand right there. Drop a card onto an existing hand and it joins that hand, playing last. The way back out is the same move in
+              reverse: inside an opened hand, pick a card up and drop it on nothing — it leaves for the parent, landing right after the hand it came from.
+            </p>
           </section>
 
           <section>

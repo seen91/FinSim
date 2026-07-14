@@ -3,7 +3,7 @@ import { useState, type ReactElement } from 'react'
 import { headlineFor, type AuthoredCard } from '../authored'
 import { pileRef, presetRef } from '../builtins'
 import { Glyph } from '../icons'
-import type { HandNode, TableNode } from '../instances'
+import type { TableNode } from '../instances'
 import { LIBRARY, type Blueprint } from '../library'
 import { PRESETS, type HandPreset } from '../presets'
 import { newUid } from '../uid'
@@ -27,7 +27,7 @@ interface Props {
   onClose: () => void
   /** Deal a fresh instance of a canonical card (built-in ref or design id). */
   onChooseRef: (ref: string) => void
-  /** Deal a prebuilt node (a preset hand, an empty hand) with any series it wears. */
+  /** Deal a prebuilt node (a preset hand) with any series it wears. */
   onDealNode: (node: TableNode, series?: Record<string, SampledData>) => void
 }
 
@@ -109,15 +109,7 @@ function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose
 }
 
 export function DrawPile({ open, targetName, authored, onOpen, onClose, onChooseRef, onDealNode }: Props): ReactElement {
-  // a hand blueprint is a composition, not a canonical — deal a fresh shape
-  const chooseBlueprint = (bp: Blueprint): void => {
-    if (bp.card.kind === 'hand') {
-      const hand: HandNode = { id: `${bp.id}-${newUid()}`, name: bp.card.name ?? bp.name, kind: 'hand', glyph: bp.glyph, children: [] }
-      onDealNode(hand, bp.series)
-    } else {
-      onChooseRef(pileRef(bp.id))
-    }
-  }
+  const chooseBlueprint = (bp: Blueprint): void => onChooseRef(pileRef(bp.id))
 
   return (
     <>

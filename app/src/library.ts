@@ -163,13 +163,4 @@ export const LIBRARY: Blueprint[] = [
       growth: { expected: 0.025 },
     },
   },
-  {
-    id: 'empty-hand',
-    name: 'New hand',
-    glyph: 'bundle',
-    headline: 'empty',
-    description: 'A named bundle of cards. Hands can hold hands.',
-    // hands are compositions, not canonicals: dealing this one copies the shape
-    card: { id: 'empty-hand', name: 'New hand', kind: 'hand', children: [] },
-  },
 ]

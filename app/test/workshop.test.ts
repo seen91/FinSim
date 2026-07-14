@@ -4,6 +4,7 @@ import { AUTHORABLE_KINDS, blankCard, headlineFor, mergeLibrary, redesign, valid
 import { builtinOf, pileRef, presetRef } from '../src/builtins'
 import { addCard } from '../src/hands'
 import { canonicalOf, instanceOf, isInstance, resolveInstance, resolveTable } from '../src/instances'
+import { LIBRARY } from '../src/library'
 import { deserializePack, serializePack, type Pack } from '../src/packs'
 import { starterDoc } from '../src/starter'
 
@@ -89,8 +90,9 @@ describe('canonical cards come in two species', () => {
     expect(canonicalOf('nothing', [design])).toBeNull()
   })
 
-  it('hands are compositions, never canonical — the empty-hand blueprint has no builtin ref', () => {
-    expect(builtinOf(pileRef('empty-hand'))).toBeNull()
+  it('hands are compositions, never canonical — the pile deals no hand blueprints', () => {
+    expect(LIBRARY.some((bp) => bp.card.kind === 'hand')).toBe(false)
+    expect(builtinOf(pileRef('empty-hand'))).toBeNull() // the removed blueprint stays gone
   })
 
   it('redesign mints an independent design: fresh ids, same math and front matter', () => {
