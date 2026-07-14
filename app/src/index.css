@@ -1788,9 +1788,10 @@ input[type='range'].tuned {
   color: var(--ink-soft);
 }
 
-/* a blank card, waiting for a maker — shelf-sized, like its neighbours */
+/* a blank card, waiting for a maker — shelf-sized, like its neighbours
+   (the shelf's cards ride in .drawer-slot, which widens them to 140px) */
 .blank-card {
-  width: 124px;
+  width: 140px;
   aspect-ratio: 63 / 88;
   display: flex;
   flex-direction: column;
@@ -1814,7 +1815,7 @@ input[type='range'].tuned {
 }
 
 .kind-pick {
-  width: 124px;
+  width: 140px;
   aspect-ratio: 63 / 88;
   display: flex;
   flex-direction: column;

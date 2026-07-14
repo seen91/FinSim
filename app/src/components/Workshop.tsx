@@ -1,12 +1,12 @@
 import { allCards, findCard, type Card as EngineCard } from '@finsim/engine'
 import { useRef, useState, type ReactElement } from 'react'
-import { AUTHORABLE_KINDS, blankCard, designIdOf, headlineFor, instantiate, mergeLibrary, type AuthoredCard, type AuthorableKind } from '../authored'
+import { AUTHORABLE_KINDS, blankCard, designFrom, designIdOf, headlineFor, instantiate, mergeLibrary, stampDesign, type AuthoredCard, type AuthorableKind } from '../authored'
 import { downloadJson } from '../download'
 import { errorMessage } from '../format'
 import { Glyph } from '../icons'
 import type { Doc } from '../model'
 import { deserializePack, serializePack, type Pack } from '../packs'
-import { replaceCard } from '../hands'
+import { removeCard, replaceCard } from '../hands'
 import { seriesIdsIn } from '../seriesImport'
 import { newUid } from '../uid'
 import { glyphOf } from '../glyph'
@@ -136,6 +136,19 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
 
   const confirmLeave = (): boolean => !dirty || window.confirm(isNew ? 'This card is not saved yet — discard it?' : 'Discard unsaved changes to this design?')
 
+  // adopt a one-off table card as a design: the shelf gains the template and
+  // the played card becomes its first copy — from here it edits like any design
+  const handleAdopt = (card: EngineCard): void => {
+    const design = designFrom(card)
+    if (library.some((a) => a.id === design.id)) design.id = `${design.id}-${newUid()}`
+    onLibraryChange([...library, design])
+    update((d) => {
+      const played = findCard(d.table.root, card.id)
+      if (played) stampDesign(played, design.id)
+    })
+    onFocus({ where: 'library', id: design.id })
+  }
+
   if (focusedTable || focusedAuthored) {
     const card = focusedTable ?? focusedAuthored!.card
     const face = {
@@ -179,7 +192,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
         </header>
         <div className="work-focus">
           {/* the tools ride right above the bench — the mouse never leaves the cards */}
-          {focusedAuthored && (
+          {focusedAuthored ? (
             <div className="work-tools">
               <button
                 className="sign work-save"
@@ -214,6 +227,23 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
                 onClick={() => {
                   onLibraryChange(library.filter((c) => c.id !== focusedAuthored.id))
                   onDraftChange(null)
+                  onFocus(null)
+                }}
+              >
+                <Glyph name="flame" size={15} />
+              </button>
+            </div>
+          ) : (
+            <div className="work-tools">
+              <button className="sign work-save" title="Put this one-off on your shelf as a design — this card becomes its first copy" onClick={() => handleAdopt(focusedTable!)}>
+                <Glyph name="save" size={15} />
+                to shelf
+              </button>
+              <button
+                className="sign work-burn"
+                title="Burn this card — it leaves the table"
+                onClick={() => {
+                  update((d) => removeCard(d, focusedTable!.id))
                   onFocus(null)
                 }}
               >

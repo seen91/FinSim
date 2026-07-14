@@ -1,6 +1,6 @@
 import { validateTable, type Card, type Curve, type Take } from '@finsim/engine'
 import { formatAmount, formatPercent, formatPerMonth } from './format'
-import { KIND_GLYPHS, withGlyph } from './glyph'
+import { glyphOf, KIND_GLYPHS, withGlyph } from './glyph'
 import type { GlyphName } from './icons'
 
 /**
@@ -123,6 +123,31 @@ export function designIdOf(card: Card, library: AuthoredCard[]): string | null {
   // copies dealt before the stamp existed carry the design's id plus one fresh suffix
   const legacy = card.id.replace(/-[0-9a-f]{8}$/, '')
   return legacy !== card.id && library.some((a) => a.id === legacy) ? legacy : null
+}
+
+/**
+ * Adopt a one-off table card as a design: a clean template stripped of
+ * play-state (design stamp, tune, set-aside — nested hands included). Stamp
+ * the played card with `stampDesign` afterwards so it becomes the design's
+ * first copy and future edits reach it.
+ */
+export function designFrom(card: Card): AuthoredCard {
+  const template = structuredClone(card)
+  const strip = (c: Card): void => {
+    const worn = c as Designed & { tune?: unknown; glyph?: unknown }
+    delete worn.design
+    delete worn.tune
+    delete worn.enabled
+    if (c.kind === 'hand') c.children.forEach(strip)
+  }
+  strip(template)
+  delete (template as Card & { glyph?: unknown }).glyph // the design's front matter carries it
+  return { id: card.id, glyph: glyphOf(card), description: '', card: template }
+}
+
+/** Stamp a played card as a copy of a design — edits to the design reach it from now on. */
+export function stampDesign(card: Card, designId: string): void {
+  ;(card as Designed).design = designId
 }
 
 /** Validate an authored card's template with the engine's own table validator. */
