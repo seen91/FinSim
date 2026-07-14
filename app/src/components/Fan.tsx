@@ -46,6 +46,9 @@ export function Fan({ hand, geometry, renderItem, onReorder, onItemClick }: Prop
   const anchor = useRef<HTMLDivElement | null>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
   const [spin, setSpin] = useState(0)
+  // the last-hovered card stays lifted after the pointer leaves — its figures
+  // stay readable while the pointer is off scrubbing the chart
+  const [lifted, setLifted] = useState<string | null>(null)
 
   const n = hand.children.length
   const step = n > 1 ? Math.min(geometry.maxStep, geometry.maxSpread / (n - 1)) : 0
@@ -103,7 +106,7 @@ export function Fan({ hand, geometry, renderItem, onReorder, onItemClick }: Prop
         return (
           <div
             key={card.id}
-            className={`fan-slot${isTarget ? ' lifting' : ''}${offstage ? ' offstage' : ''}`}
+            className={`fan-slot${isTarget ? ' lifting' : ''}${offstage ? ' offstage' : ''}${lifted === card.id ? ' lifted' : ''}`}
             style={{
               width: geometry.cardWidth,
               left: `calc(50% - ${geometry.cardWidth / 2}px)`,
@@ -111,6 +114,7 @@ export function Fan({ hand, geometry, renderItem, onReorder, onItemClick }: Prop
               transformOrigin: `50% ${geometry.radius}px`,
               ['--z' as string]: isTarget ? 100 : slot + 1,
             }}
+            onPointerEnter={() => setLifted(card.id)}
             onPointerDown={handleDown(card)}
             onPointerMove={handleMove}
             onPointerUp={handleUp(card)}

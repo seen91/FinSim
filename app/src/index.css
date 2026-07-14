@@ -827,7 +827,8 @@ input[type='range'].tuned {
   transition: transform 0.28s ease, opacity 0.2s ease;
 }
 
-.fan-slot:hover {
+.fan-slot:hover,
+.fan-slot.lifted {
   z-index: 95;
 }
 
@@ -847,7 +848,8 @@ input[type='range'].tuned {
   transition: transform 0.22s ease;
 }
 
-.fan-slot:hover > .fan-item {
+.fan-slot:hover > .fan-item,
+.fan-slot.lifted > .fan-item {
   transform: translateY(-28px);
 }
 
