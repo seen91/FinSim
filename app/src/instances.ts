@@ -9,7 +9,7 @@ import type { Tune } from './tune'
  * card on the table is an INSTANCE of exactly one canonical card: a reference
  * plus per-copy state — the what-if dials, the set-aside flag, and its
  * position in its hand. Name, math, glyph, description and tags live on the
- * canonical card (a library design, or a read-only built-in), so a Workshop
+ * canonical card (a library design, or a built-in), so a Workshop
  * edit of the canonical reaches every copy by construction. Hands stay
  * table-only compositions (DESIGN.md §3) and keep their children inline.
  *

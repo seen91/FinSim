@@ -8,7 +8,7 @@ import type { GlyphName } from './icons'
  * card template plus its front matter: the glyph and the description, which
  * doubles as the assumptions footnote (where the numbers come from,
  * DESIGN.md §3). It is one of the two canonical-card species (the other is
- * the read-only built-in, builtins.ts): the table holds INSTANCES of it
+ * the built-in, builtins.ts): the table holds INSTANCES of it
  * (instances.ts), so editing a design here reaches every copy in play by
  * construction.
  */
@@ -108,7 +108,8 @@ export function stripRiders(card: Card): Card {
 
 /**
  * A fresh design cut from any canonical card — the Workshop's "copy" of a
- * design, and the "copy to shelf" that makes a read-only built-in editable.
+ * design or a built-in, and the save that mints an edited built-in into
+ * YOUR design (Workshop.tsx re-points the instances).
  * Front matter travels; the template's ids are rewritten to the new identity.
  */
 export function redesign(canonical: AuthoredCard, id: string): AuthoredCard {

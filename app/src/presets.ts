@@ -18,6 +18,8 @@ export interface PresetCard {
   name: string
   glyph: GlyphName
   headline: string
+  /** What it is and the assumptions behind the numbers — the card's footnote. */
+  description?: string
   /** The canonical engine card every dealt instance resolves to. */
   card: Card
   /** Series this card samples — merged into `world.series` on import. */
@@ -44,12 +46,13 @@ const salary: PresetCard = {
   key: 'salary',
   name: 'Salary',
   glyph: 'coins',
-  headline: '+65 000 /mo gross',
+  headline: '+40 000 /mo gross',
+  description: 'Gross monthly pay, around the Swedish full-time median, with a 3 % raise landing every January. Flip it in the Workshop and make it your own gross and your own raise.',
   card: {
     id: 'salary',
     name: 'Salary',
     kind: 'source',
-    flow: { type: 'compound', base: 65000, annualRate: { expected: 0 }, holdMonths: 12 },
+    flow: { type: 'compound', base: 40000, annualRate: { expected: 0.03 }, holdMonths: 12, holdAnchor: 1 },
     tags: ['income'],
   },
 }
@@ -59,6 +62,7 @@ const incomeTax: PresetCard = {
   name: 'Income tax',
   glyph: 'stamp',
   headline: '−30 %',
+  description: 'A flat 30 % — close to a typical kommunalskatt. It takes 30 % of whatever flowed past above it, so its position in the hand matters.',
   card: { id: 'income-tax', name: 'Income tax', kind: 'drain', percent: 0.3 },
 }
 
@@ -67,28 +71,39 @@ const expenses: PresetCard = {
   name: 'Living expenses',
   glyph: 'receipt',
   headline: '−20 500 /mo',
+  description: 'Rent, food, phone, gym — the whole monthly burn in one card. Set it to yours, or split it into cards of its own.',
   card: { id: 'expenses', name: 'Living expenses', kind: 'drain', amount: { type: 'constant', value: 20500 } },
 }
 
-const FUND_NAMES = ['Index: Global', 'Index: Sverige', 'Index: USA', 'Index: Europa', 'Index: Asien']
+const buffer: PresetCard = {
+  key: 'buffer',
+  name: 'Savings buffer',
+  glyph: 'vault',
+  headline: '2,5 % /yr · 2 000 /mo',
+  description: 'An emergency buffer on a savings account, filled with 2 000 kr a month before anything gets invested.',
+  card: {
+    id: 'buffer',
+    name: 'Savings buffer',
+    kind: 'asset',
+    growth: { expected: 0.025 },
+    take: { type: 'fixed', amountPerMonth: 2000 },
+  },
+}
 
-function fundCard(index: number): PresetCard {
-  const name = FUND_NAMES[index]!
-  const key = `fund${index + 1}`
-  return {
-    key,
-    name,
-    glyph: 'trend',
-    headline: '7 % /yr · takes 20 %',
-    card: {
-      id: key,
-      name,
-      kind: 'asset',
-      growth: { expected: 0.07, volatility: 0.15 },
-      take: { type: 'percent', percent: 0.2 },
-      tags: ['equity', 'fund'],
-    },
-  }
+const fund: PresetCard = {
+  key: 'fund',
+  name: 'Index fund: Global',
+  glyph: 'trend',
+  headline: '7 % /yr · takes 80 %',
+  description: 'Broad global equity: 7 % CAGR ± 15 %/yr over the long run. Takes 80 % of the surplus that reaches it — the rest lands as cash.',
+  card: {
+    id: 'fund',
+    name: 'Index fund: Global',
+    kind: 'asset',
+    growth: { expected: 0.07, volatility: 0.15 },
+    take: { type: 'percent', percent: 0.8 },
+    tags: ['equity', 'fund'],
+  },
 }
 
 const carValue: PresetCard = {
@@ -178,14 +193,14 @@ export const PRESETS: HandPreset[] = [
     id: 'current-budget',
     name: 'Current budget',
     glyph: 'coins',
-    description: 'Salary → tax → expenses → five index funds taking 20 % each, left to right.',
-    cards: [salary, incomeTax, expenses, ...FUND_NAMES.map((_, i) => fundCard(i))],
+    description: 'Salary → tax → expenses → a savings buffer, then a global index fund taking 80 % of the surplus.',
+    cards: [salary, incomeTax, expenses, buffer, fund],
     build: (uid) => ({
       id: `budget-${uid}`,
       name: 'Current budget',
       kind: 'hand',
       glyph: 'coins',
-      children: [inst('salary', uid), inst('income-tax', uid), inst('expenses', uid), ...FUND_NAMES.map((_, i) => inst(`fund${i + 1}`, uid))],
+      children: [inst('salary', uid), inst('income-tax', uid), inst('expenses', uid), inst('buffer', uid), inst('fund', uid)],
     }),
   },
   {

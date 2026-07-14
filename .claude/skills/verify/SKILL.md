@@ -19,13 +19,17 @@ Start your own server on another port and kill only PIDs you started (save them)
    `npm i playwright` in the scratchpad and launch with `chromium.launch({ channel: 'chrome', headless: true })`.
 4. Useful hooks in the DOM:
    - `.chart-verdict-text` — the whole table's "goal in X" readout
-   - `.hand-stack-delta` — a decision bundle's "+1 yr 3 mo to goal" verdict
+   - `.hand-stack-delta` — a decision bundle's "+2 yr 4 mo to goal" verdict; scope it to the right
+     stack (`.hand-stack:has-text("Buy the car")`) — the investing hand carries one too
    - `button.pile` opens the draw pile; `.preset-tile:has-text("Buy the car")` imports a preset hand
    - Import opens a hidden file input (use `filechooser` event); Export fires a `download` event
    - A saved table in IndexedDB overrides the starter on load; `?fresh` skips it and deals the starter
-5. Golden numbers to expect (starter table, which ships with the ISK tax card):
-   baseline "goal in 20 yr 6 mo"; car played → chart "goal in 21 yr 11 mo", bundle "+1 yr 5 mo to goal".
-   Without the ISK card (the hand-checked M1 golden scenario, see `app/test/app.test.ts` goldenDoc):
-   baseline "goal in 19 yr 5 mo"; car → "goal in 20 yr 8 mo", bundle "+1 yr 3 mo to goal".
+5. Expected numbers MOVE WITH THE CALENDAR: the starter salary's raise is January-anchored, and
+   `?fresh` starts the table at the wall-clock month. Compute today's expected verdicts with a scratch
+   vitest in `app/test/` (starterDoc + runSim + firstCrossing/compares — delete it after), don't trust
+   remembered strings. For reference, a 2026-07 start gave: baseline "goal in 10 yr 9 mo"; car played →
+   chart "goal in 13 yr 1 mo", car bundle "+2 yr 4 mo to goal". The hand-checked five-fund golden
+   scenario ("1 yr 3 mo") no longer ships as the starter — it lives in `app/test/app.test.ts`
+   (`goldenFiveFundDoc`) and the engine acceptance test.
 6. Offline check: load the preview URL, `await navigator.serviceWorker.ready`, wait ~1 s for precache,
    `context.setOffline(true)`, reload, assert `.chart-verdict-text` renders.

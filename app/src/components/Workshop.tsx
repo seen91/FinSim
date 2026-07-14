@@ -22,11 +22,14 @@ import { DataBench } from './DataBench'
  * FOCUS — click one and everything else clears: the bench holds that card's
  * face and its back (the editor), and the chart above holds only its curve.
  * A design edits in place — every table instance follows by construction. A
- * built-in is read-only: "copy to shelf" mints a design from its template
- * and re-points every table instance at it, and from then on it is an
- * ordinary design. The back of a blank card is the card creator; packs move
- * designs between tables. Design edits buffer as a draft until the green
- * save commits them — a blank never touches the shelf unsaved.
+ * built-in edits just as freely, but saving MINTS: a design cut from your
+ * edits lands on the shelf and every table instance of the built-in
+ * re-points at it — the default becomes YOUR salary in one gesture, and the
+ * pristine template stays in the pile. "copy" mints from the template
+ * without re-pointing, for a variant beside the default. The back of a blank
+ * card is the card creator; packs move designs between tables. Edits buffer
+ * as a draft until the green save commits them — a blank never touches the
+ * shelf unsaved.
  */
 
 /** What the Workshop has zoomed into — App mirrors it onto the chart. */
@@ -72,14 +75,13 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
     onFocus({ where: 'library', id: copy.id })
   }
 
-  // the built-in mint: a design cut from the template, and every table
-  // instance of the built-in re-pointed at it — "change once, all copies
-  // change" holds by construction, and from here it is an ordinary design
-  const handleCopyToShelf = (builtin: AuthoredCard): void => {
-    const design = redesign(builtin, `${refBase(builtin.id)}-${newUid()}`)
-    onLibraryChange([...library, design])
-    update((d) => repointInstances(d.table.root, builtin.id, design.id))
-    onFocus({ where: 'library', id: design.id })
+  // a built-in's "copy": a design cut from the pristine template, NOT
+  // re-pointed — the default keeps playing, the copy is a variant beside it
+  const handleCopyBuiltin = (builtin: AuthoredCard): void => {
+    const copy = redesign(builtin, `${refBase(builtin.id)}-${newUid()}`)
+    copy.card.name = `${builtin.card.name ?? 'Card'} copy`
+    onLibraryChange([...library, copy])
+    onFocus({ where: 'library', id: copy.id })
   }
 
   const handleExport = (): void => {
@@ -110,27 +112,46 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
   }
 
   // ---- FOCUS: one canonical card on the bench, face and back side by side ----
-  // Design edits buffer as a draft; save is the explicit act that lands them
-  // on the shelf — every instance in play follows by construction. A
-  // brand-new blank exists only as its draft until first saved.
+  // Edits buffer as a draft; save is the explicit act that lands them on the
+  // shelf. For a design every instance in play follows by construction; for a
+  // built-in the save MINTS — a design cut from the edits, every table
+  // instance of the built-in re-pointed at it. A brand-new blank exists only
+  // as its draft until first saved.
   const focusedBuiltin = focus?.where === 'builtin' ? builtinOf(focus.id) : null
   const savedAuthored = focus?.where === 'library' ? (library.find((a) => a.id === focus.id) ?? null) : null
   const activeDraft = focus && draft && draft.id === focus.id ? draft : null
-  const focusedAuthored = activeDraft ?? savedAuthored
-  const isNew = focusedAuthored !== null && savedAuthored === null
+  const focusedAuthored = activeDraft ?? focusedBuiltin ?? savedAuthored
+  const isNew = focusedBuiltin === null && focusedAuthored !== null && savedAuthored === null
   const dirty = activeDraft !== null
+
+  // the built-in mint: a design cut from the edited draft, every table
+  // instance re-pointed — "change once, all copies change" holds by
+  // construction, and from here on it is an ordinary design
+  const mintFromDraft = (): string | null => {
+    if (!activeDraft || !focusedBuiltin) return null
+    const design = redesign(activeDraft, `${refBase(focusedBuiltin.id)}-${newUid()}`)
+    onLibraryChange([...library, design])
+    update((d) => repointInstances(d.table.root, focusedBuiltin.id, design.id))
+    onDraftChange(null)
+    return design.id
+  }
 
   const handleSave = (): void => {
     if (!activeDraft) return
+    if (focusedBuiltin) {
+      const id = mintFromDraft()
+      if (id !== null) onFocus({ where: 'library', id })
+      return
+    }
     if (savedAuthored) onLibraryChange(library.map((a) => (a.id === activeDraft.id ? activeDraft : a)))
     else onLibraryChange([...library, activeDraft])
     onDraftChange(null)
   }
 
-  const confirmLeave = (): boolean => !dirty || window.confirm(isNew ? 'This card is not saved yet — discard it?' : 'Discard unsaved changes to this design?')
+  const confirmLeave = (): boolean => !dirty || window.confirm(isNew ? 'This card is not saved yet — discard it?' : 'Discard unsaved changes to this card?')
 
-  if (focusedBuiltin || focusedAuthored) {
-    const canonical = focusedBuiltin ?? focusedAuthored!
+  if (focusedAuthored) {
+    const canonical = focusedAuthored
     const card = canonical.card
     const inPlay = refsInPlay.includes(canonical.id)
     const face = {
@@ -155,7 +176,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
           </button>
           <p className="drawer-hint">
             {focusedBuiltin
-              ? 'a built-in card — the math is read-only; copy it to your shelf to make it yours (every copy in play follows)'
+              ? 'a built-in card — edit it freely: saving mints your design and every copy in play follows; “copy” keeps the default and gives you a variant'
               : isNew
                 ? 'a fresh card — save it to put it on your shelf; the chart plays it alone on an empty table'
                 : 'a design — save your edits and every copy in play follows; the chart plays it alone on an empty table'}
@@ -178,14 +199,35 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
             <div className="work-tools">
               <button
                 className="sign work-save"
-                title="Mint a design from this built-in onto your shelf — every copy in play re-points at it and follows your edits"
-                onClick={() => handleCopyToShelf(focusedBuiltin)}
+                disabled={!dirty}
+                aria-label={dirty ? 'Save' : 'Saved'}
+                title={dirty ? 'Save: mint your design from these edits — every copy in play re-points at it and follows' : 'Unedited — the built-in plays as shipped'}
+                onClick={handleSave}
               >
-                <Glyph name="save" size={15} />
-                copy to shelf
+                <Glyph name={dirty ? 'save' : 'check'} size={15} />
               </button>
-              <button className="sign" aria-label="Add to hand" title="Deal a copy into the hand on the table" onClick={() => onPlay(focusedBuiltin.id)}>
+              <button
+                className="sign"
+                aria-label="Add to hand"
+                title={dirty ? 'Save your edits, then deal a copy into the hand on the table' : 'Deal a copy into the hand on the table'}
+                onClick={() => {
+                  if (dirty) {
+                    const id = mintFromDraft()
+                    onPlay(id ?? focusedBuiltin.id)
+                    onFocus(null)
+                    onClose()
+                  } else onPlay(focusedBuiltin.id)
+                }}
+              >
                 <Glyph name="hand" size={15} />
+              </button>
+              <button
+                className="sign"
+                disabled={dirty}
+                title={dirty ? 'Save your edits first' : 'Copy to your shelf as a new design — the default keeps playing untouched'}
+                onClick={() => handleCopyBuiltin(focusedBuiltin)}
+              >
+                copy
               </button>
             </div>
           ) : (
@@ -205,7 +247,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
                 title="Save, then deal a copy into the hand on the table"
                 onClick={() => {
                   handleSave()
-                  onPlay(focusedAuthored!.id)
+                  onPlay(focusedAuthored.id)
                   onFocus(null)
                   onClose()
                 }}
@@ -228,7 +270,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
                       : 'Burn this design'
                 }
                 onClick={() => {
-                  onLibraryChange(library.filter((c) => c.id !== focusedAuthored!.id))
+                  onLibraryChange(library.filter((c) => c.id !== focusedAuthored.id))
                   onDraftChange(null)
                   onFocus(null)
                 }}
@@ -243,17 +285,12 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
             face={face}
             flipped
             back={
-              focusedBuiltin ? (
-                // the built-in's math on show, behind glass: same editor, no writes
-                <fieldset className="work-readonly" disabled>
-                  <CardMathEditor card={card} from={doc.from} onChange={() => undefined} />
-                </fieldset>
-              ) : (
-                <>
-                  <CardMathEditor card={card} from={doc.from} onChange={(next) => onDraftChange({ ...focusedAuthored!, card: next })} />
-                  <FrontMatterEditor authored={focusedAuthored!} onChange={onDraftChange} />
-                </>
-              )
+              // one live editor for both species — a built-in's edits buffer
+              // as a draft (id = its ref) until the save mints them
+              <>
+                <CardMathEditor card={card} from={doc.from} onChange={(next) => onDraftChange({ ...focusedAuthored, card: next })} />
+                <FrontMatterEditor authored={focusedAuthored} onChange={onDraftChange} />
+              </>
             }
           />
         </div>

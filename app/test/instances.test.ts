@@ -1,4 +1,4 @@
-import { formatMonthsDelta, validateTable } from '@finsim/engine'
+import { formatMonthsDelta, validateTable, ym } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
 import { redesign, type AuthoredCard } from '../src/authored'
 import { builtinOf, pileRef, presetRef } from '../src/builtins'
@@ -101,9 +101,14 @@ describe('table export/import carries the designs its instances reference', () =
   })
 })
 
-/** The old (v1) starter doc: full engine cards on the table, as shipped pre-instances. */
+/**
+ * The old (v1) starter doc: full engine cards on the table, as shipped
+ * pre-instances. `from` is pinned — the salary raise is January-anchored,
+ * so the golden-baseline numbers below depend on the start month.
+ */
 function legacyStarterDoc(): Doc & { table: { root: HandNode } } {
   const doc = starterDoc()
+  doc.from = ym(2026, 1)
   return { ...doc, table: resolveTable(doc.table, []) as unknown as Doc['table'] }
 }
 
@@ -115,7 +120,8 @@ describe('v1 → v2 migration', () => {
     const refs = refsIn(doc.table.root)
     expect(refs).toContain(presetRef('salary'))
     expect(refs).toContain(pileRef('isk-tax'))
-    expect(refs).toContain(presetRef('fund5'))
+    expect(refs).toContain(presetRef('fund'))
+    expect(refs).toContain(presetRef('buffer'))
     expect(doc.table.root.children.every((c) => isInstance(c) || c.kind === 'hand')).toBe(true)
     expect(validateTable(resolveTable(doc.table, []))).toEqual([])
   })
@@ -182,7 +188,7 @@ describe('v1 → v2 migration', () => {
     expect(imported.designs).toEqual([]) // everything matched a built-in
     const sim = runSim(imported.doc, imported.designs)
     const verdict = sim.compares.find((c) => c.name === 'Buy the car')!
-    expect(verdict.delta.deltaMonths).toBe(15)
-    expect(formatMonthsDelta(verdict.delta.deltaMonths!)).toBe('1 yr 3 mo')
+    expect(verdict.delta.deltaMonths).toBe(27)
+    expect(formatMonthsDelta(verdict.delta.deltaMonths!)).toBe('2 yr 3 mo')
   })
 })

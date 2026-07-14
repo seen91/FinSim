@@ -5,16 +5,17 @@ import type { Doc } from './model'
 import { PRESETS } from './presets'
 
 /**
- * The starter table: one main hand — your budget, played top to bottom — with
- * the decision bundles ("Buy the car", "Buy a flat") waiting in the draw pile.
- * Play the car and its ghost shows the answer to the north-star question:
- * "how much longer to 10 MSEK just because I bought this car?" ("1 yr 3 mo").
+ * The starter table: one relatable household, played top to bottom — salary,
+ * tax, living expenses, a savings buffer, then an "Index fund investing" hand
+ * that takes 100 % of the surplus, with the ISK rule card on top so it
+ * visibly taxes the fund below it. The fund takes 80 % of what reaches it,
+ * so a trickle still lands as cash. The decision bundles ("Buy the car",
+ * "Buy a flat") wait in the draw pile; the hand-checked five-fund golden
+ * scenario lives on in the acceptance tests, not here.
  *
- * Every leaf is an instance of a built-in canonical card (builtins.ts). The
- * funds live in an "Index fund investing" hand that takes 100 % of the
- * surplus, with the ISK rule card on top so it visibly taxes every fund below
- * it. A 100 % take is numerically identical to playing the funds flat in the
- * root, so playing the car reproduces the engine's hand-checked golden answer.
+ * Every leaf is an instance of a built-in canonical card (builtins.ts) —
+ * flip one to its dials for a what-if, or edit it in the Workshop to make it
+ * YOUR salary (saving mints your design and every copy follows).
  */
 export function starterDoc(): Doc {
   const budget = PRESETS.find((p) => p.id === 'current-budget')!
@@ -24,7 +25,7 @@ export function starterDoc(): Doc {
   return {
     from: ym(now.getFullYear(), now.getMonth() + 1),
     horizonMonths: 30 * 12,
-    goal: 10_000_000,
+    goal: 2_000_000,
     table: {
       root: {
         id: 'root',

@@ -1,4 +1,4 @@
-import { allCards, firstCrossing, formatMonthsDelta, type ScheduledRule } from '@finsim/engine'
+import { allCards, firstCrossing, formatMonthsDelta, ym, type ScheduledRule } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
 import { pileRef } from '../src/builtins'
 import { deserializeDoc, serializeDoc } from '../src/exchange'
@@ -9,25 +9,32 @@ import { PRESETS } from '../src/presets'
 import { starterDoc } from '../src/starter'
 
 /**
- * The app-side half of the M1 acceptance test: the starter table plus the
- * "Buy the car" preset, run through the app's own `runSim`, must reproduce
- * the engine's hand-checked golden answer — the car costs "1 yr 3 mo" on
- * the way to 10 MSEK. The engine test proves the math; this proves the
- * starter pack and the compare plumbing feed it the right table.
+ * Two halves. First, the app-side M1 acceptance bridge: the hand-checked
+ * five-fund golden scenario (engine/test/acceptance.car.test.ts), rebuilt
+ * here from raw engine cards and run through the app's own `runSim` — the
+ * compare plumbing must reproduce the engine's golden answer, "1 yr 3 mo".
+ * Second, the starter table the app actually ships — one relatable
+ * household — plus the "Buy the car" preset, with its own pinned delta.
+ *
+ * The starter's salary raise is January-anchored, so every simulated doc
+ * pins `from` to 2026-01 — a wall-clock start would move the numbers.
  */
 
-/** The starter's "Index fund investing" hand — funds behind a 100 % take, ISK rule card on top. */
+/** The starter's "Index fund investing" hand — the fund behind a 100 % take, ISK rule card on top. */
 function investingHand(doc: Doc): HandNode {
   return doc.table.root.children.find((c): c is HandNode => !isInstance(c) && c.kind === 'hand')!
 }
 
-/**
- * The starter table without the ISK card it now ships with — the hand-checked
- * golden scenario predates it. The 100 % take makes the investing hand
- * numerically identical to playing the funds flat, so the answer holds.
- */
-function goldenDoc(): Doc {
+/** The starter, pinned to the tests' fixed start month. */
+function starterAt2026(): Doc {
   const doc = starterDoc()
+  doc.from = ym(2026, 1)
+  return doc
+}
+
+/** The pinned starter without its ISK card — the baseline the deltas below are checked against. */
+function goldenDoc(): Doc {
+  const doc = starterAt2026()
   const invest = investingHand(doc)
   invest.children = invest.children.filter((c) => !isInstance(c) || c.ref !== pileRef('isk-tax'))
   return doc
@@ -40,19 +47,81 @@ function docWithCar(): Doc {
   return doc
 }
 
+/** The engine acceptance table verbatim (raw cards ride the table untouched). */
+function goldenFiveFundDoc(): Doc {
+  return {
+    from: ym(2026, 1),
+    horizonMonths: 30 * 12,
+    goal: 10_000_000,
+    table: {
+      root: {
+        id: 'root',
+        kind: 'hand',
+        children: [
+          {
+            id: 'budget',
+            kind: 'hand',
+            name: 'Current budget',
+            children: [
+              { id: 'salary', kind: 'source', flow: { type: 'constant', value: 65000 }, tags: ['income'] },
+              { id: 'income-tax', kind: 'drain', percent: 0.3 },
+              { id: 'expenses', kind: 'drain', amount: { type: 'constant', value: 20500 } },
+              ...[1, 2, 3, 4, 5].map((i) => ({
+                id: `fund${i}`,
+                kind: 'asset' as const,
+                growth: { expected: 0.07, volatility: 0.15 },
+                take: { type: 'percent' as const, percent: 0.2 },
+                tags: ['equity', 'fund'],
+              })),
+            ],
+          },
+          {
+            id: 'car',
+            kind: 'hand',
+            name: 'Buy the car',
+            children: [
+              { id: 'car-value', kind: 'asset', initialBalance: 240000, growth: { expected: -0.15 } },
+              { id: 'car-costs', kind: 'drain', amount: { type: 'constant', value: 3500 } },
+              {
+                id: 'car-financing',
+                kind: 'hand',
+                name: 'Financing',
+                children: [
+                  { id: 'car-loan', kind: 'debt', principal: 240000, interest: { expected: 0.06 }, payment: { type: 'fixed', amountPerMonth: 4300 } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    },
+  }
+}
+
 describe('M1 acceptance through the app model', () => {
-  it('playing the car preset reads off the golden answer: 1 yr 3 mo', () => {
+  it('the five-fund golden scenario reads off the engine answer: 1 yr 3 mo', () => {
+    const doc = goldenFiveFundDoc()
+    const sim = runSim(doc)
+    const compare = sim.compares.find((c) => c.name === 'Buy the car')!
+    expect(compare.delta.deltaMonths).toBe(15)
+    expect(formatMonthsDelta(compare.delta.deltaMonths!)).toBe('1 yr 3 mo')
+    // same absolute months as the engine acceptance test
+    expect(compare.delta.baseMonth).toBe(ym(2045, 6))
+    expect(compare.delta.variantMonth).toBe(ym(2046, 9))
+    expect(firstCrossing(sim.active, doc.goal)).toBe(ym(2046, 9))
+  })
+
+  it('playing the car preset onto the starter reads a pinned delta: 2 yr 3 mo', () => {
     const doc = docWithCar()
     const sim = runSim(doc)
     // every card on the table carries a compare, nested ones included
     expect(sim.compares).toHaveLength(allCards(resolveTable(doc.table, []).root).length)
     const compare = sim.compares.find((c) => c.name === 'Buy the car')!
-    expect(compare.delta.deltaMonths).toBe(15)
-    expect(formatMonthsDelta(compare.delta.deltaMonths!)).toBe('1 yr 3 mo')
-    // same absolute offsets as the engine acceptance test, whatever the start month
-    expect(compare.delta.baseMonth).toBe(doc.from + 233)
-    expect(compare.delta.variantMonth).toBe(doc.from + 248)
-    expect(firstCrossing(sim.active, doc.goal)).toBe(doc.from + 248)
+    expect(compare.delta.deltaMonths).toBe(27)
+    expect(formatMonthsDelta(compare.delta.deltaMonths!)).toBe('2 yr 3 mo')
+    expect(compare.delta.baseMonth).toBe(doc.from + 130)
+    expect(compare.delta.variantMonth).toBe(doc.from + 157)
+    expect(firstCrossing(sim.active, doc.goal)).toBe(doc.from + 157)
   })
 })
 
@@ -71,7 +140,7 @@ describe('per-card compares', () => {
   })
 
   it('a nested card compares too: the ISK rule card inside the investing hand costs time', () => {
-    const sim = runSim(starterDoc())
+    const sim = runSim(starterAt2026())
     const isk = sim.compares.find((c) => c.cardId.startsWith('isk-'))!
     expect(isk.delta.deltaMonths).toBeGreaterThan(0)
   })
@@ -120,8 +189,8 @@ const DECEMBER_FUND_TAX: ScheduledRule = {
 }
 
 describe('taxes as cards', () => {
-  it('the investing hand ships with the ISK rule card on top, draining every index fund below it each December', () => {
-    const doc = starterDoc()
+  it('the investing hand ships with the ISK rule card on top, draining the index fund below it each December', () => {
+    const doc = starterAt2026()
     const invest = investingHand(doc)
     expect(invest.name).toBe('Index fund investing')
     expect(invest.take).toEqual({ type: 'percent', percent: 1 })
@@ -133,8 +202,8 @@ describe('taxes as cards', () => {
     const dec = doc.from + ((11 - (doc.from % 12) + 12) % 12)
     const i = dec - doc.from
     const rate = 0.3 * (0.0196 + 0.01)
-    const funds = bare.active.balances.filter((b) => b.id.startsWith('fund'))
-    expect(funds).toHaveLength(5)
+    const funds = bare.active.balances.filter((b) => b.id.startsWith('fund-'))
+    expect(funds).toHaveLength(1)
     for (const fund of funds) {
       const taxedFund = taxed.active.balances.find((b) => b.id === fund.id)!
       expect(taxedFund.points[i]).toBeCloseTo(fund.points[i]! * (1 - rate), 6)
@@ -156,7 +225,7 @@ describe('world rules through runSim', () => {
     // first December in the simulation: month % 12 === 11
     const dec = doc.from + ((11 - (doc.from % 12) + 12) % 12)
     const i = dec - doc.from
-    const fund = (sim: typeof bare): number[] => sim.active.balances.find((b) => b.id.startsWith('fund1-'))!.points
+    const fund = (sim: typeof bare): number[] => sim.active.balances.find((b) => b.id.startsWith('fund-'))!.points
     expect(fund(taxed)[i]).toBeCloseTo(fund(bare)[i]! * 0.99, 6)
     // the untagged car is untouched by the rule
     const car = (sim: typeof bare): number[] => sim.active.balances.find((b) => b.id.startsWith('car-value-'))!.points

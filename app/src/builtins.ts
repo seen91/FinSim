@@ -6,10 +6,11 @@ import { PRESETS } from './presets'
 /**
  * The built-in canonical cards: everything the draw pile deals that is not a
  * personal design — pile blueprints ("pile:<id>") and preset hand members
- * ("preset:<key>"). Their instances play and dial like any card, but the
- * math is read-only: changing it takes an explicit "copy to shelf" in the
- * Workshop, which mints a design from the template and re-points every table
- * instance of the built-in at it (DESIGN.md §0 "One card — instances").
+ * ("preset:<key>"). Their instances play and dial like any card, and the
+ * template itself never mutates: editing a built-in in the Workshop mints a
+ * design from your edits and re-points every table instance of the built-in
+ * at it (DESIGN.md §0 "One card — instances"); a plain "copy" mints without
+ * re-pointing, so the default keeps playing untouched.
  *
  * A built-in wears the same shape as a library design (AuthoredCard) so the
  * Workshop bench and the resolver treat both species alike; its id is its ref.
@@ -36,7 +37,7 @@ for (const bp of LIBRARY) {
 }
 for (const preset of PRESETS) {
   for (const pc of preset.cards) {
-    BUILTINS.set(presetRef(pc.key), { id: presetRef(pc.key), glyph: pc.glyph, description: '', card: pc.card })
+    BUILTINS.set(presetRef(pc.key), { id: presetRef(pc.key), glyph: pc.glyph, description: pc.description ?? '', card: pc.card })
     if (pc.series) BUILTIN_SERIES.set(presetRef(pc.key), pc.series)
   }
 }
