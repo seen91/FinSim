@@ -14,7 +14,7 @@ import {
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 import { CADENCE_SUFFIX, type AuthoredCard } from '../authored'
-import { MONTH_NAMES, formatNumber } from '../format'
+import { MONTH_NAMES, formatNumber, parseCompact } from '../format'
 import { CARD_GLYPHS } from '../glyph'
 import { Glyph } from '../icons'
 import { parseMonthText } from '../seriesImport'
@@ -353,15 +353,17 @@ interface NumProps {
   /** Display multiplier: 100 shows a 0.07 rate as 7. */
   scale?: number
   unit?: string
+  /** Accept k/M magnitudes ("5,5M"), the Goal field's language — money amounts only. */
+  compact?: boolean
 }
 
 /** One plain number: label and an editable value. */
-function Num({ label, value, onCommit, scale = 1, unit }: NumProps): ReactElement {
+function Num({ label, value, onCommit, scale = 1, unit, compact = false }: NumProps): ReactElement {
   const canonical = formatNumber(round(value * scale))
   const { draft, setDraft, onFocus, onBlur } = useDraft(canonical)
   const commitDraft = (text: string): void => {
     setDraft(text)
-    const parsed = Number(text.replace(/\s+/g, '').replace(',', '.'))
+    const parsed = compact ? (parseCompact(text) ?? NaN) : Number(text.replace(/\s+/g, '').replace(',', '.'))
     if (Number.isFinite(parsed)) onCommit(parsed / scale)
   }
   return (
@@ -377,9 +379,9 @@ function Num({ label, value, onCommit, scale = 1, unit }: NumProps): ReactElemen
   )
 }
 
-/** A unit-less money amount (a balance, a principal, a monthly take). */
+/** A unit-less money amount (a balance, a principal, a monthly take); reads "5,5M" and "250k". */
 function Money({ label, value, onCommit, unit }: { label: string; value: number; onCommit: (v: number) => void; unit?: string }): ReactElement {
-  return <Num label={label} value={value} onCommit={(v) => onCommit(Math.max(0, v))} {...(unit !== undefined ? { unit } : {})} />
+  return <Num label={label} value={value} onCommit={(v) => onCommit(Math.max(0, v))} compact {...(unit !== undefined ? { unit } : {})} />
 }
 
 /** A share of the running total, 0..100 %. */
@@ -528,7 +530,7 @@ function CurveField({
       {curve.type === 'linear' && (
         <>
           <AmountField label="Starts at" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
-          <Num label="Drift" value={curve.slopePerMonth} onCommit={(slopePerMonth) => commit({ ...curve, slopePerMonth })} unit="/mo" />
+          <Num label="Drift" value={curve.slopePerMonth} onCommit={(slopePerMonth) => commit({ ...curve, slopePerMonth })} unit="/mo" compact />
         </>
       )}
       {curve.type === 'compound' && (
@@ -558,6 +560,7 @@ function CurveField({
                 label={`Month ${String(step.atMonth)} →`}
                 value={step.value}
                 onCommit={(value) => commit({ ...curve, steps: normalizeSteps(curve.steps.map((s, j) => (j === i ? { ...s, value } : s))) })}
+                compact
               />
               <div className="step-tools">
                 <Num
@@ -727,7 +730,7 @@ function AssetEditor({ card, onChange }: { card: AssetCard; onChange: (c: Engine
 function DebtEditor({ card, onChange }: { card: DebtCard; onChange: (c: EngineCard) => void }): ReactElement {
   return (
     <>
-      <Num label="Principal" value={card.principal} onCommit={(principal) => onChange({ ...card, principal: Math.max(0, principal) })} />
+      <Money label="Principal" value={card.principal} onCommit={(principal) => onChange({ ...card, principal })} />
       <RateField label="Interest" value={card.interest.expected} onCommit={(expected) => onChange({ ...card, interest: { ...card.interest, expected } })} />
       <TakeField label="Pays" take={card.payment} onCommit={(payment) => onChange(withOptional(card, 'payment', payment))} />
     </>

@@ -33,10 +33,10 @@ export function formatCompact(value: number): string {
   return num.format(value)
 }
 
-/** Inverse of {@link formatCompact}: "10M", "1,5m", "250 k", "500000" → number. Null if unreadable. */
+/** Inverse of {@link formatCompact}: "10M", "1,5m", "250 k", "-2k", "500000" → number. Null if unreadable. */
 export function parseCompact(text: string): number | null {
   const cleaned = text.replace(/[\s  ']/g, '').replace(',', '.')
-  const m = /^(\d+(?:\.\d+)?)([kKmM])?$/.exec(cleaned)
+  const m = /^(-?(?:\d+(?:\.\d+)?|\.\d+))([kKmM])?$/.exec(cleaned)
   if (!m) return null
   const mult = m[2] === undefined ? 1 : m[2].toLowerCase() === 'k' ? 1e3 : 1e6
   return Number(m[1]) * mult
