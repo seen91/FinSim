@@ -169,10 +169,11 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub, focus
           className="scrub-label"
           x={scrubX}
           y={MARGIN.top - 5}
-          textAnchor={scrubX > width - (scrubDebt < 0 ? 250 : 180) ? 'end' : scrubX < 120 ? 'start' : 'middle'}
+          textAnchor={scrubX > width - (scrubDebt < 0 ? 220 : 180) ? 'end' : scrubX < 120 ? 'start' : 'middle'}
         >
           {formatMonth(scrub)} · {formatCompact(scrubNw)}
-          {scrubDebt < 0 && ` · debt ${formatCompact(scrubDebt)}`}
+          {/* red is the debt line's ink — the color says which series, no word needed */}
+          {scrubDebt < 0 && <tspan className="scrub-debt"> · {formatCompact(scrubDebt)}</tspan>}
         </text>
       </svg>
     </div>

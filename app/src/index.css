@@ -490,6 +490,11 @@ button:not(:disabled):hover {
   fill: var(--ink);
 }
 
+/* the debt figure in the scrub readout: the cash line's red is its label */
+.timeline .scrub-label .scrub-debt {
+  fill: var(--money-neg);
+}
+
 /* the plan's own verdict, top-left on the map — same shape as on the stacks */
 .chart-verdict {
   position: absolute;
