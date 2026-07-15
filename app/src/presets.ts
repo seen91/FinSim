@@ -1,4 +1,4 @@
-import type { Card, SampledData } from '@finsim/engine'
+import type { Card, Curve, SampledData } from '@finsim/engine'
 import type { GlyphName } from './icons'
 import type { CardInstance, HandNode } from './instances'
 
@@ -64,6 +64,57 @@ const incomeTax: PresetCard = {
   headline: '−30 %',
   description: 'A flat 30 % — close to a typical kommunalskatt. It takes 30 % of whatever flowed past above it, so its position in the hand matters.',
   card: { id: 'income-tax', name: 'Income tax', kind: 'drain', percent: 0.3 },
+}
+
+/**
+ * Brytpunkten for statlig inkomstskatt, monthly (~643 100 kr/yr in 2025),
+ * stepping every January like the salary's raise — skiktgränsen is
+ * recalculated yearly at CPI + 2 percentage points, so 4 % stands in for a
+ * 2 % inflation world. The shelter drain and its return source wear this
+ * same curve: together they make the statlig drain between them see only
+ * the part of the month above the threshold, because a percent drain never
+ * taxes a negative subtotal. No bracket primitive in the engine — the
+ * pipeline IS the bracket.
+ */
+const BRYTPUNKT: Curve = { type: 'compound', base: 53_600, annualRate: { expected: 0.04 }, holdMonths: 12, holdAnchor: 1 }
+
+const brytShelter: PresetCard = {
+  key: 'brytpunkt-shelter',
+  name: 'Brytpunkten · shelter',
+  glyph: 'vault',
+  headline: '−53 600 /mo · hides the base',
+  description:
+    'Half of the bracket trick: hides everything below brytpunkten (~643 100 kr/yr, stepping 4 % each January — skiktgränsen follows CPI + 2 pp) so the statlig drain below only sees what is above it. Its twin gives the money back — edit the two as a pair.',
+  card: { id: 'brytpunkt-shelter', name: 'Brytpunkten · shelter', kind: 'drain', amount: BRYTPUNKT },
+}
+
+const statligSkatt: PresetCard = {
+  key: 'statlig-skatt',
+  name: 'Statlig skatt',
+  glyph: 'percent',
+  headline: '−20 % above brytpunkten',
+  description:
+    'A plain 20 % drain — but the shelter above has already hidden the first 53 600 kr, and a percent drain never taxes a negative subtotal, so it bites only the part of the month above brytpunkten.',
+  card: { id: 'statlig-skatt', name: 'Statlig skatt', kind: 'drain', percent: 0.2 },
+}
+
+const brytReturn: PresetCard = {
+  key: 'brytpunkt-return',
+  name: 'Brytpunkten · return',
+  glyph: 'cash',
+  headline: '+53 600 /mo · gives it back',
+  description: 'The shelter’s twin: hands back exactly what the shelter hid, statlig skatt now paid. Keep its curve identical to the shelter’s.',
+  card: { id: 'brytpunkt-return', name: 'Brytpunkten · return', kind: 'source', flow: BRYTPUNKT },
+}
+
+const kommunalskatt: PresetCard = {
+  key: 'kommunalskatt',
+  name: 'Kommunalskatt',
+  glyph: 'stamp',
+  headline: '−30 %',
+  description:
+    'The same flat 30 % as the Income tax card — a typical kommunalskatt with jobbskatteavdrag folded in — taking the rest of the month after the statlig steps above.',
+  card: { id: 'kommunalskatt', name: 'Kommunalskatt', kind: 'drain', percent: 0.3 },
 }
 
 const expenses: PresetCard = {
@@ -201,6 +252,22 @@ export const PRESETS: HandPreset[] = [
       kind: 'hand',
       glyph: 'coins',
       children: [inst('salary', uid), inst('income-tax', uid), inst('expenses', uid), inst('buffer', uid), inst('fund', uid)],
+    }),
+  },
+  {
+    id: 'progressive-tax',
+    name: 'Progressive income tax',
+    glyph: 'stamp',
+    description:
+      'Kommunalskatt on everything, plus 20 % statlig skatt only on the part of the month above brytpunkten. Swap it in for the flat Income tax, right under your gross pay — its take reads whatever flowed past above it.',
+    cards: [brytShelter, statligSkatt, brytReturn, kommunalskatt],
+    build: (uid) => ({
+      id: `tax-${uid}`,
+      name: 'Progressive income tax',
+      kind: 'hand',
+      glyph: 'stamp',
+      take: { type: 'percent', percent: 1 },
+      children: [inst('brytpunkt-shelter', uid), inst('statlig-skatt', uid), inst('brytpunkt-return', uid), inst('kommunalskatt', uid)],
     }),
   },
   {
