@@ -307,6 +307,10 @@ button:not(:disabled):hover {
 /* ---- the arena: a parchment map pinned to the table ---- */
 .arena {
   position: relative;
+  /* clamp the open hand's layers (hub 90, hovered 95, dragged 100) inside the
+     map — they order cards against each other, not against the fixed drawer,
+     workbench, or pile. The hand-strip's own z-index already does the same. */
+  isolation: isolate;
   margin: 0.7rem 1rem 0.35rem;
   border: 2px solid var(--gold-deep);
   border-radius: 12px;
