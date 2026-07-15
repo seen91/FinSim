@@ -1002,6 +1002,52 @@ input[type='range'].tuned {
   color: var(--ink-soft);
 }
 
+/* what the hand draws out of its parent each month — click to change */
+.hub-take {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-decoration: underline dashed color-mix(in srgb, currentcolor 55%, transparent);
+  text-underline-offset: 3px;
+}
+
+.hub-take:hover {
+  color: var(--ink);
+}
+
+.hub-take-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.hub-take-edit select,
+.hub-take-edit input {
+  font-size: 0.72rem;
+  font-style: normal;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--accent-line);
+  border-radius: 4px;
+  padding: 0.1rem 0.25rem;
+}
+
+.hub-take-edit input {
+  width: 4.5rem;
+  text-align: right;
+}
+
+.hub-take-unit {
+  font-style: normal;
+}
+
 .hub-net {
   font-size: 0.95rem;
 }

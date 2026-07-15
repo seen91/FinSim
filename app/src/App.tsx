@@ -398,6 +398,20 @@ export function App(): ReactElement {
             if (hand && !isInstance(hand) && hand.kind === 'hand') hand.name = name
           })
         }}
+        onSetHandTake={(handId, take) => {
+          store.update((d) => {
+            const hand = findNode(d.table.root, handId)
+            if (!hand || isInstance(hand) || hand.kind !== 'hand') return
+            if (take) hand.take = take
+            else delete hand.take
+            // an explicit new take supersedes any what-if dial riding the old one
+            const tuned = hand as { tune?: Tune }
+            if (tuned.tune) {
+              for (const path of Object.keys(tuned.tune)) if (path.startsWith('take.')) delete tuned.tune[path]
+              if (Object.keys(tuned.tune).length === 0) delete tuned.tune
+            }
+          })
+        }}
         onOpenReport={() => setReportOpen(true)}
       />
 

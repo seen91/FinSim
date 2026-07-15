@@ -63,7 +63,9 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
             <p>
               A hand computes its own subtotal, top to bottom, and contributes the <strong>net at its position</strong> in the parent. The subtotal starts
               from zero — or, if the hand has a take, from money drawn out of the parent&rsquo;s total, so an &ldquo;invest the surplus&rdquo; hand can hold
-              percent cards that read real money. Nesting is scoping: what happens in a hand stays in the hand until its net comes out.
+              percent cards that read real money. The take is set in the opened hand&rsquo;s hub, under its name: nothing, a fixed amount (&ldquo;I save
+              5&nbsp;000&nbsp;/mo&rdquo;), or a share of what is left at the hand&rsquo;s position. Nesting is scoping: what happens in a hand stays in the
+              hand until its net comes out.
             </p>
             <p>
               To form one, <strong>stack cards</strong>: pick a card up out of the fan (drag it off the arc) and drop it onto a neighbour — the two pile

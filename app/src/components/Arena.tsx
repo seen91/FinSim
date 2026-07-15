@@ -1,6 +1,6 @@
-import { firstCrossing, formatMonth, formatMonthsDelta, type Card as EngineCard, type HandCard, type Series } from '@finsim/engine'
+import { firstCrossing, formatMonth, formatMonthsDelta, type Card as EngineCard, type HandCard, type Series, type Take } from '@finsim/engine'
 import { useState, type ReactElement } from 'react'
-import { formatPercent } from '../format'
+import { formatCompact, formatNumber, formatPercent, formatPerMonth, parseCompact } from '../format'
 import { NEW_HAND_NAME } from '../hands'
 import { Glyph } from '../icons'
 import type { Mc } from '../mc'
@@ -49,6 +49,8 @@ interface Props {
   /** Carry a card from its shelf to the Workshop bench. */
   onWorkshopCard: (cardId: string) => void
   onRenameHand: (handId: string, name: string) => void
+  /** Set (or clear) what the hand draws out of its parent each month. */
+  onSetHandTake: (handId: string, take: Take | undefined) => void
   /** Unfold the fan: open the futures report. */
   onOpenReport: () => void
 }
@@ -93,6 +95,104 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
   )
 }
 
+/**
+ * What the hand draws out of its parent each month, before its cards play —
+ * nothing (the subtotal starts from zero), a fixed amount ("I save
+ * 5 000 /mo"), or a share of what's left at the hand's position. The one
+ * line in the hub that decides whether the hand receives money at all.
+ */
+function HandTake({ take, parentName, onChange }: { take: Take | undefined; parentName: string; onChange: (take: Take | undefined) => void }): ReactElement {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+
+  if (!editing) {
+    const label =
+      take === undefined
+        ? `takes nothing from ${parentName}`
+        : take.type === 'fixed'
+          ? `takes ${formatPerMonth(take.amountPerMonth)} from ${parentName}`
+          : `takes ${formatPercent(take.percent, 0)} of what's left in ${parentName}`
+    return (
+      <button
+        className="hub-take"
+        title={`what this hand draws out of ${parentName} each month, before its cards play — click to change`}
+        onClick={() => {
+          setDraft(take === undefined ? '' : take.type === 'fixed' ? formatCompact(take.amountPerMonth) : formatNumber(take.percent * 100))
+          setEditing(true)
+        }}
+      >
+        {label}
+      </button>
+    )
+  }
+
+  const commitDraft = (): void => {
+    if (take === undefined) return
+    if (take.type === 'fixed') {
+      const parsed = parseCompact(draft)
+      if (parsed !== null && parsed >= 0) onChange({ type: 'fixed', amountPerMonth: parsed })
+      else setDraft(formatCompact(take.amountPerMonth))
+    } else {
+      const parsed = Number(draft.replace(/[\s  ]/g, '').replace(',', '.'))
+      if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100) onChange({ type: 'percent', percent: parsed / 100 })
+      else setDraft(formatNumber(take.percent * 100))
+    }
+  }
+
+  // every change commits live; the editor folds away when focus leaves it
+  return (
+    <span
+      className="hub-take-edit"
+      onKeyDown={(e) => {
+        // Escape must not also close the opened hand (the app-level listener)
+        e.stopPropagation()
+        if (e.key === 'Enter') {
+          commitDraft()
+          setEditing(false)
+        }
+        if (e.key === 'Escape') setEditing(false)
+      }}
+      onBlur={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return
+        commitDraft()
+        setEditing(false)
+      }}
+    >
+      takes
+      <select
+        autoFocus={take === undefined}
+        value={take?.type ?? 'none'}
+        onChange={(e) => {
+          const mode = e.target.value
+          if (mode === (take?.type ?? 'none')) return
+          if (mode === 'none') onChange(undefined)
+          else if (mode === 'fixed') {
+            onChange({ type: 'fixed', amountPerMonth: 1_000 })
+            setDraft(formatCompact(1_000))
+          } else {
+            onChange({ type: 'percent', percent: 0.1 })
+            setDraft(formatNumber(10))
+          }
+        }}
+      >
+        <option value="none">nothing</option>
+        <option value="fixed">a fixed amount</option>
+        <option value="percent">a share of what&rsquo;s left</option>
+      </select>
+      {take && (
+        <input
+          className="num"
+          value={draft}
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+      )}
+      {take && <span className="hub-take-unit">{take.type === 'fixed' ? '/mo' : '%'}</span>}
+    </span>
+  )
+}
+
 export function Arena(props: Props): ReactElement {
   const {
     doc,
@@ -113,6 +213,7 @@ export function Arena(props: Props): ReactElement {
     onTuneCard,
     onWorkshopCard,
     onRenameHand,
+    onSetHandTake,
     onOpenReport,
   } = props
   const hand = trail[trail.length - 1]
@@ -225,6 +326,7 @@ export function Arena(props: Props): ReactElement {
           <span className="hub-count num">
             {cards} card{cards === 1 ? '' : 's'} · plays left to right
           </span>
+          <HandTake key={`take-${hand.id}`} take={hand.take} parentName={(parent ?? sim.resolvedRoot).name ?? 'the table'} onChange={(take) => onSetHandTake(hand.id, take)} />
           {/* visible only while a lifted card hovers over no sibling (CSS :has on .fan-ejecting) */}
           <span className="hub-eject-hint">drop — the card leaves this hand for {(parent ?? sim.resolvedRoot).name ?? 'the table'}</span>
           <HandFigures prefix="hub" hand={hand} sim={sim} scrub={scrub} from={doc.from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
