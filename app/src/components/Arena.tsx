@@ -142,7 +142,7 @@ function HandTake({
           : `takes ${formatPercent(take.percent, 0)} of what's left in ${parentName}`
     return (
       <button
-        className={`hub-take${shortfall ? ' overdrawn' : ''}`}
+        className={`hub-take${take === undefined ? ' unset' : ''}${shortfall ? ' overdrawn' : ''}`}
         title={`what this hand draws out of ${parentName} each month, before its cards play — click to change${shortfall ? `. ${shortfallTitle(shortfall)}` : ''}`}
         onClick={() => {
           setDraft(take === undefined ? '' : take.type === 'fixed' ? formatCompact(take.amountPerMonth) : formatNumber(take.percent * 100))

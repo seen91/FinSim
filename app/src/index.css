@@ -1068,20 +1068,35 @@ input[type='range'].tuned {
   color: var(--ink-soft);
 }
 
-/* what the hand draws out of its parent each month — click to change */
+/* what the hand draws out of its parent each month — the one line that
+   decides whether the hand receives money at all, so it wears a plaque,
+   not a footnote */
 .hub-take {
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-style: italic;
-  color: var(--ink-soft);
+  color: var(--ink);
+  background: var(--card-deep);
+  border: 1px solid var(--gold-deep);
+  border-radius: 999px;
+  padding: 0.18rem 0.7rem;
+  min-height: 29px;
   cursor: pointer;
-  text-decoration: underline dashed color-mix(in srgb, currentcolor 55%, transparent);
-  text-underline-offset: 3px;
+  box-shadow: 0 1px 2px rgba(28, 16, 4, 0.15);
 }
 
 .hub-take:hover {
+  border-color: var(--gold);
+}
+
+/* no take yet: an empty slot asking to be filled, not a settled plaque —
+   without one the hand receives nothing and money flows past it */
+.hub-take.unset {
+  border-style: dashed;
+  background: none;
+  color: var(--ink-soft);
+}
+
+.hub-take.unset:hover {
   color: var(--ink);
 }
 
@@ -1091,18 +1106,24 @@ input[type='range'].tuned {
   color: var(--money-neg);
 }
 
+/* the editor wears the same plaque, so opening it doesn't jump the hub */
 .hub-take-edit {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-style: italic;
-  color: var(--ink-soft);
+  color: var(--ink);
+  background: var(--card-deep);
+  border: 1px solid var(--gold-deep);
+  border-radius: 999px;
+  padding: 0.18rem 0.7rem;
+  min-height: 29px;
 }
 
 .hub-take-edit select,
 .hub-take-edit input {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-style: normal;
   color: var(--ink);
   background: var(--card);
