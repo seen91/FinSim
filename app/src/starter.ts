@@ -24,7 +24,7 @@ export function starterDoc(): Doc {
   const now = new Date() // app-side only: the engine never touches wall-clock time
   return {
     from: ym(now.getFullYear(), now.getMonth() + 1),
-    horizonMonths: 30 * 12,
+    horizonMonths: null, // auto: the chart ends five years after the goal is reached
     goal: 2_000_000,
     table: {
       root: {

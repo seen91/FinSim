@@ -4,7 +4,7 @@ import { formatAmount, formatPercent } from '../format'
 import { Glyph } from '../icons'
 import { findNode } from '../instances'
 import type { Mc } from '../mc'
-import type { Doc } from '../model'
+import type { PlayedDoc } from '../model'
 import { rangeVerdict, signedDelta } from '../verdict'
 
 /**
@@ -14,7 +14,7 @@ import { rangeVerdict, signedDelta } from '../verdict'
  * table's futures report, scoped to one decision. Nothing here re-rolls the
  * dice either.
  */
-export function BundleReport({ handId, mc, doc, onClose }: { handId: string | null; mc: Mc | null; doc: Doc; onClose: () => void }): ReactElement | null {
+export function BundleReport({ handId, mc, doc, onClose }: { handId: string | null; mc: Mc | null; doc: PlayedDoc; onClose: () => void }): ReactElement | null {
   if (!handId || !mc) return null
   const range = mc.ranges.get(handId)
   if (!range) return null
@@ -168,7 +168,7 @@ export function BundleReport({ handId, mc, doc, onClose }: { handId: string | nu
  * across futures — in the same drawer idiom as the Rulebook. It only reads
  * what runMc already computed; nothing here re-rolls the dice.
  */
-export function FuturesReport({ open, mc, doc, onClose }: { open: boolean; mc: Mc | null; doc: Doc; onClose: () => void }): ReactElement | null {
+export function FuturesReport({ open, mc, doc, onClose }: { open: boolean; mc: Mc | null; doc: PlayedDoc; onClose: () => void }): ReactElement | null {
   if (!open || !mc) return null
 
   const { run, crossings } = mc

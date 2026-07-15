@@ -4,7 +4,7 @@ import { pileRef } from '../src/builtins'
 import { deserializeDoc, serializeDoc } from '../src/exchange'
 import { addCard } from '../src/hands'
 import { isInstance, resolveTable, type HandNode } from '../src/instances'
-import { debtAt, runSim, type Doc } from '../src/model'
+import { debtAt, effectiveHorizon, runSim, type Doc } from '../src/model'
 import { PRESETS } from '../src/presets'
 import { starterDoc } from '../src/starter'
 
@@ -219,6 +219,8 @@ describe('taxes as cards', () => {
 describe('world rules through runSim', () => {
   it('a scheduled balance tax drains tagged fund balances every December', () => {
     const doc = docWithCar()
+    // pin the horizon: the tax moves the goal date, so auto horizons would differ between the two sims
+    doc.horizonMonths = 30 * 12
     const bare = runSim(doc)
     doc.world = { rules: [DECEMBER_FUND_TAX] }
     const taxed = runSim(doc)
@@ -234,6 +236,36 @@ describe('world rules through runSim', () => {
     for (let k = i; k < taxed.active.netWorth.points.length; k++) {
       expect(taxed.active.netWorth.points[k]!).toBeLessThan(bare.active.netWorth.points[k]!)
     }
+  })
+})
+
+describe('effectiveHorizon: the auto horizon follows the goal', () => {
+  it('an explicit horizon passes through untouched', () => {
+    const doc = starterAt2026()
+    doc.horizonMonths = 17 * 12
+    expect(effectiveHorizon(doc)).toBe(17 * 12)
+  })
+
+  it('auto ends five years after the month the goal is reached', () => {
+    const doc = starterAt2026()
+    expect(doc.horizonMonths).toBeNull()
+    const horizon = effectiveHorizon(doc)
+    // the crossing must be measurable inside the resolved horizon itself
+    const sim = runSim(doc)
+    const cross = firstCrossing(sim.active, doc.goal)!
+    expect(horizon).toBe(cross - doc.from + 1 + 5 * 12)
+  })
+
+  it('a goal never reached falls back to 30 years', () => {
+    const doc = starterAt2026()
+    doc.goal = 1e15
+    expect(effectiveHorizon(doc)).toBe(30 * 12)
+  })
+
+  it('a table the probe cannot play falls back to 30 years, without throwing', () => {
+    const doc = starterAt2026()
+    doc.table.root.children.push({ id: 'ghost', ref: 'no-such-design' })
+    expect(effectiveHorizon(doc)).toBe(30 * 12)
   })
 })
 
@@ -262,6 +294,7 @@ describe('debtAt: what the debt cards owe at a month (the scrub readout reads it
     const doc = starterAt2026()
     const sim = runSim(doc)
     expect(debtAt(sim, doc.from)).toBe(0)
-    expect(debtAt(sim, doc.from + doc.horizonMonths - 1)).toBe(0)
+    // the starter's horizon is auto — the sim's own length is the last month
+    expect(debtAt(sim, doc.from + sim.active.netWorth.points.length - 1)).toBe(0)
   })
 })

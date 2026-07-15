@@ -20,7 +20,7 @@ import { addCard, findParentHand, groupOnto, moveCard, moveOut, removeCard } fro
 import { Glyph } from './icons'
 import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, type TableNode } from './instances'
 import { runMc } from './mc'
-import { migrateDoc, runSim, useDoc, type Sim } from './model'
+import { effectiveHorizon, migrateDoc, runSim, useDoc, type PlayedDoc, type Sim } from './model'
 import { addSeries, parseMonthText } from './seriesImport'
 import { starterDoc } from './starter'
 import type { Tune } from './tune'
@@ -89,6 +89,9 @@ export function App(): ReactElement {
         // rules — lift what it left behind in old saves. Imported files keep
         // theirs: world rules are engine surface, and exchange round-trips them.
         if (savedDoc.world?.rules) delete savedDoc.world.rules
+        // the fixed 30-year starter horizon predates the auto horizon — lift
+        // it to auto (the End field, added the same day, makes 30y expressible again)
+        if (savedDoc.horizonMonths === 30 * 12) savedDoc.horizonMonths = null
         const minted = migrateDoc(savedDoc, lib)
         if (minted.length > 0) lib = mergeLibrary(lib, minted)
         store.replace(savedDoc)
@@ -131,24 +134,30 @@ export function App(): ReactElement {
     }
   }, [])
 
+  // the horizon resolves to a number exactly once, here — an explicit End
+  // passes through, auto ends five years past the goal crossing — and
+  // everything downstream (sims, chart, reports) plays the resolved doc
+  const horizonMonths = useMemo(() => effectiveHorizon(doc, library), [doc, library])
+  const playDoc: PlayedDoc = useMemo(() => ({ ...doc, horizonMonths }), [doc, horizonMonths])
+
   // a table can still fail to play — a start before a series begins, a burned
   // design an import still references: keep the last good sim on screen and say why
   const simState = useMemo(() => {
     try {
-      return { sim: runSim(doc, library), error: null as string | null }
+      return { sim: runSim(playDoc, library), error: null as string | null }
     } catch (err) {
       return { sim: null, error: errorMessage(err) }
     }
-  }, [doc, library])
+  }, [playDoc, library])
   const lastGoodSim = useRef<Sim | null>(null)
   if (simState.sim) lastGoodSim.current = simState.sim
   const sim =
     simState.sim ??
     lastGoodSim.current ??
-    runSim({ goal: doc.goal, from: doc.from, horizonMonths: doc.horizonMonths, table: { root: { id: 'root', kind: 'hand', children: [] } } })
+    runSim({ goal: doc.goal, from: doc.from, horizonMonths, table: { root: { id: 'root', kind: 'hand', children: [] } } })
   // the Monte Carlo pass rides a deferred value: the deterministic line
   // answers every gesture instantly, the fan follows a beat later
-  const simInput = useMemo(() => ({ doc, library }), [doc, library])
+  const simInput = useMemo(() => ({ doc: playDoc, library }), [playDoc, library])
   const deferred = useDeferredValue(simInput)
   const mc = useMemo(() => {
     try {
@@ -157,7 +166,7 @@ export function App(): ReactElement {
       return null // the deterministic pass already carries the readable error
     }
   }, [deferred])
-  const to = doc.from + doc.horizonMonths - 1
+  const to = doc.from + horizonMonths - 1
   const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
   // what the table renders: instances resolved to their canonical cards, per-copy dials riding along
   const root = sim.resolvedRoot
@@ -183,12 +192,12 @@ export function App(): ReactElement {
     const authored = (workDraft?.id === workshopFocus.id ? workDraft : null) ?? canonicalOf(workshopFocus.id, library)
     if (!authored) return null
     try {
-      const solo = runSim({ ...doc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } }, library)
+      const solo = runSim({ ...playDoc, table: { root: { id: 'focus-root', kind: 'hand', children: [authored.card] } } }, library)
       return { authored, solo }
     } catch {
       return null // a design can start before its data begins — no curve, not a crash
     }
-  }, [workshopOpen, workshopFocus, library, doc, workDraft])
+  }, [workshopOpen, workshopFocus, library, playDoc, workDraft])
 
   const arenaFocus = useMemo((): ArenaFocus | null => {
     if (!workshopSolo) return null
@@ -342,6 +351,20 @@ export function App(): ReactElement {
             }}
           />
         </label>
+        <label
+          className="goal-input"
+          title="the table's last month — by default it follows the goal (five years past the crossing); set a month to pin it, clear the field to follow again"
+        >
+          End
+          <input
+            type="month"
+            value={formatMonth(to)}
+            onChange={(e) => {
+              const month = parseMonthText(e.target.value)
+              store.update((d) => (d.horizonMonths = month === null ? null : Math.max(1, month - d.from + 1)))
+            }}
+          />
+        </label>
         <div className="topbar-actions">
           {/* planked boards hanging from one wooden rail; the Workshop's
               signal-yellow board stays the one loud thing on the table */}
@@ -385,7 +408,7 @@ export function App(): ReactElement {
       )}
 
       <Arena
-        doc={doc}
+        doc={playDoc}
         sim={sim}
         mc={mc}
         scrub={scrub}
@@ -490,9 +513,9 @@ export function App(): ReactElement {
 
       <Rulebook open={rulebookOpen} onClose={() => setRulebookOpen(false)} />
 
-      <FuturesReport open={report === 'table'} mc={mc} doc={doc} onClose={() => setReport(null)} />
+      <FuturesReport open={report === 'table'} mc={mc} doc={playDoc} onClose={() => setReport(null)} />
 
-      <BundleReport handId={typeof report === 'object' && report !== null ? report.hand : null} mc={mc} doc={doc} onClose={() => setReport(null)} />
+      <BundleReport handId={typeof report === 'object' && report !== null ? report.hand : null} mc={mc} doc={playDoc} onClose={() => setReport(null)} />
 
       <DrawPile
         open={drawerOpen}

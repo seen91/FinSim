@@ -141,7 +141,7 @@ describe('the start date is the backtest control', () => {
     })
     const mc = runMc(doc)
     expect(mc).not.toBeNull()
-    expect(mc!.bands.p10.points).toHaveLength(doc.horizonMonths)
+    expect(mc!.bands.p10.points).toHaveLength(doc.horizonMonths!)
   })
 })
 

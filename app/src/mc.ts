@@ -11,7 +11,7 @@ import {
   type World,
 } from '@finsim/engine'
 import type { AuthoredCard } from './authored'
-import { playedTable, type Doc } from './model'
+import { effectiveHorizon, playedTable, type Doc } from './model'
 
 /**
  * The app's Monte Carlo pass (M3b): the same table runSim plays, sampled
@@ -80,9 +80,10 @@ function hasVolatility(table: Table, world: World, to: number): boolean {
  * volatility — the deterministic line already tells the whole story.
  */
 export function runMc(doc: Doc, library: AuthoredCard[] = []): Mc | null {
-  // the same resolved, tuned table runSim plays — the fan and the line must live in one world
+  // the same resolved, tuned table runSim plays — the fan and the line must live
+  // in one world, over the same resolved horizon
   const { table, world } = playedTable(doc, library)
-  const to = doc.from + doc.horizonMonths - 1
+  const to = doc.from + effectiveHorizon(doc, library) - 1
   if (!hasVolatility(table, world, to)) return null
   const opts = { paths: MC_PATHS, seed: MC_SEED }
 

@@ -449,13 +449,6 @@ button:not(:disabled):hover {
   stroke: none;
 }
 
-.timeline .cash-label {
-  fill: var(--money-neg);
-  font-size: 10.5px;
-  font-style: italic;
-  font-variant-numeric: tabular-nums;
-}
-
 .timeline .zero-line {
   stroke: var(--ink-soft);
   stroke-width: 1;

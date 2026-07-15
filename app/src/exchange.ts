@@ -61,7 +61,7 @@ export function deserializeDoc(json: string, library: AuthoredCard[] = []): Impo
   const doc = envelope.doc
   if (typeof doc !== 'object' || doc === null) throw new Error('table file has no document')
   if (!Number.isInteger(doc.from)) throw new Error('table file has an invalid start month')
-  if (!Number.isInteger(doc.horizonMonths) || doc.horizonMonths < 1) throw new Error('table file has an invalid horizon')
+  if (doc.horizonMonths !== null && (!Number.isInteger(doc.horizonMonths) || doc.horizonMonths < 1)) throw new Error('table file has an invalid horizon')
   if (typeof doc.goal !== 'number' || !(doc.goal > 0)) throw new Error('table file has an invalid goal')
   if (typeof doc.table !== 'object' || doc.table === null) throw new Error('table file has no table')
 

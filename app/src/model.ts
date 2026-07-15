@@ -24,8 +24,12 @@ export interface Doc {
   world?: World
   goal: number
   from: number
-  horizonMonths: number
+  /** Explicit horizon, or null = auto: the chart runs to five years past the goal crossing. */
+  horizonMonths: number | null
 }
+
+/** A doc whose horizon has been resolved to a concrete number — what the sim boundary consumes. */
+export type PlayedDoc = Doc & { horizonMonths: number }
 
 /**
  * What the sim actually plays: instances resolved to their canonical cards,
@@ -34,6 +38,32 @@ export interface Doc {
  */
 export function playedTable(doc: Doc, library: AuthoredCard[] = []): { table: Table; world: World } {
   return { table: applyTuneTable(resolveTable(doc.table, library)), world: doc.world ?? {} }
+}
+
+/** How far past the goal crossing an auto horizon runs — enough after-story to see the plan hold. */
+const AUTO_MARGIN_MONTHS = 5 * 12
+/** How far the auto probe looks for the crossing before giving up. */
+const AUTO_CAP_MONTHS = 100 * 12
+/** The auto horizon when the goal is never reached within the cap. */
+const AUTO_FALLBACK_MONTHS = 30 * 12
+
+/**
+ * Resolve the doc's horizon: an explicit one passes through; the auto one
+ * (null) runs a single deterministic probe and ends the table five years
+ * after the month the goal is first reached — the x-axis follows the goal.
+ * A table the probe cannot play falls back to 30 years; the real sim will
+ * surface the error itself.
+ */
+export function effectiveHorizon(doc: Doc, library: AuthoredCard[] = []): number {
+  if (doc.horizonMonths !== null) return doc.horizonMonths
+  try {
+    const { table, world } = playedTable(doc, library)
+    const probe = simulate(table, world, doc.from, doc.from + AUTO_CAP_MONTHS - 1)
+    const cross = firstCrossing(probe, doc.goal)
+    return cross !== null ? cross - doc.from + 1 + AUTO_MARGIN_MONTHS : AUTO_FALLBACK_MONTHS
+  } catch {
+    return AUTO_FALLBACK_MONTHS
+  }
 }
 
 /**
@@ -167,13 +197,14 @@ export function debtAt(sim: Sim, month: number): number {
  * global views or locale toggles.
  */
 export function runSim(doc: Doc, library: AuthoredCard[] = []): Sim {
-  const to = doc.from + doc.horizonMonths - 1
+  const horizonMonths = effectiveHorizon(doc, library)
+  const to = doc.from + horizonMonths - 1
   // resolve once: the sim plays it tuned (dials applied and stripped), the card faces render it untuned
   const resolved = resolveTable(doc.table, library)
   const table = applyTuneTable(resolved)
   const world = doc.world ?? {}
   const active = simulate(table, world, doc.from, to)
-  const points = new Array<number>(doc.horizonMonths).fill(0)
+  const points = new Array<number>(horizonMonths).fill(0)
   for (const child of table.root.children) {
     const s = active.contributions.find((c) => c.id === child.id)
     if (!s) continue

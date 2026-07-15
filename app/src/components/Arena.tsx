@@ -4,7 +4,7 @@ import { formatCompact, formatNumber, formatPercent, formatPerMonth, parseCompac
 import { NEW_HAND_NAME } from '../hands'
 import { Glyph } from '../icons'
 import type { Mc } from '../mc'
-import type { Doc, Sim } from '../model'
+import type { PlayedDoc, Sim } from '../model'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
 import { HandFigures, HandStack, handShortfall, shortfallTitle } from './HandStack'
@@ -37,7 +37,7 @@ export interface ArenaFocus {
 }
 
 interface Props {
-  doc: Doc
+  doc: PlayedDoc
   sim: Sim
   /** Monte Carlo results, when the table carries volatility (null otherwise). */
   mc: Mc | null

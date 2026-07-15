@@ -13,7 +13,7 @@ import { bandPath, linePath, negativeRuns, scaleLinear } from '../scale'
  *
  * When cash runs below zero the chart says so by itself: each debt stretch
  * draws the cash curve as a red dotted line under a dotted zero baseline,
- * with a wash down to zero and a label naming the depth and the months —
+ * with a wash down to zero (the scrub label names the amount on hover) —
  * and it is gone the month the debt is repaid. No toggle: net worth alone
  * cannot tell a plan that borrows from one that doesn't, so the chart grows
  * a bounded basement below zero exactly while the difference bites.
@@ -134,21 +134,10 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub, focus
               const a = Math.max(0, run.from - 1)
               const b = Math.min(cash.length - 1, run.to + 1)
               const seg = cashPath(a, b)
-              const slice = cash.slice(run.from, run.to + 1)
-              const deepest = run.from + slice.indexOf(Math.min(...slice))
-              const labelX = x(from + deepest)
               return (
                 <g key={run.from}>
                   <path className="cash-under" d={`${seg}L${x(from + b).toFixed(1)},${y(0).toFixed(1)}L${x(from + a).toFixed(1)},${y(0).toFixed(1)}Z`} />
                   <path className="cash-line" d={seg} />
-                  <text
-                    className="cash-label"
-                    x={labelX}
-                    y={y(cash[deepest]!) + 14}
-                    textAnchor={labelX > width - 190 ? 'end' : labelX < 190 ? 'start' : 'middle'}
-                  >
-                    cash {formatCompact(cash[deepest]!)} · {formatMonth(from + run.from)} – {formatMonth(from + run.to)}
-                  </text>
                 </g>
               )
             })}
