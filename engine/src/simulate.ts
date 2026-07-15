@@ -45,7 +45,9 @@ import { CASH_ID, validateTable } from './validate.js'
  *     month.
  *   - Fixed drains/takes always draw in full (the running total may go
  *     negative: an honest overdraft, never leaked money). Percent cards read
- *     `max(0, total)` at their position.
+ *     `max(0, total)` at their position. For hands with a take, the part of
+ *     the take that was NOT covered at its position is reported per month in
+ *     `shortfalls`, so the UI can flag the overdraft without forbidding it.
  */
 
 /**
@@ -204,6 +206,9 @@ export function simulate(table: Table, world: World, from: number, to: number, s
 
   const n = to - from + 1
   const contributions = new Map<string, number[]>(cards.map((c) => [c.id, new Array<number>(n).fill(0)]))
+  const shortfallPoints = new Map<string, number[]>(
+    cards.filter((c) => c.kind === 'hand' && c.take).map((c) => [c.id, new Array<number>(n).fill(0)]),
+  )
   const balancePoints = new Map<string, number[]>(
     cards.filter((c) => c.kind === 'asset' || c.kind === 'debt').map((c) => [c.id, new Array<number>(n).fill(0)]),
   )
@@ -298,6 +303,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
         }
         case 'hand': {
           const taken = card.take ? takeAmount(card.take, total) : 0
+          if (card.take) shortfallPoints.get(card.id)![i] = Math.max(0, taken - Math.max(0, total))
           total -= taken
           const leftover = playHand(card, month, i, taken)
           total += leftover
@@ -374,6 +380,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
   const balanceSeries: Series[] = cards
     .filter((c) => c.kind === 'asset' || c.kind === 'debt')
     .map((c) => ({ id: c.id, role: 'balance' as const, startMonth: from, points: balancePoints.get(c.id)! }))
+  const shortfallSeries: Series[] = [...shortfallPoints].map(([id, points]) => ({ id, role: 'shortfall' as const, startMonth: from, points }))
 
   return {
     from,
@@ -382,5 +389,6 @@ export function simulate(table: Table, world: World, from: number, to: number, s
     cash: { id: CASH_ID, role: 'cash', startMonth: from, points: cashPoints },
     contributions: contributionSeries,
     balances: balanceSeries,
+    shortfalls: shortfallSeries,
   }
 }

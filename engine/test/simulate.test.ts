@@ -457,6 +457,37 @@ describe('hand takes: a hand may draw its starting subtotal from its parent', ()
     expect(balance(r, 'f')[0]).toBe(0)
     expect(r.cash.points[0]).toBe(10000)
   })
+
+  it('shortfalls report the uncovered part of a fixed take, month by month', () => {
+    const t = table([
+      { id: 'salary', kind: 'source', flow: { type: 'step', initial: 10000, steps: [{ atMonth: 2, value: 15000 }] } },
+      { id: 'invest', kind: 'hand', take: { type: 'fixed', amountPerMonth: 12000 }, children: [pctFund('f', 1)] },
+    ])
+    const r = simulate(t, {}, 0, 3)
+    const shortfall = r.shortfalls.find((s) => s.id === 'invest')!
+    expect(shortfall.points).toEqual([2000, 2000, 0, 0]) // covered once the raise lands
+    expect(r.cash.points[0]).toBe(-2000) // the overdraft itself is unchanged
+  })
+
+  it('a percent take never overdraws — its shortfall is all zeros; take-less hands report none', () => {
+    const t = table([
+      drain('bill', 500),
+      { id: 'sweep', kind: 'hand', take: { type: 'percent', percent: 1 }, children: [pctFund('f', 1)] },
+      hand('scoped', [pctFund('g', 0.5)]),
+    ])
+    const r = simulate(t, {}, 0, 1)
+    expect(r.shortfalls.find((s) => s.id === 'sweep')!.points).toEqual([0, 0])
+    expect(r.shortfalls.find((s) => s.id === 'scoped')).toBeUndefined()
+  })
+
+  it('a fixed take against an already-negative total is uncovered in full', () => {
+    const t = table([
+      drain('bill', 500),
+      { id: 'invest', kind: 'hand', take: { type: 'fixed', amountPerMonth: 1000 }, children: [pctFund('f', 1)] },
+    ])
+    const r = simulate(t, {}, 0, 0)
+    expect(r.shortfalls.find((s) => s.id === 'invest')!.points).toEqual([1000])
+  })
 })
 
 describe('cadence: flow amounts normalize into the monthly tick — the base tick never changes', () => {

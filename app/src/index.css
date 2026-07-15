@@ -1050,6 +1050,12 @@ input[type='range'].tuned {
   color: var(--ink);
 }
 
+/* the take overdraws its parent — the sanity flag, not a prohibition */
+.hub-take.overdrawn,
+.hub-take.overdrawn:hover {
+  color: var(--money-neg);
+}
+
 .hub-take-edit {
   display: inline-flex;
   align-items: center;

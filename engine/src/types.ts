@@ -240,7 +240,7 @@ export interface World {
 /** One output curve. `points[i]` is the state at the end of month `startMonth + i`. */
 export interface Series {
   id: string
-  role: 'netWorth' | 'cash' | 'flow' | 'balance' | 'net'
+  role: 'netWorth' | 'cash' | 'flow' | 'balance' | 'net' | 'shortfall'
   startMonth: number
   points: number[]
 }
@@ -258,4 +258,11 @@ export interface SimResult {
   contributions: Series[]
   /** One series per asset/debt: its balance (debts negative). */
   balances: Series[]
+  /**
+   * One series per hand with a take: how much the take exceeded what was
+   * actually available at the hand's position that month (0 when covered).
+   * Only fixed takes can overdraw — a percent take reads a share of what is
+   * there — so this is the honest-overdraft convention made visible.
+   */
+  shortfalls: Series[]
 }

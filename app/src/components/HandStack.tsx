@@ -1,4 +1,4 @@
-import { valueAt, type HandCard } from '@finsim/engine'
+import { formatMonth, valueAt, type HandCard } from '@finsim/engine'
 import type { ReactElement } from 'react'
 import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
@@ -37,6 +37,29 @@ export function handHeld(hand: HandCard, sim: Sim, scrub: number): number | null
 }
 
 /**
+ * Where a hand's take overdraws its parent: the first month the take exceeded
+ * what was available at the hand's position, and the worst monthly gap. Null
+ * when the take is always covered (percent takes never overdraw). The engine
+ * still draws in full — this only decides whether the UI shows the red flag.
+ */
+export function handShortfall(hand: HandCard, sim: Sim): { firstMonth: number; peak: number } | null {
+  const s = sim.active.shortfalls.find((x) => x.id === hand.id)
+  if (!s) return null
+  let firstMonth: number | null = null
+  let peak = 0
+  for (const [i, p] of s.points.entries()) {
+    if (p <= 0) continue
+    firstMonth ??= s.startMonth + i
+    peak = Math.max(peak, p)
+  }
+  return firstMonth === null ? null : { firstMonth, peak }
+}
+
+export function shortfallTitle(shortfall: { firstMonth: number; peak: number }): string {
+  return `the take exceeds what's available at this hand's position — first ${formatMonth(shortfall.firstMonth)}, up to ${formatPerMonth(shortfall.peak)} uncovered`
+}
+
+/**
  * A hand's numbers — net flow, held balance, time-to-goal verdict, Monte
  * Carlo range — shared by the resting stack and the opened hand's hub; the
  * prefix picks which family of classes dresses them.
@@ -66,10 +89,16 @@ export function HandFigures({
   const held = handHeld(hand, sim, scrub)
   const verdict = compare ? deltaVerdict(compare, from) : null
   const mcRange = rangeVerdict(range)
+  // a negative net is normal life (ink, not red) — red is the overdraft flag,
+  // when the take exceeds what the parent actually has at the hand's position
+  const shortfall = handShortfall(hand, sim)
   return (
     <>
       {net && (
-        <span className={`${prefix}-net num${netValue !== null && netValue < 0 ? ' neg' : ' pos'}`}>
+        <span
+          className={`${prefix}-net num${netValue !== null && netValue < 0 ? (shortfall ? ' neg' : '') : ' pos'}`}
+          {...(shortfall ? { title: shortfallTitle(shortfall) } : {})}
+        >
           {netValue !== null ? formatPerMonth(netValue) : '—'}
         </span>
       )}

@@ -7,7 +7,7 @@ import type { Mc } from '../mc'
 import type { Doc, Sim } from '../model'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
-import { HandFigures, HandStack } from './HandStack'
+import { HandFigures, HandStack, handShortfall, shortfallTitle } from './HandStack'
 import { Timeline } from './Timeline'
 
 /**
@@ -118,7 +118,18 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
  * 5 000 /mo"), or a share of what's left at the hand's position. The one
  * line in the hub that decides whether the hand receives money at all.
  */
-function HandTake({ take, parentName, onChange }: { take: Take | undefined; parentName: string; onChange: (take: Take | undefined) => void }): ReactElement {
+function HandTake({
+  take,
+  parentName,
+  shortfall,
+  onChange,
+}: {
+  take: Take | undefined
+  parentName: string
+  /** Set when the take overdraws the parent — the line turns red, honestly. */
+  shortfall: { firstMonth: number; peak: number } | null
+  onChange: (take: Take | undefined) => void
+}): ReactElement {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
 
@@ -131,8 +142,8 @@ function HandTake({ take, parentName, onChange }: { take: Take | undefined; pare
           : `takes ${formatPercent(take.percent, 0)} of what's left in ${parentName}`
     return (
       <button
-        className="hub-take"
-        title={`what this hand draws out of ${parentName} each month, before its cards play — click to change`}
+        className={`hub-take${shortfall ? ' overdrawn' : ''}`}
+        title={`what this hand draws out of ${parentName} each month, before its cards play — click to change${shortfall ? `. ${shortfallTitle(shortfall)}` : ''}`}
         onClick={() => {
           setDraft(take === undefined ? '' : take.type === 'fixed' ? formatCompact(take.amountPerMonth) : formatNumber(take.percent * 100))
           setEditing(true)
@@ -354,7 +365,13 @@ export function Arena(props: Props): ReactElement {
           <HandName key={hand.id} name={hand.name ?? hand.id} onRename={(name) => onRenameHand(hand.id, name)} />
         </div>
         <div className="circle-hub">
-          <HandTake key={`take-${hand.id}`} take={hand.take} parentName={(parent ?? sim.resolvedRoot).name ?? 'the table'} onChange={(take) => onSetHandTake(hand.id, take)} />
+          <HandTake
+            key={`take-${hand.id}`}
+            take={hand.take}
+            parentName={(parent ?? sim.resolvedRoot).name ?? 'the table'}
+            shortfall={handShortfall(hand, sim)}
+            onChange={(take) => onSetHandTake(hand.id, take)}
+          />
           {/* visible only while a lifted card hovers over no sibling (CSS :has on .fan-ejecting) */}
           <span className="hub-eject-hint">drop — the card leaves this hand for {(parent ?? sim.resolvedRoot).name ?? 'the table'}</span>
           {/* no net /mo line here: the take line above already says what goes in */}
