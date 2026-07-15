@@ -893,6 +893,11 @@ input[type='range'].tuned {
   filter: drop-shadow(0 0 12px rgb(255 178 64 / 0.85)) drop-shadow(0 6px 14px rgb(15 7 0 / 0.35));
 }
 
+/* the card fills whatever width the fan's geometry gave its slot */
+.fan-slot .pcard {
+  --card-w: 100%;
+}
+
 /* the lift rides inside the rotated slot, so "up" means radially outward */
 .fan-item {
   transition: transform 0.22s ease;
@@ -935,11 +940,11 @@ input[type='range'].tuned {
   overflow: hidden;
 }
 
-/* ring and hub hang off the same 96% line, so the cards' bottom edge
-   (top + ~190px card height) stays clear of the hub top (96% − ~180px)
-   at ANY arena height — the hand's name must never sit on the cards */
+/* ring and hub hang off the same 96% line, so the cards' bottom edge stays
+   clear of the hub top at any arena height — --ring-h (card height + hub
+   room) comes inline from the Arena, which scales cards to what fits */
 .circle .fan-anchor {
-  top: calc(96% - 390px);
+  top: calc(96% - var(--ring-h, 475px));
 }
 
 .circle .hand-empty {
@@ -970,16 +975,42 @@ input[type='range'].tuned {
   pointer-events: auto;
 }
 
-.circle-hub .hand-name {
+/* the hand's name: a huge faded watermark across the felt, behind the cards —
+   click still renames; hover raises it just enough to say so */
+.hand-watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hand-watermark > * {
+  pointer-events: auto;
+}
+
+.hand-watermark .hand-name {
   border: none;
   background: none;
   padding: 0;
   font-family: var(--display);
   font-weight: 500;
-  font-size: 1.35rem;
-  letter-spacing: 0.03em;
+  /* size comes inline from the component — it depends on the name's length */
+  letter-spacing: 0.06em;
   color: var(--ink);
+  opacity: 0.12;
   cursor: text;
+  white-space: nowrap;
+  max-width: 94%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s ease;
+}
+
+.hand-watermark .hand-name:hover {
+  opacity: 0.25;
 }
 
 .hand-name-input {

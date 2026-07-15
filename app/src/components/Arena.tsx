@@ -1,5 +1,5 @@
 import { firstCrossing, formatMonth, formatMonthsDelta, type Card as EngineCard, type HandCard, type Series, type Take } from '@finsim/engine'
-import { useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { formatCompact, formatNumber, formatPercent, formatPerMonth, parseCompact } from '../format'
 import { NEW_HAND_NAME } from '../hands'
 import { Glyph } from '../icons'
@@ -7,14 +7,27 @@ import type { Mc } from '../mc'
 import type { Doc, Sim } from '../model'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
-import { HandFigures, HandStack, countCards } from './HandStack'
+import { HandFigures, HandStack } from './HandStack'
 import { Timeline } from './Timeline'
 
 /**
  * The big panel: the chart, or — when a hand is opened — the game area, with
  * the hand's cards around the top of a circle and its numbers in the hub.
  */
-const CIRCLE: FanGeometry = { radius: 300, maxStep: 16, maxSpread: 336, visibleTo: 105, cardWidth: 124 }
+/**
+ * Cards in an opened hand are full-size — the same 184px they are in the main
+ * hand — and only shrink when the arena is too short to fit card + hub, down
+ * to the old 124px floor. Radius scales along so the arc keeps its shape.
+ */
+const FULL_CARD_W = 184
+const MIN_CARD_W = 124
+/** What must fit under the ring: clearance + the hub's text and buttons. */
+const HUB_ROOM = 218
+const circleGeometry = (arenaHeight: number | null): FanGeometry => {
+  const fits = arenaHeight === null ? FULL_CARD_W : Math.floor(((arenaHeight * 0.96 - HUB_ROOM) * 63) / 88)
+  const cardWidth = Math.max(MIN_CARD_W, Math.min(FULL_CARD_W, fits))
+  return { radius: Math.round((445 * cardWidth) / FULL_CARD_W), maxStep: 16, maxSpread: 336, visibleTo: 105, cardWidth }
+}
 
 /** What the Workshop's focused card puts in the arena: one curve, one name. */
 export interface ArenaFocus {
@@ -61,9 +74,13 @@ function HandName({ name, onRename }: { name: string; onRename: (name: string) =
   const [editing, setEditing] = useState(name === NEW_HAND_NAME)
   const [draft, setDraft] = useState(name)
   if (!editing) {
+    // the watermark fills the felt whatever the name's length: short names
+    // ("ISK") grow until the viewport caps them, long ones shrink to fit
+    const fontSize = `min(28vh, ${Math.min(22, 180 / Math.max(1, name.length))}vw)`
     return (
       <button
         className="hand-name"
+        style={{ fontSize }}
         title="Rename hand"
         onClick={() => {
           setDraft(name)
@@ -218,6 +235,17 @@ export function Arena(props: Props): ReactElement {
   } = props
   const hand = trail[trail.length - 1]
 
+  // the ring scales to the arena: full-size cards whenever they fit
+  const [arenaEl, setArenaEl] = useState<HTMLElement | null>(null)
+  const [arenaHeight, setArenaHeight] = useState<number | null>(null)
+  useEffect(() => {
+    if (!arenaEl) return
+    const observer = new ResizeObserver(() => setArenaHeight(arenaEl.clientHeight))
+    observer.observe(arenaEl)
+    return () => observer.disconnect()
+  }, [arenaEl])
+  const circle = circleGeometry(arenaHeight)
+
   // the Workshop's focus stage: the chart holds one card's curve, nothing else
   if (focus) {
     return (
@@ -263,13 +291,13 @@ export function Arena(props: Props): ReactElement {
     )
   }
 
-  const cards = countCards(hand)
   const compare = sim.compares.find((c) => c.cardId === hand.id)
   const range = mc?.ranges.get(hand.id)
   const parent = trail[trail.length - 2]
 
+  const cardHeight = Math.round((circle.cardWidth * 88) / 63)
   return (
-    <section className="arena arena-game">
+    <section className="arena arena-game" ref={setArenaEl}>
       <nav className="trail">
         <button onClick={() => onNavigate(null)}>Chart</button>
         {trail.map((h) => (
@@ -281,10 +309,10 @@ export function Arena(props: Props): ReactElement {
       <button className="arena-close" title="Back to the chart" aria-label="Back to the chart" onClick={() => onNavigate(null)}>
         ×
       </button>
-      <div className="circle">
+      <div className="circle" style={{ ['--ring-h' as string]: `${cardHeight + HUB_ROOM}px` }}>
         <Fan
           hand={hand}
-          geometry={CIRCLE}
+          geometry={circle}
           onReorder={onReorder}
           onGroup={onGroup}
           onEject={onEject}
@@ -311,7 +339,7 @@ export function Arena(props: Props): ReactElement {
                 scrub={scrub}
                 from={doc.from}
                 compare={sim.compares.find((c) => c.cardId === card.id)}
-                size="hand"
+                size={circle.cardWidth < FULL_CARD_W ? 'hand' : 'table'}
                 flipped={flippedId === card.id}
                 onRemove={onRemoveCard}
                 onToggle={onToggleCard}
@@ -321,15 +349,16 @@ export function Arena(props: Props): ReactElement {
             )
           }
         />
-        <div className="circle-hub">
+        {/* the name reads as a watermark across the felt, out of the numbers' way — still the rename button */}
+        <div className="hand-watermark">
           <HandName key={hand.id} name={hand.name ?? hand.id} onRename={(name) => onRenameHand(hand.id, name)} />
-          <span className="hub-count num">
-            {cards} card{cards === 1 ? '' : 's'} · plays left to right
-          </span>
+        </div>
+        <div className="circle-hub">
           <HandTake key={`take-${hand.id}`} take={hand.take} parentName={(parent ?? sim.resolvedRoot).name ?? 'the table'} onChange={(take) => onSetHandTake(hand.id, take)} />
           {/* visible only while a lifted card hovers over no sibling (CSS :has on .fan-ejecting) */}
           <span className="hub-eject-hint">drop — the card leaves this hand for {(parent ?? sim.resolvedRoot).name ?? 'the table'}</span>
-          <HandFigures prefix="hub" hand={hand} sim={sim} scrub={scrub} from={doc.from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
+          {/* no net /mo line here: the take line above already says what goes in */}
+          <HandFigures prefix="hub" net={false} hand={hand} sim={sim} scrub={scrub} from={doc.from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
           <button
             className="sign hub-toggle"
             title={hand.enabled === false ? 'Bring this hand back into play' : 'Set aside — the table plays as if this hand were not there'}

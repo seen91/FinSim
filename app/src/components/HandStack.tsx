@@ -43,6 +43,7 @@ export function handHeld(hand: HandCard, sim: Sim, scrub: number): number | null
  */
 export function HandFigures({
   prefix,
+  net = true,
   hand,
   sim,
   scrub,
@@ -51,6 +52,8 @@ export function HandFigures({
   range,
 }: {
   prefix: 'hand-stack' | 'hub'
+  /** Show the net /mo line — the hub omits it, its take line already says what goes in. */
+  net?: boolean
   hand: HandCard
   sim: Sim
   scrub: number
@@ -58,16 +61,18 @@ export function HandFigures({
   compare?: CardCompare
   range?: BundleRange
 }): ReactElement {
-  const net = sim.active.contributions.find((s) => s.id === hand.id)
-  const netValue = net ? valueAt(net, scrub) : null
+  const contribution = sim.active.contributions.find((s) => s.id === hand.id)
+  const netValue = contribution ? valueAt(contribution, scrub) : null
   const held = handHeld(hand, sim, scrub)
   const verdict = compare ? deltaVerdict(compare, from) : null
   const mcRange = rangeVerdict(range)
   return (
     <>
-      <span className={`${prefix}-net num${netValue !== null && netValue < 0 ? ' neg' : ' pos'}`}>
-        {netValue !== null ? formatPerMonth(netValue) : '—'}
-      </span>
+      {net && (
+        <span className={`${prefix}-net num${netValue !== null && netValue < 0 ? ' neg' : ' pos'}`}>
+          {netValue !== null ? formatPerMonth(netValue) : '—'}
+        </span>
+      )}
       {held !== null && (
         <span className={`${prefix}-held num${held < 0 ? ' neg' : ' pos'}`} title="what this hand's assets and debts hold, net, at the scrubbed month">
           {formatAmount(held)} /total
