@@ -66,6 +66,8 @@ interface Props {
   onSetHandTake: (handId: string, take: Take | undefined) => void
   /** Unfold the fan: open the futures report. */
   onOpenReport: () => void
+  /** Unfold one hand's range: open its scoped futures report. */
+  onOpenHandReport: (handId: string) => void
 }
 
 function HandName({ name, onRename }: { name: string; onRename: (name: string) => void }): ReactElement {
@@ -243,6 +245,7 @@ export function Arena(props: Props): ReactElement {
     onRenameHand,
     onSetHandTake,
     onOpenReport,
+    onOpenHandReport,
   } = props
   const hand = trail[trail.length - 1]
 
@@ -342,6 +345,7 @@ export function Arena(props: Props): ReactElement {
                 range={mc?.ranges.get(card.id)}
                 onRemove={onRemoveCard}
                 onToggle={onToggleCard}
+                onReport={onOpenHandReport}
               />
             ) : (
               <CardView
@@ -375,7 +379,17 @@ export function Arena(props: Props): ReactElement {
           {/* visible only while a lifted card hovers over no sibling (CSS :has on .fan-ejecting) */}
           <span className="hub-eject-hint">drop — the card leaves this hand for {(parent ?? sim.resolvedRoot).name ?? 'the table'}</span>
           {/* no net /mo line here: the take line above already says what goes in */}
-          <HandFigures prefix="hub" net={false} hand={hand} sim={sim} scrub={scrub} from={doc.from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
+          <HandFigures
+            prefix="hub"
+            net={false}
+            hand={hand}
+            sim={sim}
+            scrub={scrub}
+            from={doc.from}
+            {...(compare ? { compare } : {})}
+            {...(range ? { range } : {})}
+            onReport={() => onOpenHandReport(hand.id)}
+          />
           <button
             className="sign hub-toggle"
             title={hand.enabled === false ? 'Bring this hand back into play' : 'Set aside — the table plays as if this hand were not there'}

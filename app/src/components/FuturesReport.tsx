@@ -5,7 +5,161 @@ import { Glyph } from '../icons'
 import { findNode } from '../instances'
 import type { Mc } from '../mc'
 import type { Doc } from '../model'
-import { rangeVerdict } from '../verdict'
+import { rangeVerdict, signedDelta } from '../verdict'
+
+/**
+ * The bundle report: one hand's range line, unfolded. The "+X – Y in 80 % of
+ * futures" read a hand wears opens into the full distribution of what playing
+ * that hand does to the goal — same drawer idiom, same Monte Carlo run as the
+ * table's futures report, scoped to one decision. Nothing here re-rolls the
+ * dice either.
+ */
+export function BundleReport({ handId, mc, doc, onClose }: { handId: string | null; mc: Mc | null; doc: Doc; onClose: () => void }): ReactElement | null {
+  if (!handId || !mc) return null
+  const range = mc.ranges.get(handId)
+  if (!range) return null
+  const node = findNode(doc.table.root, handId)
+  const name = node && 'name' in node ? (node.name ?? node.id) : handId
+  const pct = (v: number): string => formatPercent(v, 0)
+  const { deltas } = range
+
+  // the one picture: how the shift is dealt — per-path deltas, bucketed to
+  // readable month spans (zero always sits on a bucket boundary)
+  let width = 1
+  let hist: { start: number; share: number }[] = []
+  if (deltas.length > 0) {
+    const min = deltas[0]!
+    const max = deltas[deltas.length - 1]!
+    width = [1, 3, 6, 12, 24, 60, 120].find((w) => Math.floor(max / w) - Math.floor(min / w) < 14) ?? 240
+    const first = Math.floor(min / width)
+    const counts = new Array<number>(Math.floor(max / width) - first + 1).fill(0)
+    for (const d of deltas) counts[Math.floor(d / width) - first]!++
+    hist = counts.map((count, i) => ({ start: (first + i) * width, share: count / deltas.length }))
+  }
+  const maxShare = Math.max(...hist.map((h) => h.share), 1e-9)
+  const labelEvery = Math.ceil(hist.length / 6)
+
+  const spanRows: [string, number][] =
+    deltas.length > 0
+      ? [
+          ['best tenth (P10)', range.d10],
+          ['median (P50)', quantile(deltas, 0.5)],
+          ['worst tenth (P90)', range.d90],
+        ]
+      : []
+
+  const lo = Math.round(range.d10)
+  const hi = Math.round(range.d90)
+
+  // the goal with the hand off the table vs on it — odds, and when it lands
+  const reachedWith = mc.crossings.filter((m): m is number => m !== null).sort((a, b) => a - b)
+  const reachedWithout = range.crossingsWithout.filter((m): m is number => m !== null).sort((a, b) => a - b)
+
+  return (
+    <div className="drawer" role="dialog" aria-label={`Futures report for ${name}`} onClick={onClose}>
+      <div className="drawer-panel rulebook report" onClick={(e) => e.stopPropagation()}>
+        <header className="drawer-bar">
+          <Glyph name="bundle" size={22} />
+          <h2>{name}, across futures</h2>
+          <p className="drawer-hint">one hand&rsquo;s range, unfolded — press Esc or click outside to close</p>
+          <button className="drawer-close" onClick={onClose} aria-label="Close the hand's futures report">
+            ×
+          </button>
+        </header>
+
+        <div className="rulebook-body report-body">
+          <section>
+            <p className="report-headline">
+              {deltas.length > 0 ? (
+                <>
+                  Playing <strong>{name}</strong> moves the goal by{' '}
+                  <strong className="num">{lo === hi ? signedDelta(lo) : `${signedDelta(lo)} – ${signedDelta(hi)}`}</strong> in the middle 80 % of
+                  futures — judged on the <span className="num">{pct(range.comparable)}</span> of futures where the goal lands both with and without
+                  it.
+                </>
+              ) : (
+                <>
+                  Playing <strong>{name}</strong> shifts the odds of reaching <strong className="num">{formatAmount(doc.goal)}</strong>:{' '}
+                  <span className="num">{pct(range.probWithout)}</span> of futures get there without it,{' '}
+                  <span className="num">{pct(range.probWith)}</span> with it. Too few futures reach the goal both ways for a time shift to mean
+                  anything.
+                </>
+              )}
+            </p>
+          </section>
+
+          {deltas.length > 0 && (
+            <section>
+              <h3>How the shift is dealt</h3>
+              {hist.length > 1 && (
+                <div className="report-hist" role="img" aria-label="Share of comparable futures, per size of the time-to-goal shift">
+                  {hist.map(({ start, share }, i) => (
+                    <div
+                      key={start}
+                      className="report-hist-col"
+                      title={`${signedDelta(start)} to ${signedDelta(start + width)} to goal: ${pct(share)} of comparable futures`}
+                    >
+                      <div className="report-hist-bar" style={{ height: `${String(Math.round((share / maxShare) * 100))}%` }} />
+                      <span className={`report-hist-year num${i % labelEvery === 0 ? '' : ' quiet'}`}>
+                        {i % labelEvery === 0 ? (start === 0 ? '0' : signedDelta(start)) : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <table className="report-table">
+                <tbody>
+                  {spanRows.map(([label, months]) => (
+                    <tr key={label}>
+                      <td>{label}</td>
+                      <td className={`num ${Math.round(months) > 0 ? 'neg' : 'pos'}`}>{signedDelta(Math.round(months))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="report-note">a negative shift brings the goal closer, a positive one pushes it away.</p>
+            </section>
+          )}
+
+          <section>
+            <h3>What it does to the odds</h3>
+            <table className="report-table">
+              <tbody>
+                <tr>
+                  <td />
+                  <td className="num quiet">without</td>
+                  <td className="num quiet">with</td>
+                </tr>
+                <tr>
+                  <td>futures that reach the goal</td>
+                  <td className="num">{pct(range.probWithout)}</td>
+                  <td className="num">{pct(range.probWith)}</td>
+                </tr>
+                {reachedWithout.length > 0 && reachedWith.length > 0 && (
+                  <tr>
+                    <td>median time to goal</td>
+                    <td className="num">{formatMonthsDelta(Math.round(quantile(reachedWithout, 0.5)) - doc.from)}</td>
+                    <td className="num">{formatMonthsDelta(Math.round(quantile(reachedWith, 0.5)) - doc.from)}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <p className="report-note">&ldquo;without&rdquo; replays the very same futures with this hand set aside — the rest of the table unchanged.</p>
+          </section>
+
+          <section>
+            <h3>How the futures are dealt</h3>
+            <p>
+              All {mc.run.paths} futures replay the table under one fixed seed, with and without this hand, under identical market draws — so the
+              range is the decision&rsquo;s, not the dice&rsquo;s. The full read of the whole table lives in the futures report behind the
+              chart&rsquo;s &ldquo;in NN % of futures&rdquo; line.
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /**
  * The futures report: the fan, unfolded. The chart's "in NN % of futures"

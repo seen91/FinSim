@@ -1284,6 +1284,26 @@ input[type='range'].tuned {
 .hand-stack-range.pos { color: var(--money-pos); }
 .hand-stack-range.neg { color: var(--money-neg); }
 
+/* the range is a door too — the same dotted-link dress as the chart's odds */
+button.hand-stack-range,
+button.hub-range {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+button.hand-stack-range:hover,
+button.hub-range:hover {
+  text-decoration-style: solid;
+}
+
 /* ---- the pipeline's mouth: a brass plaque stacked above the draw pile,
    one fixture column in the right corner. Not a card. ---- */
 .cash-dock {

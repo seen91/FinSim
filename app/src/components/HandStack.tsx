@@ -73,6 +73,7 @@ export function HandFigures({
   from,
   compare,
   range,
+  onReport,
 }: {
   prefix: 'hand-stack' | 'hub'
   /** Show the net /mo line — the hub omits it, its take line already says what goes in. */
@@ -83,6 +84,8 @@ export function HandFigures({
   from: number
   compare?: CardCompare
   range?: BundleRange
+  /** When set, the range line is a door: click to unfold this hand's futures report. */
+  onReport?: () => void
 }): ReactElement {
   const contribution = sim.active.contributions.find((s) => s.id === hand.id)
   const netValue = contribution ? valueAt(contribution, scrub) : null
@@ -112,11 +115,21 @@ export function HandFigures({
           {verdict.text}
         </span>
       )}
-      {mcRange && (
-        <span className={`${prefix}-range num ${mcRange.cls}`} title={mcRange.tooltip}>
-          {mcRange.text}
-        </span>
-      )}
+      {mcRange &&
+        (onReport ? (
+          <button
+            className={`${prefix}-range num ${mcRange.cls}`}
+            title={`${mcRange.tooltip} — click to unfold this hand's futures report`}
+            onClick={onReport}
+          >
+            {mcRange.text}
+            <Glyph name="book" size={9} />
+          </button>
+        ) : (
+          <span className={`${prefix}-range num ${mcRange.cls}`} title={mcRange.tooltip}>
+            {mcRange.text}
+          </span>
+        ))}
     </>
   )
 }
@@ -130,6 +143,7 @@ export function HandStack({
   range,
   onRemove,
   onToggle,
+  onReport,
 }: {
   hand: HandCard
   sim: Sim
@@ -139,6 +153,8 @@ export function HandStack({
   range?: BundleRange
   onRemove: (cardId: string) => void
   onToggle: (cardId: string) => void
+  /** Unfold this hand's futures report (the range line becomes a door). */
+  onReport?: (handId: string) => void
 }): ReactElement {
   const cards = countCards(hand)
   const setAside = hand.enabled === false
@@ -155,7 +171,16 @@ export function HandStack({
         <span className="hand-stack-count num">
           {cards} card{cards === 1 ? '' : 's'}
         </span>
-        <HandFigures prefix="hand-stack" hand={hand} sim={sim} scrub={scrub} from={from} {...(compare ? { compare } : {})} {...(range ? { range } : {})} />
+        <HandFigures
+          prefix="hand-stack"
+          hand={hand}
+          sim={sim}
+          scrub={scrub}
+          from={from}
+          {...(compare ? { compare } : {})}
+          {...(range ? { range } : {})}
+          {...(onReport ? { onReport: () => onReport(hand.id) } : {})}
+        />
       </div>
     </div>
   )

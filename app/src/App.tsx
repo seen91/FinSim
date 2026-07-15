@@ -7,7 +7,7 @@ import { CardView } from './components/CardView'
 import { CashDock } from './components/CashDock'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
-import { FuturesReport } from './components/FuturesReport'
+import { BundleReport, FuturesReport } from './components/FuturesReport'
 import { HandStack } from './components/HandStack'
 import { Rulebook } from './components/Rulebook'
 import { Workshop, type WorkshopFocus } from './components/Workshop'
@@ -63,7 +63,8 @@ export function App(): ReactElement {
   const [scrubRaw, setScrub] = useState(doc.from)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [rulebookOpen, setRulebookOpen] = useState(false)
-  const [reportOpen, setReportOpen] = useState(false)
+  // the unfolded futures: the whole table's report, or one hand's scoped one
+  const [report, setReport] = useState<'table' | { hand: string } | null>(null)
   const [workshopOpen, setWorkshopOpen] = useState(false)
   const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
   // the Workshop's unsaved edits — held here so the chart previews the draft, not the shelf
@@ -198,7 +199,7 @@ export function App(): ReactElement {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return
-      if (reportOpen) setReportOpen(false)
+      if (report) setReport(null)
       else if (rulebookOpen) setRulebookOpen(false)
       else if (drawerOpen) setDrawerOpen(false)
       else if (workshopFocus) {
@@ -212,7 +213,7 @@ export function App(): ReactElement {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [reportOpen, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, workDraft, flippedId, trail])
+  }, [report, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, workDraft, flippedId, trail])
 
   const targetId = openHand?.id ?? null
 
@@ -424,7 +425,8 @@ export function App(): ReactElement {
             }
           })
         }}
-        onOpenReport={() => setReportOpen(true)}
+        onOpenReport={() => setReport('table')}
+        onOpenHandReport={(handId) => setReport({ hand: handId })}
       />
 
       <footer
@@ -463,6 +465,7 @@ export function App(): ReactElement {
                 range={mc?.ranges.get(card.id)}
                 onRemove={handleRemoveCard}
                 onToggle={handleToggleCard}
+                onReport={(handId) => setReport({ hand: handId })}
               />
             ) : (
               <CardView
@@ -487,7 +490,9 @@ export function App(): ReactElement {
 
       <Rulebook open={rulebookOpen} onClose={() => setRulebookOpen(false)} />
 
-      <FuturesReport open={reportOpen} mc={mc} doc={doc} onClose={() => setReportOpen(false)} />
+      <FuturesReport open={report === 'table'} mc={mc} doc={doc} onClose={() => setReport(null)} />
+
+      <BundleReport handId={typeof report === 'object' && report !== null ? report.hand : null} mc={mc} doc={doc} onClose={() => setReport(null)} />
 
       <DrawPile
         open={drawerOpen}

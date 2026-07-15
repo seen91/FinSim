@@ -40,6 +40,10 @@ export interface BundleRange {
   /** Goal odds without → with the bundle, for when a range is not comparable. */
   probWithout: number
   probWith: number
+  /** Every comparable path's time-to-goal delta, sorted — the bundle report's distribution. */
+  deltas: number[]
+  /** Per path, the month the goal is first reached with this hand off the table (null where never). */
+  crossingsWithout: (number | null)[]
 }
 
 export interface Mc {
@@ -107,6 +111,8 @@ export function runMc(doc: Doc, library: AuthoredCard[] = []): Mc | null {
       comparable: deltas.length / opts.paths,
       probWithout: ghostCrossings.filter((m) => m !== null).length / opts.paths,
       probWith: activeCrossings.filter((m) => m !== null).length / opts.paths,
+      deltas,
+      crossingsWithout: ghostCrossings,
     })
   }
 

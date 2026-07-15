@@ -44,7 +44,7 @@ export function deltaVerdict(c: CardCompare, from: number): Verdict | null {
 }
 
 /** "+1 yr – 2 yr 6 mo" — a signed month count, for range spans. */
-function signedDelta(months: number): string {
+export function signedDelta(months: number): string {
   return `${months < 0 ? '−' : '+'}${formatMonthsDelta(Math.abs(months))}`
 }
 
