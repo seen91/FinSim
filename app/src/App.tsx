@@ -381,7 +381,10 @@ export function App(): ReactElement {
         scrub={scrub}
         onScrub={setScrub}
         focus={arenaFocus}
-        trail={trail}
+        // the workbench covers the lower table and only the chart can rescale
+        // into the strip left above it — an opened hand's ring cannot, so it
+        // waits (openHandId survives) and reappears when the bench folds away
+        trail={workshopOpen ? [] : trail}
         onNavigate={setOpenHandId}
         onReorder={handleReorder}
         onGroup={handleGroup}
