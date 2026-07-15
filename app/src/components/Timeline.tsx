@@ -2,7 +2,7 @@ import { firstCrossing, formatMonth, fromMonthIndex, valueAt, type Series } from
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactElement, type RefObject } from 'react'
 import { formatCompact } from '../format'
 import type { Mc } from '../mc'
-import type { Sim } from '../model'
+import { debtAt, type Sim } from '../model'
 import { bandPath, linePath, negativeRuns, scaleLinear } from '../scale'
 
 /**
@@ -85,7 +85,9 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub, focus
   const activeCross = focus ? null : firstCrossing(sim.active, goal)
   const scrubX = x(scrub)
   const scrubNw = valueAt(curve, scrub)
-  const scrubCash = focus ? 0 : valueAt(sim.active.cash, scrub)
+  // one combined debt figure: what the plan owes at the scrub month — the
+  // debt cards' balances plus any cash overdraft (positive cash isn't debt)
+  const scrubDebt = focus ? 0 : debtAt(sim, scrub) + Math.min(0, valueAt(sim.active.cash, scrub))
 
   const handlePointer = (e: PointerEvent<SVGSVGElement>): void => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -167,10 +169,10 @@ export function Timeline({ sim, goal, from, horizonMonths, scrub, onScrub, focus
           className="scrub-label"
           x={scrubX}
           y={MARGIN.top - 5}
-          textAnchor={scrubX > width - 180 ? 'end' : scrubX < 120 ? 'start' : 'middle'}
+          textAnchor={scrubX > width - (scrubDebt < 0 ? 250 : 180) ? 'end' : scrubX < 120 ? 'start' : 'middle'}
         >
           {formatMonth(scrub)} · {formatCompact(scrubNw)}
-          {scrubCash < 0 && ` · cash ${formatCompact(scrubCash)}`}
+          {scrubDebt < 0 && ` · debt ${formatCompact(scrubDebt)}`}
         </text>
       </svg>
     </div>

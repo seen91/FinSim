@@ -4,7 +4,7 @@ import { pileRef } from '../src/builtins'
 import { deserializeDoc, serializeDoc } from '../src/exchange'
 import { addCard } from '../src/hands'
 import { isInstance, resolveTable, type HandNode } from '../src/instances'
-import { runSim, type Doc } from '../src/model'
+import { debtAt, runSim, type Doc } from '../src/model'
 import { PRESETS } from '../src/presets'
 import { starterDoc } from '../src/starter'
 
@@ -234,5 +234,34 @@ describe('world rules through runSim', () => {
     for (let k = i; k < taxed.active.netWorth.points.length; k++) {
       expect(taxed.active.netWorth.points[k]!).toBeLessThan(bare.active.netWorth.points[k]!)
     }
+  })
+})
+
+describe('debtAt: what the debt cards owe at a month (the scrub readout reads it)', () => {
+  it('sums the car loan while it runs and reaches 0 once paid off', () => {
+    const doc = docWithCar()
+    const sim = runSim(doc)
+    // start tick: the principal appears and takes its first payment, no interest yet
+    expect(debtAt(sim, doc.from)).toBeCloseTo(-(240000 - 4300), 6)
+    // 240 000 @ 6 % on 4 300/mo clears in well under ten years
+    expect(debtAt(sim, doc.from + 120)).toBe(0)
+  })
+
+  it('reaches debts nested inside hands, and ignores set-aside subtrees', () => {
+    const doc = goldenFiveFundDoc()
+    const sim = runSim(doc)
+    // the loan sits two hands deep (car → financing)
+    expect(debtAt(sim, doc.from)).toBeCloseTo(-(240000 - 4300), 6)
+    const car = doc.table.root.children.find((c) => 'id' in c && c.id === 'car')!
+    ;(car as { enabled?: boolean }).enabled = false
+    const without = runSim(doc)
+    expect(debtAt(without, doc.from)).toBe(0)
+  })
+
+  it('a debt-free table owes nothing anywhere', () => {
+    const doc = starterAt2026()
+    const sim = runSim(doc)
+    expect(debtAt(sim, doc.from)).toBe(0)
+    expect(debtAt(sim, doc.from + doc.horizonMonths - 1)).toBe(0)
   })
 })

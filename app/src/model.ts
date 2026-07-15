@@ -1,4 +1,4 @@
-import { allCards, firstCrossing, goalDelta, simulate, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
+import { allCards, firstCrossing, goalDelta, simulate, valueAt, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
 import { useCallback, useState } from 'react'
 import { stripRiders, type AuthoredCard } from './authored'
 import { builtinMatching, normalizedMath } from './builtins'
@@ -131,6 +131,29 @@ export interface Sim {
   compares: CardCompare[]
   /** The table as the sim played it (untuned) — what card faces render from. */
   resolvedRoot: Table['root']
+}
+
+/**
+ * What the table's debt cards owe at a month: the sum of enabled debt
+ * balances (negative), 0 once everything is paid off. The chart's scrub
+ * readout adds any cash overdraft on top and shows the total as one
+ * "debt" figure — hovering tells the whole borrowing story.
+ */
+export function debtAt(sim: Sim, month: number): number {
+  let sum = 0
+  const walk = (hand: Table['root']): void => {
+    for (const card of hand.children) {
+      if (card.enabled === false) continue
+      if (card.kind === 'debt') {
+        const s = sim.active.balances.find((b) => b.id === card.id)
+        if (s) sum += valueAt(s, month)
+      } else if (card.kind === 'hand') {
+        walk(card)
+      }
+    }
+  }
+  walk(sim.resolvedRoot)
+  return sum
 }
 
 /**
