@@ -86,6 +86,8 @@ export function resolveInstance(inst: CardInstance, library: AuthoredCard[]): Ca
   if (inst.enabled === false) card.enabled = false
   const worn = card as Card & { glyph?: GlyphName; tune?: Tune }
   worn.glyph = canonical.glyph
+  // dials are per-copy state: only the instance's play, never a canonical's
+  delete worn.tune
   if (inst.tune) worn.tune = inst.tune
   return card
 }

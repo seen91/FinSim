@@ -5,12 +5,12 @@ import { formatNumber } from '../format'
 import { effectiveValue, tuneOf, withTune } from '../tune'
 
 /**
- * The back of a card in play: what-if dials only. Each tunable number gets
- * the same −100..+100 % dial the Workshop shows under its fields — the
- * authored value never moves, the table plays value × (1 + pct/100), and
- * re-centering restores it exactly. Real edits (curve shapes, units, text)
- * stay in the Workshop; this is the "ephemeral experiments" allowance of
- * DESIGN.md §7's cards-are-static decision.
+ * The back of a card in play: what-if dials only, and the only place the
+ * −100..+100 % dials live — the Workshop bench edits the written numbers
+ * themselves. The authored value never moves, the table plays
+ * value × (1 + pct/100), and re-centering restores it exactly. Real edits
+ * (curve shapes, units, text) stay in the Workshop; this is the "ephemeral
+ * experiments" allowance of DESIGN.md §7's cards-are-static decision.
  */
 
 interface Dial {

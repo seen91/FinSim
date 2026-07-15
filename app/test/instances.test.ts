@@ -62,6 +62,21 @@ describe('the TODO acceptance: three copies of a built-in drain', () => {
     expect(rentContribution(doc, [], 'rent-c')).toBe(-12_000)
   })
 
+  it('a tune on the canonical card never plays — dials are per-copy state only', () => {
+    const doc = threeRentsDoc()
+    // a design saved while the Workshop still had dials: a stale tune rides its template
+    const design = redesign(builtinOf(RENT)!, 'rent-mine')
+    ;(design.card as { tune?: Record<string, number> }).tune = { 'amount.value': 50 }
+    repointInstances(doc.table.root, RENT, design.id)
+    // every copy plays the written number; only an instance's own dial moves it
+    for (const uid of ['a', 'b', 'c']) expect(rentContribution(doc, [design], `rent-${uid}`)).toBe(-12_000)
+    const dialed = doc.table.root.children.find((c) => c.id === 'rent-b') as CardInstance
+    dialed.tune = { 'amount.value': -50 }
+    expect(rentContribution(doc, [design], 'rent-b')).toBe(-6_000)
+    // and a design cut from a tuned card comes out clean
+    expect((redesign(design, 'rent-again').card as { tune?: unknown }).tune).toBeUndefined()
+  })
+
   it('set one aside — the others keep playing', () => {
     const doc = threeRentsDoc()
     const aside = doc.table.root.children.find((c) => c.id === 'rent-b') as CardInstance

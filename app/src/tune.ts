@@ -1,7 +1,7 @@
 import type { Card, HandCard, Table } from '@finsim/engine'
 
 /**
- * Tuning dials — the sliders under the card editor's parameters. A dial is a
+ * Tuning dials — the sliders on the back of a card in play. A dial is a
  * remembered −100..+100 % offset kept SEPARATELY from the authored value: the
  * card's stored number never moves, the table plays value × (1 + pct/100),
  * and centering the dial restores the authored number exactly.

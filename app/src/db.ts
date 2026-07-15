@@ -1,4 +1,4 @@
-import type { AuthoredCard } from './authored'
+import { sanitizeAuthored, type AuthoredCard } from './authored'
 import type { Doc } from './model'
 
 /**
@@ -67,7 +67,8 @@ export async function saveDoc(doc: Doc): Promise<void> {
 
 export async function loadLibrary(): Promise<AuthoredCard[] | undefined> {
   const cards = await load<AuthoredCard[]>(LIBRARY_KEY)
-  return Array.isArray(cards) ? cards : undefined
+  // designs saved while the Workshop still had dials may carry a tune — strip it: per-copy state lives on instances only
+  return Array.isArray(cards) ? cards.map(sanitizeAuthored) : undefined
 }
 
 export async function saveLibrary(cards: AuthoredCard[]): Promise<void> {

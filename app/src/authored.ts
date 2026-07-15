@@ -116,9 +116,15 @@ export function stripRiders(card: Card): Card {
 export function redesign(canonical: AuthoredCard, id: string): AuthoredCard {
   const copy = structuredClone(canonical)
   copy.id = id
+  copy.card = stripRiders(copy.card)
   copy.card.id = id
   if (copy.card.kind === 'rule') copy.card.rule.id = `${id}-rule`
   return copy
+}
+
+/** A design with its template guaranteed rider-free — canonical cards carry math, never per-copy state. */
+export function sanitizeAuthored(authored: AuthoredCard): AuthoredCard {
+  return { ...authored, card: stripRiders(authored.card) }
 }
 
 /** Validate an authored card's template with the engine's own table validator. */

@@ -1,5 +1,5 @@
 import type { SampledData, ScheduledRule } from '@finsim/engine'
-import { validateAuthored, type AuthoredCard } from './authored'
+import { stripRiders, validateAuthored, type AuthoredCard } from './authored'
 import { isCardGlyph } from './glyph'
 
 /**
@@ -71,6 +71,8 @@ export function deserializePack(json: string): Pack {
     seen.add(card.id)
     // an unknown glyph is cosmetic — coerce instead of failing the whole pack
     if (!isCardGlyph(card.glyph)) card.glyph = 'trend'
+    // a template carries math only — per-copy riders (dials, set-aside) never enter the library
+    card.card = stripRiders(card.card)
     const errors = validateAuthored(card)
     if (errors.length > 0) throw new Error(`pack card "${card.id}" is invalid:\n- ${errors.join('\n- ')}`)
   }
