@@ -1408,6 +1408,59 @@ input[type='range'].tuned {
   padding: 0 0.2rem;
 }
 
+/* the deal's echo — the pile stays open across draws, so each click answers
+   twice: a "✓ Salary → Main hand" note in the bar and a gold ring flashed
+   over whatever was clicked. Both are keyed per deal so they replay every
+   time, and both animate transform/opacity only: the deal kicks off a sim
+   recompute on the main thread, and anything paint-bound would freeze. */
+.drawer-dealt {
+  position: absolute;
+  left: 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gold-deep);
+  animation: dealt-note 1.6s ease-in forwards;
+}
+
+@keyframes dealt-note {
+  0%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.deal-ring {
+  position: absolute;
+  inset: -3px;
+  z-index: 2;
+  border: 3px solid var(--gold);
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: deal-ring 0.5s ease-out;
+}
+
+.preset-cards .deal-ring {
+  inset: -1px;
+  border-width: 2px;
+  border-radius: 6px;
+}
+
+@keyframes deal-ring {
+  0% {
+    opacity: 1;
+    transform: scale(0.97);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
 /* ---- the Rulebook: the table's rules in ledger prose ---- */
 .rulebook {
   max-width: 720px;
@@ -1624,6 +1677,7 @@ input[type='range'].tuned {
 }
 
 .preset-cards button {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -1662,6 +1716,7 @@ input[type='range'].tuned {
 }
 
 .drawer-slot {
+  position: relative;
   border: none;
   background: none;
   padding: 0;

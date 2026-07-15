@@ -225,7 +225,6 @@ export function App(): ReactElement {
       for (const inst of instancesIn(node)) addSeries(d, builtinSeriesOf(inst.ref))
       addCard(d, targetId, node)
     })
-    setDrawerOpen(false)
   }
 
   const dealRef = (ref: string): void => dealNode(instanceOf(ref, newUid()))

@@ -1,5 +1,5 @@
 import type { SampledData } from '@finsim/engine'
-import { useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { headlineFor, type AuthoredCard } from '../authored'
 import { pileRef, presetRef } from '../builtins'
 import { Glyph } from '../icons'
@@ -14,8 +14,10 @@ import { Card } from './Card'
  * everything not in play spreads out in a grid — whole hands first (import
  * them as one, or take single cards), then your own designs, then the loose
  * cards. Click a card to draw it; it plays into whichever hand is open (the
- * main hand by default). Everything dealt is an INSTANCE of its canonical
- * card (a built-in or a design) — hands come out as fresh compositions.
+ * main hand by default). The pile stays open so you can draw several — close
+ * it by clicking outside or with the ×. Everything dealt is an INSTANCE of
+ * its canonical card (a built-in or a design) — hands come out as fresh
+ * compositions.
  */
 interface Props {
   open: boolean
@@ -31,9 +33,28 @@ interface Props {
   onDealNode: (node: TableNode, series?: Record<string, SampledData>) => void
 }
 
+/** A gold ring flashed over whatever was clicked — the pile stays open, so
+ *  the click itself has to say "dealt". Keyed per click so a rapid same-card
+ *  click restarts it, and animated with transform/opacity only so the sim
+ *  recompute the deal triggers can't freeze it mid-flight. */
+function usePulse(): [ReactElement | null, () => void] {
+  const [n, setN] = useState(0)
+  const ring = n > 0 ? <span key={n} className="deal-ring" aria-hidden="true" /> : null
+  return [ring, () => setN((x) => x + 1)]
+}
+
 function DrawerCard({ bp, onChoose }: { bp: Blueprint; onChoose: (bp: Blueprint) => void }): ReactElement {
+  const [ring, fire] = usePulse()
   return (
-    <button className="drawer-slot" onClick={() => onChoose(bp)} title="Draw — joins the right end of the open hand">
+    <button
+      className="drawer-slot"
+      onClick={() => {
+        fire()
+        onChoose(bp)
+      }}
+      title="Draw — joins the right end of the open hand"
+    >
+      {ring}
       <Card
         size="hand"
         face={{
@@ -59,9 +80,18 @@ function PresetTile({
   onImportCard: (key: string) => void
 }): ReactElement {
   const [openList, setOpenList] = useState(false)
+  const [ring, fire] = usePulse()
   return (
     <div className="preset">
-      <button className="preset-tile" onClick={() => onImportHand(preset)} title="Import the whole hand">
+      <button
+        className="preset-tile"
+        onClick={() => {
+          fire()
+          onImportHand(preset)
+        }}
+        title="Import the whole hand"
+      >
+        {ring}
         <span className="preset-glyph">
           <Glyph name={preset.glyph} size={30} />
         </span>
@@ -76,13 +106,7 @@ function PresetTile({
       {openList && (
         <ul className="preset-cards">
           {preset.cards.map((card) => (
-            <li key={card.key}>
-              <button onClick={() => onImportCard(card.key)} title="Import just this card">
-                <Glyph name={card.glyph} size={16} />
-                <span className="preset-card-name">{card.name}</span>
-                <span className="preset-card-headline num">{card.headline}</span>
-              </button>
-            </li>
+            <PresetCardRow key={card.key} card={card} onImportCard={onImportCard} />
           ))}
         </ul>
       )}
@@ -90,9 +114,44 @@ function PresetTile({
   )
 }
 
-function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose: (ref: string) => void }): ReactElement {
+function PresetCardRow({
+  card,
+  onImportCard,
+}: {
+  card: HandPreset['cards'][number]
+  onImportCard: (key: string) => void
+}): ReactElement {
+  const [ring, fire] = usePulse()
   return (
-    <button className="drawer-slot" onClick={() => onChoose(authored.id)} title="Draw a copy — joins the right end of the open hand">
+    <li>
+      <button
+        onClick={() => {
+          fire()
+          onImportCard(card.key)
+        }}
+        title="Import just this card"
+      >
+        {ring}
+        <Glyph name={card.glyph} size={16} />
+        <span className="preset-card-name">{card.name}</span>
+        <span className="preset-card-headline num">{card.headline}</span>
+      </button>
+    </li>
+  )
+}
+
+function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose: (ref: string) => void }): ReactElement {
+  const [ring, fire] = usePulse()
+  return (
+    <button
+      className="drawer-slot"
+      onClick={() => {
+        fire()
+        onChoose(authored.id)
+      }}
+      title="Draw a copy — joins the right end of the open hand"
+    >
+      {ring}
       <Card
         size="hand"
         face={{
@@ -109,7 +168,18 @@ function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose
 }
 
 export function DrawPile({ open, targetName, authored, onOpen, onClose, onChooseRef, onDealNode }: Props): ReactElement {
-  const chooseBlueprint = (bp: Blueprint): void => onChooseRef(pileRef(bp.id))
+  // the last thing dealt, echoed in the bar as "✓ Salary → Main hand"; n keys
+  // the element so the fade replays on every deal, and reopening starts blank
+  const [dealt, setDealt] = useState<{ label: string; n: number } | null>(null)
+  useEffect(() => {
+    if (open) setDealt(null)
+  }, [open])
+  const note = (label: string): void => setDealt((d) => ({ label, n: (d?.n ?? 0) + 1 }))
+
+  const chooseBlueprint = (bp: Blueprint): void => {
+    note(bp.name)
+    onChooseRef(pileRef(bp.id))
+  }
 
   return (
     <>
@@ -128,11 +198,16 @@ export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose
             <header className="drawer-bar">
               <h2>Draw pile</h2>
               <p className="drawer-hint">
-                click to draw into <strong>{targetName}</strong> · order matters — a hand plays left to right
+                click to draw into <strong>{targetName}</strong> — draw as many as you like · order matters — a hand plays left to right
               </p>
               <button className="drawer-close" onClick={onClose} aria-label="Close">
                 ×
               </button>
+              {dealt && (
+                <span className="drawer-dealt" key={dealt.n} aria-live="polite">
+                  ✓ {dealt.label} → {targetName}
+                </span>
+              )}
             </header>
             <h3 className="drawer-section">Hands</h3>
             <div className="preset-row">
@@ -140,8 +215,14 @@ export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose
                 <PresetTile
                   key={preset.id}
                   preset={preset}
-                  onImportHand={(p) => onDealNode(p.build(newUid()), p.series)}
-                  onImportCard={(key) => onChooseRef(presetRef(key))}
+                  onImportHand={(p) => {
+                    note(`${p.name} · whole hand`)
+                    onDealNode(p.build(newUid()), p.series)
+                  }}
+                  onImportCard={(key) => {
+                    note(preset.cards.find((c) => c.key === key)?.name ?? preset.name)
+                    onChooseRef(presetRef(key))
+                  }}
                 />
               ))}
             </div>
@@ -150,7 +231,14 @@ export function DrawPile({ open, targetName, authored, onOpen, onClose, onChoose
                 <h3 className="drawer-section">Your designs</h3>
                 <div className="drawer-grid">
                   {authored.map((a) => (
-                    <AuthoredSlot key={a.id} authored={a} onChoose={onChooseRef} />
+                    <AuthoredSlot
+                      key={a.id}
+                      authored={a}
+                      onChoose={(ref) => {
+                        note(a.card.name ?? a.id)
+                        onChooseRef(ref)
+                      }}
+                    />
                   ))}
                 </div>
               </>
