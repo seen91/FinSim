@@ -216,6 +216,15 @@ export function App(): ReactElement {
 
   const targetId = openHand?.id ?? null
 
+  // while a hand is opened in the arena, the main strip below reads as "the
+  // rest of the table" — a click anywhere down there (cards included) folds
+  // the hand away like the ×. Buttons keep their own clicks, and a drag that
+  // travelled is a reorder, not a close. The gesture means what it meant at
+  // pointerdown: the click that OPENS a hand bubbles here after the state
+  // already flipped, and must not close it right back.
+  const stripCloses = !workshopOpen && trail.length > 0
+  const stripDown = useRef<{ x: number; y: number; closes: boolean } | null>(null)
+
   // one dealing gesture for everything the pile offers — a fresh instance of
   // a canonical card (blueprint, preset member, Workshop design), or a whole
   // preset hand of them: land any series the cards wear, then the nodes
@@ -418,13 +427,28 @@ export function App(): ReactElement {
         onOpenReport={() => setReportOpen(true)}
       />
 
-      <footer className="hand-strip">
+      <footer
+        className="hand-strip"
+        onPointerDown={(e) => (stripDown.current = { x: e.clientX, y: e.clientY, closes: stripCloses })}
+        onClick={(e) => {
+          const down = stripDown.current
+          stripDown.current = null
+          if (!down?.closes) return
+          if ((e.target as HTMLElement).closest('button, input')) return
+          if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return
+          setOpenHandId(null)
+        }}
+      >
         <Fan
           hand={root}
           geometry={MAIN_FAN}
           onReorder={handleReorder}
           onGroup={handleGroup}
           onItemClick={(card) => {
+            if (stripCloses) {
+              setOpenHandId(null)
+              return
+            }
             if (card.kind === 'hand') setOpenHandId(card.id)
             else handleFlipCard(card.id)
           }}
