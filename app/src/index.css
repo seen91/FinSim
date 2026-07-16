@@ -191,6 +191,57 @@ body {
   transform: rotate(1deg);
 }
 
+/* the Table sign's menu: export, import and reset under one hanging board */
+.table-sign {
+  position: relative;
+}
+
+/* a click on the wood puts the menu away */
+.sign-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 119;
+}
+
+.sign-menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 120;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  min-width: 148px;
+  background: linear-gradient(180deg, var(--card) 0%, var(--card-deep) 100%);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px var(--shadow);
+}
+
+.sign-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  font-family: var(--serif);
+  font-size: 0.82rem;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sign-menu button:hover {
+  background: rgba(163, 135, 79, 0.18);
+}
+
+.sign-menu button .glyph {
+  opacity: 0.7;
+}
+
 /* the Workshop's tavern sign: a road-work-yellow board hanging from the
    topbar rail — the one loud thing on the table, so it reads from afar.
    (Signal yellow is signage, not money — green/red stay untouched.) */

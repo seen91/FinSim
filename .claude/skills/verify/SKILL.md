@@ -22,10 +22,13 @@ Start your own server on another port and kill only PIDs you started (save them)
    - `.hand-stack-delta` — a decision bundle's "+2 yr 4 mo to goal" verdict; scope it to the right
      stack (`.hand-stack:has-text("Buy the car")`) — the investing hand carries one too
    - `button.pile` opens the draw pile; `.preset-tile:has-text("Buy the car")` imports a preset hand
-   - Import opens a hidden file input (use `filechooser` event); Export fires a `download` event
-   - A saved table in IndexedDB overrides the starter on load; `?fresh` skips it and deals the starter
+   - Export/Import/Reset live under the one **Table** sign (`.table-sign > button.sign` opens
+     `.sign-menu`); Import opens a hidden file input (use `filechooser` event), Export fires a
+     `download` event, Reset asks `window.confirm` and wipes table + designs + saved hands
+   - A saved table in IndexedDB overrides the starter on load (`?fresh` was removed 2026-07-16) —
+     a fresh Playwright context has empty storage, so headless runs always start from the starter deal
 5. Expected numbers MOVE WITH THE CALENDAR: the starter salary's raise is January-anchored, and
-   `?fresh` starts the table at the wall-clock month. Compute today's expected verdicts with a scratch
+   the starter table begins at the wall-clock month. Compute today's expected verdicts with a scratch
    vitest in `app/test/` (starterDoc + runSim + firstCrossing/compares — delete it after), don't trust
    remembered strings. For reference, a 2026-07 start gave: baseline "goal in 10 yr 9 mo"; car played →
    chart "goal in 13 yr 1 mo", car bundle "+2 yr 4 mo to goal". The hand-checked five-fund golden

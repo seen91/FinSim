@@ -79,6 +79,8 @@ export function App(): ReactElement {
   const [library, setLibrary] = useState<AuthoredCard[]>([])
   const [savedHands, setSavedHands] = useState<SavedHand[]>([])
   const [openHandId, setOpenHandId] = useState<string | null>(null)
+  // the Table sign's little menu: export, import, reset under one board
+  const [tableMenuOpen, setTableMenuOpen] = useState(false)
   // the one card turned face-down to its what-if dials — tap to turn, tap to turn back
   const [flippedId, setFlippedId] = useState<string | null>(null)
   const loaded = useRef(false)
@@ -87,10 +89,8 @@ export function App(): ReactElement {
   // local-first: load once, then save (debounced) on every change. The doc and
   // the library load together because a pre-instances doc migrates against the
   // library (design stamps → refs) and may mint designs into it.
-  // ?fresh skips the saved table and deals the starter — designs still load.
   useEffect(() => {
-    const fresh = new URLSearchParams(window.location.search).has('fresh')
-    void Promise.all([fresh ? Promise.resolve(undefined) : loadDoc(), loadLibrary(), loadSavedHands()]).then(([savedDoc, savedLibrary, storedHands]) => {
+    void Promise.all([loadDoc(), loadLibrary(), loadSavedHands()]).then(([savedDoc, savedLibrary, storedHands]) => {
       let lib = savedLibrary ?? []
       if (savedDoc) {
         // the removed Sweden-rules toggle was the only app-side writer of world
@@ -415,6 +415,20 @@ export function App(): ReactElement {
     })
   }
 
+  // the clean slate: starter deal, empty shelves — everything authored or
+  // saved is gone (Export sits right above it for anyone who wants a backup)
+  const handleReset = (): void => {
+    if (!window.confirm('Reset everything? The table goes back to the starter deal and your authored cards and saved hands are cleared. Export first if you want a backup.')) return
+    const dealt = starterDoc()
+    store.replace(dealt)
+    setLibrary([])
+    setSavedHands([])
+    setCompareSel(null)
+    setReport(null)
+    setOpenHandId(null)
+    setScrub(dealt.from)
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -466,14 +480,58 @@ export function App(): ReactElement {
             <Glyph name="book" size={14} />
             Rulebook
           </button>
-          <button className="sign" onClick={handleExport} title="download the whole table as a JSON file — the backup/share path">
-            <Glyph name="export" size={13} />
-            Export
-          </button>
-          <button className="sign" onClick={() => importInput.current?.click()} title="replace the table with a previously exported JSON file">
-            <Glyph name="import" size={13} />
-            Import
-          </button>
+          <div className="table-sign">
+            <button className="sign" onClick={() => setTableMenuOpen((open) => !open)} title="the table as a file — export, import, or reset">
+              <Glyph name="export" size={13} />
+              Table
+            </button>
+            {tableMenuOpen && (
+              <>
+                <div className="sign-veil" onClick={() => setTableMenuOpen(false)} aria-hidden="true" />
+                <ul className="sign-menu" role="menu" aria-label="Table actions">
+                  <li>
+                    <button
+                      role="menuitem"
+                      title="download the whole table as a JSON file — the backup/share path"
+                      onClick={() => {
+                        setTableMenuOpen(false)
+                        handleExport()
+                      }}
+                    >
+                      <Glyph name="export" size={13} />
+                      Export
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      role="menuitem"
+                      title="replace the table with a previously exported JSON file"
+                      onClick={() => {
+                        setTableMenuOpen(false)
+                        importInput.current?.click()
+                      }}
+                    >
+                      <Glyph name="import" size={13} />
+                      Import…
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      role="menuitem"
+                      title="the clean slate — starter deal, authored cards and saved hands cleared"
+                      onClick={() => {
+                        setTableMenuOpen(false)
+                        handleReset()
+                      }}
+                    >
+                      <Glyph name="flame" size={13} />
+                      Reset…
+                    </button>
+                  </li>
+                </ul>
+              </>
+            )}
+          </div>
           <input
             ref={importInput}
             type="file"
