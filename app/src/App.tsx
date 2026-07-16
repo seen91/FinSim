@@ -26,7 +26,7 @@ import { effectiveHorizon, migrateDoc, runSim, useDoc, type PlayedDoc, type Sim 
 import { PRESETS } from './presets'
 import { snapshotHand, unpackSavedHand, type SavedHand } from './savedHands'
 import { addSeries, parseMonthText } from './seriesImport'
-import { starterDoc } from './starter'
+import { freshDoc } from './starter'
 import type { Tune } from './tune'
 import { newUid } from './uid'
 
@@ -62,7 +62,7 @@ function GoalInput({ goal, onCommit }: { goal: number; onCommit: (v: number) => 
 }
 
 export function App(): ReactElement {
-  const store = useDoc(starterDoc())
+  const store = useDoc(freshDoc())
   const { doc } = store
   const [scrubRaw, setScrub] = useState(doc.from)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -433,11 +433,11 @@ export function App(): ReactElement {
     })
   }
 
-  // the clean slate: starter deal, empty shelves — everything authored or
+  // the clean slate: a lone salary card, empty shelves — everything authored or
   // saved is gone (Export sits right above it for anyone who wants a backup)
   const handleReset = (): void => {
-    if (!window.confirm('Reset everything? The table goes back to the starter deal and your authored cards and saved hands are cleared. Export first if you want a backup.')) return
-    const dealt = starterDoc()
+    if (!window.confirm('Reset everything? The table goes back to a single Salary card and your authored cards and saved hands are cleared. Export first if you want a backup.')) return
+    const dealt = freshDoc()
     store.replace(dealt)
     setLibrary([])
     setSavedHands([])
@@ -536,7 +536,7 @@ export function App(): ReactElement {
                   <li>
                     <button
                       role="menuitem"
-                      title="the clean slate — starter deal, authored cards and saved hands cleared"
+                      title="the clean slate — a lone salary card, authored cards and saved hands cleared"
                       onClick={() => {
                         setTableMenuOpen(false)
                         handleReset()
