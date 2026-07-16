@@ -8,9 +8,11 @@ import { Sparkline } from './Sparkline'
 /**
  * The pipeline's mouth, pinned bottom-left: not a card (it can't be drafted,
  * held, or discarded) but a fixture of the table, like the draw pile it
- * mirrors. One brass plaque shows the vessel (accumulated cash) over the
- * spout (this month's remainder); clicking it opens a small parchment panel
- * to set the starting balance and the account's interest.
+ * mirrors. One brass plaque shows net worth (cash plus every balance on the
+ * table — the figure that still moves when a fully-balanced budget leaves
+ * cash and the monthly remainder at zero) over the vessel (accumulated cash)
+ * over the spout (this month's remainder); clicking it opens a small
+ * parchment panel to set the starting balance and the account's interest.
  */
 export function CashDock({
   doc,
@@ -40,6 +42,7 @@ export function CashDock({
   const interest = doc.table.cash?.growth?.expected ?? 0
   const cash = valueAt(sim.active.cash, scrub)
   const flow = valueAt(sim.remainder, scrub)
+  const netWorth = valueAt(sim.active.netWorth, scrub)
 
   return (
     <aside className="cash-dock" ref={dock}>
@@ -96,6 +99,10 @@ export function CashDock({
       >
         <Glyph name="cash" size={22} />
         <span className="dock-rows">
+          <span className="dock-row">
+            <span className="dock-label">net worth</span>
+            <span className={`dock-value num${netWorth < 0 ? ' neg' : ''}`}>{formatAmount(netWorth)}</span>
+          </span>
           <span className="dock-row">
             <span className="dock-label">cash</span>
             <span className="dock-value num">{formatAmount(cash)}</span>
