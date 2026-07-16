@@ -8,6 +8,7 @@ import { Glyph } from '../icons'
 import { refBase, refsIn, repointInstances } from '../instances'
 import type { Doc, Sim } from '../model'
 import { deserializePack, serializePack, type Pack } from '../packs'
+import type { SavedHand } from '../savedHands'
 import { seriesIdsIn } from '../seriesImport'
 import { newUid } from '../uid'
 import { Card } from './Card'
@@ -43,6 +44,8 @@ interface Props {
   doc: Doc
   update: (mutate: (doc: Doc) => void) => void
   library: AuthoredCard[]
+  /** Hands snapshotted to the draw pile — their instances keep a design worn (no burn). */
+  savedHands: SavedHand[]
   onLibraryChange: (next: AuthoredCard[]) => void
   /** Deal a fresh instance of a canonical card onto the table. */
   onPlay: (ref: string) => void
@@ -56,7 +59,7 @@ interface Props {
   scrub: number
 }
 
-export function Workshop({ open, onClose, doc, update, library, onLibraryChange, onPlay, focus, onFocus, draft, onDraftChange, focusSim, scrub }: Props): ReactElement | null {
+export function Workshop({ open, onClose, doc, update, library, savedHands, onLibraryChange, onPlay, focus, onFocus, draft, onDraftChange, focusSim, scrub }: Props): ReactElement | null {
   const [picking, setPicking] = useState(false)
   const [dataOpen, setDataOpen] = useState(false)
   const importInput = useRef<HTMLInputElement>(null)
@@ -80,7 +83,9 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
 
   if (!open) return null
 
-  const refsInPlay = refsIn(doc.table.root)
+  // "in play" counts the table AND the saved hands on the pile — a design a
+  // snapshot still references must stay resolvable (delete only when unworn)
+  const refsInPlay = [...new Set([...refsIn(doc.table.root), ...savedHands.flatMap((s) => refsIn(s.hand))])]
 
   // a blank starts as a draft — it reaches the shelf only when saved
   const handleNew = (kind: AuthorableKind): void => {
@@ -295,7 +300,7 @@ export function Workshop({ open, onClose, doc, update, library, onLibraryChange,
                   isNew
                     ? 'Burn this draft'
                     : inPlay
-                      ? 'Copies of this design are in play — discard them from the table first'
+                      ? 'Copies of this design are in play or in a saved hand — discard them first'
                       : 'Burn this design'
                 }
                 onClick={() => {

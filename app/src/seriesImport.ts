@@ -101,7 +101,7 @@ export function seriesIdsIn(card: Card): string[] {
 }
 
 /** Every named world series the table's nodes wear — instances read their canonical's card. */
-function seriesIdsInNode(node: TableNode, library: AuthoredCard[]): string[] {
+export function seriesIdsInNode(node: TableNode, library: AuthoredCard[]): string[] {
   if (isInstance(node)) {
     const canonical = canonicalOf(node.ref, library)
     return canonical ? seriesIdsIn(canonical.card) : []

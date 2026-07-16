@@ -1,5 +1,6 @@
 import { sanitizeAuthored, type AuthoredCard } from './authored'
 import type { Doc } from './model'
+import type { SavedHand } from './savedHands'
 
 /**
  * Local-first persistence: the table document and the personal card library
@@ -11,6 +12,7 @@ const DB_NAME = 'finsim'
 const STORE = 'docs'
 const KEY = 'table-v3' // v3: the pipeline model — one root hand, played top to bottom
 const LIBRARY_KEY = 'library-v1' // the Workshop's authored cards
+const SAVED_HANDS_KEY = 'saved-hands-v1' // whole hands snapshotted to the draw pile
 
 // one connection for the session — a write issued while the page is going
 // away (the pagehide flush) only stands a chance if it needn't open first
@@ -73,4 +75,13 @@ export async function loadLibrary(): Promise<AuthoredCard[] | undefined> {
 
 export async function saveLibrary(cards: AuthoredCard[]): Promise<void> {
   await save(LIBRARY_KEY, cards)
+}
+
+export async function loadSavedHands(): Promise<SavedHand[] | undefined> {
+  const hands = await load<SavedHand[]>(SAVED_HANDS_KEY)
+  return Array.isArray(hands) ? hands : undefined
+}
+
+export async function saveSavedHands(hands: SavedHand[]): Promise<void> {
+  await save(SAVED_HANDS_KEY, hands)
 }

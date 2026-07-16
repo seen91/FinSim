@@ -12,7 +12,7 @@ import { HandStack } from './components/HandStack'
 import { Rulebook } from './components/Rulebook'
 import { Workshop, type WorkshopFocus } from './components/Workshop'
 import type { ArenaFocus } from './components/Arena'
-import { loadDoc, loadLibrary, saveDoc, saveLibrary } from './db'
+import { loadDoc, loadLibrary, loadSavedHands, saveDoc, saveLibrary, saveSavedHands } from './db'
 import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
 import { errorMessage, formatCompact, parseCompact } from './format'
@@ -21,6 +21,7 @@ import { Glyph } from './icons'
 import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, type TableNode } from './instances'
 import { runMc } from './mc'
 import { effectiveHorizon, migrateDoc, runSim, useDoc, type PlayedDoc, type Sim } from './model'
+import { snapshotHand, unpackSavedHand, type SavedHand } from './savedHands'
 import { addSeries, parseMonthText } from './seriesImport'
 import { starterDoc } from './starter'
 import type { Tune } from './tune'
@@ -70,6 +71,7 @@ export function App(): ReactElement {
   // the Workshop's unsaved edits — held here so the chart previews the draft, not the shelf
   const [workDraft, setWorkDraft] = useState<AuthoredCard | null>(null)
   const [library, setLibrary] = useState<AuthoredCard[]>([])
+  const [savedHands, setSavedHands] = useState<SavedHand[]>([])
   const [openHandId, setOpenHandId] = useState<string | null>(null)
   // the one card turned face-down to its what-if dials — tap to turn, tap to turn back
   const [flippedId, setFlippedId] = useState<string | null>(null)
@@ -82,7 +84,7 @@ export function App(): ReactElement {
   // ?fresh skips the saved table and deals the starter — designs still load.
   useEffect(() => {
     const fresh = new URLSearchParams(window.location.search).has('fresh')
-    void Promise.all([fresh ? Promise.resolve(undefined) : loadDoc(), loadLibrary()]).then(([savedDoc, savedLibrary]) => {
+    void Promise.all([fresh ? Promise.resolve(undefined) : loadDoc(), loadLibrary(), loadSavedHands()]).then(([savedDoc, savedLibrary, storedHands]) => {
       let lib = savedLibrary ?? []
       if (savedDoc) {
         // the removed Sweden-rules toggle was the only app-side writer of world
@@ -98,6 +100,7 @@ export function App(): ReactElement {
       }
       // a design made before the load lands must survive it — merge, don't clobber
       setLibrary((current) => (current.length > 0 ? mergeLibrary(lib, current) : lib))
+      if (storedHands) setSavedHands((current) => (current.length > 0 ? [...storedHands, ...current] : storedHands))
       loaded.current = true
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -113,18 +116,24 @@ export function App(): ReactElement {
     // before any reload can eat it (the doc keeps its debounce; it churns)
     void saveLibrary(library)
   }, [library])
+  useEffect(() => {
+    if (!loaded.current) return
+    // saved hands are few and precious too — straight to disk
+    void saveSavedHands(savedHands)
+  }, [savedHands])
 
   // the debounced saves lose the last change when the page goes away inside
   // their 400 ms window (a reload right after authoring ate the fresh design) —
   // flush whatever is pending on the way out
-  const latest = useRef({ doc, library })
-  latest.current = { doc, library }
+  const latest = useRef({ doc, library, savedHands })
+  latest.current = { doc, library, savedHands }
   useEffect(() => {
     const flush = (): void => {
       if (document.visibilityState !== 'hidden') return
       if (!loaded.current) return
       void saveDoc(latest.current.doc)
       void saveLibrary(latest.current.library)
+      void saveSavedHands(latest.current.savedHands)
     }
     document.addEventListener('visibilitychange', flush)
     window.addEventListener('pagehide', flush)
@@ -270,6 +279,28 @@ export function App(): ReactElement {
 
   const handleRemoveCard = (cardId: string): void => {
     store.update((d) => removeCard(d, cardId))
+  }
+
+  // snapshot a hand — the root included — to the draw pile: a named copy of
+  // the tree as it stands (instances with their dials and set-asides, nested
+  // hands whole), dealt back later as a fresh, fully editable composition
+  const handleSaveHand = (handId: string | null): void => {
+    const hand = handId === null ? doc.table.root : findNode(doc.table.root, handId)
+    if (!hand || isInstance(hand) || hand.kind !== 'hand') return
+    const name = window.prompt('Save this hand to the pile as…', hand.name ?? 'Your plan')?.trim()
+    if (!name) return
+    setSavedHands((prev) => [...prev, snapshotHand(hand, name, newUid(), library, doc.world?.series)])
+  }
+
+  const handleDealSaved = (saved: SavedHand): void => {
+    dealNode(unpackSavedHand(saved, newUid), saved.series)
+  }
+
+  const handleBurnSaved = (savedId: string): void => {
+    const saved = savedHands.find((s) => s.id === savedId)
+    if (!saved) return
+    if (!window.confirm(`Burn the saved hand “${saved.name}”? The copies already dealt stay on the table.`)) return
+    setSavedHands((prev) => prev.filter((s) => s.id !== savedId))
   }
 
   // a tap on a card in play turns it over to its what-if dials (hands open instead)
@@ -448,6 +479,7 @@ export function App(): ReactElement {
             }
           })
         }}
+        onSaveHand={handleSaveHand}
         onOpenReport={() => setReport('table')}
         onOpenHandReport={(handId) => setReport({ hand: handId })}
       />
@@ -521,10 +553,14 @@ export function App(): ReactElement {
         open={drawerOpen}
         targetName={openHand ? (openHand.name ?? openHand.id) : (root.name ?? 'Your plan')}
         authored={library}
+        savedHands={savedHands}
         onOpen={() => setDrawerOpen(true)}
         onClose={() => setDrawerOpen(false)}
         onChooseRef={dealRef}
         onDealNode={dealNode}
+        onSaveTarget={() => handleSaveHand(openHand?.id ?? null)}
+        onDealSaved={handleDealSaved}
+        onBurnSaved={handleBurnSaved}
       />
 
       <Workshop
@@ -537,6 +573,7 @@ export function App(): ReactElement {
         doc={doc}
         update={store.update}
         library={library}
+        savedHands={savedHands}
         onLibraryChange={setLibrary}
         onPlay={dealRef}
         focus={workshopFocus}

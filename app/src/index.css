@@ -1168,6 +1168,7 @@ input[type='range'].tuned {
 .hub-range.neg { color: var(--money-neg); }
 
 .hub-remove,
+.hub-save,
 .hub-toggle {
   margin-top: 0.2rem;
   font-size: 0.7rem;
@@ -1799,6 +1800,19 @@ button.hub-range:hover {
 
 .preset-tile:hover {
   transform: translateY(-3px);
+}
+
+/* the "save this hand" tile: an empty slot on the pile, not a card yet */
+.preset-tile.save-target {
+  width: 200px;
+  background: none;
+  border: 1.5px dashed var(--gold-deep);
+  box-shadow: none;
+  color: var(--ink-soft);
+}
+
+.preset-tile.save-target .preset-glyph {
+  color: var(--ink-soft);
 }
 
 .preset-glyph {
