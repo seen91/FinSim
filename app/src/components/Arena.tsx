@@ -1,10 +1,12 @@
 import { firstCrossing, formatMonth, formatMonthsDelta, type Card as EngineCard, type HandCard, type Series, type Take } from '@finsim/engine'
 import { useEffect, useState, type ReactElement } from 'react'
+import type { CompareRun } from '../compare'
 import { formatCompact, formatNumber, formatPercent, formatPerMonth, parseCompact } from '../format'
 import { NEW_HAND_NAME } from '../hands'
 import { Glyph } from '../icons'
 import type { Mc } from '../mc'
 import type { PlayedDoc, Sim } from '../model'
+import { signedDelta } from '../verdict'
 import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
 import { HandFigures, HandStack, handShortfall, shortfallTitle } from './HandStack'
@@ -36,6 +38,70 @@ export interface ArenaFocus {
   series: Series
 }
 
+/**
+ * Compare mode, riding the battle chart itself so nothing feels new: the
+ * left pick keeps the table's own solid ink, the right pick joins as a
+ * dashed gold rival — which line is whose stays implicit in the strokes.
+ * Each side wears the chart's usual verdict (left top-right, right
+ * bottom-right), futures odds and all; the run is null when the comparison
+ * cannot play, and the error takes the corner instead. Choosing the
+ * contenders happens at the compare fixture by the draw pile, not here —
+ * the chart only shows.
+ */
+export interface ArenaCompare {
+  run: CompareRun | null
+  error: string | null
+  /** Monte Carlo per side, when that plan carries volatility (a beat behind, like the fan). */
+  mcA: Mc | null
+  mcB: Mc | null
+  /** Unfold one side's futures report. */
+  onOpenReport: (side: 'a' | 'b') => void
+}
+
+/**
+ * One contender's verdict, in exactly the shape the plain chart wears —
+ * "goal in X" plus the futures odds — so a comparison reads as two ordinary
+ * charts sharing one canvas. `line` names the stroke for the tooltips; the
+ * corner it sits in does the rest.
+ */
+function ContenderVerdict({
+  crossing,
+  from,
+  mc,
+  line,
+  onOpenReport,
+}: {
+  crossing: number | null
+  from: number
+  mc: Mc | null
+  line: string
+  onOpenReport: () => void
+}): ReactElement {
+  return (
+    <>
+      {crossing !== null ? (
+        <span className="chart-verdict-text num pos" title={`${line} reaches the goal ${formatMonth(crossing)}`}>
+          goal in {formatMonthsDelta(crossing - from)}
+        </span>
+      ) : (
+        <span className="chart-verdict-text num neg" title={`${line} never reaches the goal within the horizon`}>
+          goal out of reach
+        </span>
+      )}
+      {mc && (
+        <button
+          className={`chart-verdict-odds num${mc.goalProbability >= 0.5 ? ' pos' : ' neg'}`}
+          onClick={onOpenReport}
+          title={`share of simulated futures where ${line} reaches the goal — click to unfold its futures report`}
+        >
+          in {formatPercent(mc.goalProbability, 0)} of futures
+          <Glyph name="book" size={10} />
+        </button>
+      )}
+    </>
+  )
+}
+
 interface Props {
   doc: PlayedDoc
   sim: Sim
@@ -45,6 +111,8 @@ interface Props {
   onScrub: (month: number) => void
   /** Workshop focus: chart only this card, whatever else is open. */
   focus?: ArenaFocus | null
+  /** Compare mode: a rival plan on the chart, pickers and verdict around it. */
+  compare?: ArenaCompare | null
   /** The opened hand, root → … → innermost. Empty = chart mode. */
   trail: HandCard[]
   onNavigate: (handId: string | null) => void
@@ -233,6 +301,7 @@ export function Arena(props: Props): ReactElement {
     scrub,
     onScrub,
     focus,
+    compare: compareMode,
     trail,
     onNavigate,
     onReorder,
@@ -272,6 +341,51 @@ export function Arena(props: Props): ReactElement {
           <span className="chart-focus">{focus.name}</span>
           <span className="chart-focus-note">{focus.note}</span>
         </div>
+      </section>
+    )
+  }
+
+  // compare mode: the same battle chart, a rival plan drawn over it — each
+  // plan wears the chart's usual verdict: the solid left pick top-right, the
+  // dashed right pick bottom-right, the delta riding quietly under the rival's
+  if (!hand && compareMode) {
+    const run = compareMode.run
+    return (
+      <section className="arena">
+        <Timeline
+          sim={sim}
+          goal={doc.goal}
+          from={doc.from}
+          horizonMonths={run ? run.horizonMonths : doc.horizonMonths}
+          scrub={scrub}
+          onScrub={onScrub}
+          compare={run}
+        />
+        {run && (
+          <>
+            <div className="chart-verdict">
+              <ContenderVerdict crossing={run.a.crossing} from={doc.from} mc={compareMode.mcA} line="the solid line" onOpenReport={() => compareMode.onOpenReport('a')} />
+            </div>
+            <div className="chart-verdict compare-rival">
+              <ContenderVerdict crossing={run.b.crossing} from={doc.from} mc={compareMode.mcB} line="the dashed line" onOpenReport={() => compareMode.onOpenReport('b')} />
+              {run.delta.deltaMonths !== null && run.delta.deltaMonths !== 0 && (
+                <span
+                  className={`chart-verdict-odds num ${run.delta.deltaMonths > 0 ? 'neg' : 'pos'}`}
+                  title="how much later (+) or earlier (−) the dashed plan reaches the goal than the solid one"
+                >
+                  Δ {signedDelta(run.delta.deltaMonths)}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+        {compareMode.error && (
+          <div className="chart-verdict">
+            <span className="chart-verdict-note" role="alert">
+              this comparison cannot play: {compareMode.error}
+            </span>
+          </div>
+        )}
       </section>
     )
   }

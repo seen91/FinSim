@@ -488,6 +488,25 @@ button:not(:disabled):hover {
   fill: var(--money-neg);
 }
 
+/* compare mode: contender B, a dashed gold rival on the same chart — the
+   table's own ink stays contender A, so the picture reads as "my chart,
+   plus a challenger", not a new screen */
+.timeline .curve.rival {
+  stroke: var(--gold);
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+}
+
+.timeline .cross.rival,
+.timeline .scrub-dot.rival {
+  fill: var(--gold);
+}
+
+/* the rival's figure in the scrub readout: the rival curve's gold is its label */
+.timeline .scrub-label .scrub-rival {
+  fill: var(--gold-deep);
+}
+
 /* the plan's own verdict, top-left on the map — same shape as on the stacks */
 .chart-verdict {
   position: absolute;
@@ -537,6 +556,149 @@ button.chart-verdict-odds {
 
 button.chart-verdict-odds:hover {
   text-decoration-style: solid;
+}
+
+/* ---- compare mode: the picks live at the compare fixture, on the wood ---- */
+.compare-controls {
+  position: fixed;
+  right: calc(1.4rem + 96px + 1.3rem);
+  bottom: 1.6rem;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.compare-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.compare-pick select {
+  max-width: 150px;
+}
+
+/* the legend IS the picker: each select wears its curve's stroke —
+   the solid pick is the chart's solid line, the dashed pick the dashed */
+.compare-swatch {
+  display: inline-block;
+  width: 22px;
+  border-top: 2.5px solid var(--wood-ink);
+}
+
+.compare-swatch.b {
+  border-top-style: dashed;
+  border-top-color: var(--gold);
+}
+
+.compare-vs {
+  align-self: center;
+  font-family: var(--serif);
+  font-size: 0.72rem;
+  color: var(--wood-ink-soft);
+}
+
+/* the dashed plan's verdict: identical to the usual one, in the opposite
+   corner — top-right belongs to the solid line, bottom-right to the dashed,
+   and that placement is the whole legend */
+.chart-verdict.compare-rival {
+  top: auto;
+  bottom: 2.6rem;
+}
+
+.chart-verdict-note {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  pointer-events: auto;
+}
+
+/* the compare fixture: two dueling card backs beside the draw pile, each
+   wearing its curve's stroke — solid ink-gold vs dashed */
+.duel {
+  position: fixed;
+  right: calc(1.4rem + 96px + 1.3rem);
+  bottom: 1.6rem;
+  z-index: 40;
+  width: 96px;
+  height: 130px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.duel-card {
+  position: absolute;
+  bottom: 12px;
+  width: 56px;
+  height: 76px;
+  background:
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 7px;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 6px var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.duel-card svg {
+  width: 38px;
+  height: 32px;
+  margin-bottom: 16px;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.duel-a {
+  left: 0;
+  transform: rotate(-7deg);
+}
+
+.duel-b {
+  right: 0;
+  transform: rotate(7deg);
+}
+
+.duel:hover .duel-a {
+  transform: rotate(-9deg) translateY(-4px);
+}
+
+.duel:hover .duel-b {
+  transform: rotate(9deg) translateY(-4px);
+}
+
+/* the fixture's name, engraved across the two card backs, under the curves */
+.duel-word {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 28px;
+  text-align: center;
+  font-family: var(--display);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+}
+
+/* the way out of compare mode: a sign hung under the gold plaque, over the
+   compare fixture's picks */
+.compare-exit {
+  position: fixed;
+  right: 1.4rem;
+  bottom: calc(1.6rem + 130px + 0.6rem);
+  z-index: 40;
 }
 
 /* ---- playing cards: parchment, gold frame, engraved sigil ---- */
@@ -1303,7 +1465,9 @@ button.hub-range:hover {
 .cash-dock {
   position: fixed;
   right: 1.4rem;
-  bottom: calc(1.6rem + 130px + 1rem);
+  /* raised a notch above the pile so the compare mode's "done comparing"
+     sign has a rung of its own beneath the plaque */
+  bottom: calc(1.6rem + 130px + 1rem + 2.2rem);
   z-index: 40;
   display: flex;
   justify-content: flex-end;
@@ -1472,16 +1636,19 @@ button.hub-range:hover {
   background: radial-gradient(circle, rgba(255, 220, 150, 0.08), transparent 70%);
 }
 
-.pile-label {
-  position: absolute;
-  bottom: -1.1rem;
-  left: 0;
-  width: 96px;
-  text-align: center;
-  font-size: 0.62rem;
+/* the deck's name lives on the top card itself — no caption row below */
+.pile-top {
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pile-word {
+  font-family: var(--display);
+  font-size: 0.66rem;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--wood-ink-soft);
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  opacity: 0.9;
 }
 
 .pile:hover .pile-top {
@@ -1758,6 +1925,7 @@ button.hub-range:hover {
 .report-hist + .report-table {
   margin-top: 1.1rem;
 }
+
 
 .drawer-section {
   font-family: var(--serif);

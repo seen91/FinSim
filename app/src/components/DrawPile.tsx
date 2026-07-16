@@ -226,8 +226,8 @@ export function DrawPile({ open, targetName, authored, savedHands, onOpen, onClo
         <span className="pile-card" />
         <span className="pile-card pile-top">
           <em>f(t)</em>
+          <span className="pile-word">Draw</span>
         </span>
-        <span className="pile-label">Draw pile</span>
       </button>
 
       {open && (
@@ -247,7 +247,8 @@ export function DrawPile({ open, targetName, authored, savedHands, onOpen, onClo
                 </span>
               )}
             </header>
-            <h3 className="drawer-section">Your hands</h3>
+            {/* one shelf of hands — saved ones and presets alike; whose they are doesn't matter */}
+            <h3 className="drawer-section">Hands</h3>
             <div className="preset-row">
               {savedHands.map((saved) => (
                 <SavedHandTile
@@ -260,20 +261,6 @@ export function DrawPile({ open, targetName, authored, savedHands, onOpen, onClo
                   onBurn={onBurnSaved}
                 />
               ))}
-              <button
-                className="preset-tile save-target"
-                onClick={onSaveTarget}
-                title="Snapshot the hand the pile deals into — cards, dials and nested hands, dealt back whole whenever you like"
-              >
-                <span className="preset-glyph">
-                  <Glyph name="save" size={30} />
-                </span>
-                <span className="preset-name">save {targetName}</span>
-                <span className="preset-count">a copy of the whole hand, kept on the pile</span>
-              </button>
-            </div>
-            <h3 className="drawer-section">Hands</h3>
-            <div className="preset-row">
               {PRESETS.map((preset) => (
                 <PresetTile
                   key={preset.id}
@@ -288,6 +275,17 @@ export function DrawPile({ open, targetName, authored, savedHands, onOpen, onClo
                   }}
                 />
               ))}
+              <button
+                className="preset-tile save-target"
+                onClick={onSaveTarget}
+                title="Snapshot the hand the pile deals into — cards, dials and nested hands, dealt back whole whenever you like"
+              >
+                <span className="preset-glyph">
+                  <Glyph name="save" size={30} />
+                </span>
+                <span className="preset-name">save {targetName}</span>
+                <span className="preset-count">a copy of the whole hand, kept on the pile</span>
+              </button>
             </div>
             {authored.length > 0 && (
               <>

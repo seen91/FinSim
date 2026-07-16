@@ -4,6 +4,7 @@ import { mergeLibrary, type AuthoredCard } from './authored'
 import { builtinSeriesOf } from './builtins'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
+import { COMPARE_TABLE, contenderDoc, runCompare, type Contender } from './compare'
 import { CashDock } from './components/CashDock'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
@@ -11,7 +12,7 @@ import { BundleReport, FuturesReport } from './components/FuturesReport'
 import { HandStack } from './components/HandStack'
 import { Rulebook } from './components/Rulebook'
 import { Workshop, type WorkshopFocus } from './components/Workshop'
-import type { ArenaFocus } from './components/Arena'
+import type { ArenaCompare, ArenaFocus } from './components/Arena'
 import { loadDoc, loadLibrary, loadSavedHands, saveDoc, saveLibrary, saveSavedHands } from './db'
 import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
@@ -64,8 +65,11 @@ export function App(): ReactElement {
   const [scrubRaw, setScrub] = useState(doc.from)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [rulebookOpen, setRulebookOpen] = useState(false)
-  // the unfolded futures: the whole table's report, or one hand's scoped one
-  const [report, setReport] = useState<'table' | { hand: string } | null>(null)
+  // the unfolded futures: the whole table's report, one hand's scoped one —
+  // or one compare contender's, while two plans share the chart
+  const [report, setReport] = useState<'table' | 'compare-a' | 'compare-b' | { hand: string } | null>(null)
+  // compare mode: two contender ids ('table' or a saved hand's) drawn on the battle chart
+  const [compareSel, setCompareSel] = useState<{ a: string; b: string } | null>(null)
   const [workshopOpen, setWorkshopOpen] = useState(false)
   const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
   // the Workshop's unsaved edits — held here so the chart previews the draft, not the shelf
@@ -175,8 +179,59 @@ export function App(): ReactElement {
       return null // the deterministic pass already carries the readable error
     }
   }, [deferred])
+  // the comparison plays the raw doc: it resolves its own shared horizon, and
+  // the live table IS a contender whenever "The table now" is picked — every
+  // card edit moves that curve under the other. Each side's doc is kept
+  // (pinned to the shared horizon) so its futures can be rolled and unfolded
+  // exactly like the plain chart's.
+  const compareState = useMemo(() => {
+    if (!compareSel) return null
+    const contender = (id: string): Contender => {
+      const saved = savedHands.find((s) => s.id === id)
+      return saved ? { type: 'saved', saved } : { type: 'table' }
+    }
+    const a = contender(compareSel.a)
+    const b = contender(compareSel.b)
+    try {
+      const run = runCompare(doc, a, b, library)
+      const docA: PlayedDoc = { ...contenderDoc(doc, a), horizonMonths: run.horizonMonths }
+      const docB: PlayedDoc = { ...contenderDoc(doc, b), horizonMonths: run.horizonMonths }
+      return { run, docA, docB, error: null as string | null }
+    } catch (err) {
+      return { run: null, docA: null, docB: null, error: errorMessage(err) }
+    }
+  }, [compareSel, doc, library, savedHands])
+
+  // both contenders' futures ride the same deferred beat as the table's fan
+  const compareMcInput = useMemo(
+    () => (compareState?.docA && compareState.docB ? { docA: compareState.docA, docB: compareState.docB, library } : null),
+    [compareState, library],
+  )
+  const deferredCompareMc = useDeferredValue(compareMcInput)
+  const compareMc = useMemo(() => {
+    if (!deferredCompareMc) return null
+    try {
+      return { a: runMc(deferredCompareMc.docA, deferredCompareMc.library), b: runMc(deferredCompareMc.docB, deferredCompareMc.library) }
+    } catch {
+      return null
+    }
+  }, [deferredCompareMc])
+
+  const arenaCompare = useMemo((): ArenaCompare | null => {
+    if (!compareState) return null
+    return {
+      run: compareState.run,
+      error: compareState.error,
+      mcA: compareMc?.a ?? null,
+      mcB: compareMc?.b ?? null,
+      onOpenReport: (side) => setReport(side === 'a' ? 'compare-a' : 'compare-b'),
+    }
+  }, [compareState, compareMc])
+
   const to = doc.from + horizonMonths - 1
-  const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
+  // the compare horizon can outrun the table's own — the scrub follows the longer one
+  const scrubTo = arenaCompare?.run ? Math.max(to, doc.from + arenaCompare.run.horizonMonths - 1) : to
+  const scrub = Math.max(doc.from, Math.min(scrubTo, scrubRaw))
   // what the table renders: instances resolved to their canonical cards, per-copy dials riding along
   const root = sim.resolvedRoot
 
@@ -228,10 +283,11 @@ export function App(): ReactElement {
       } else if (workshopOpen) setWorkshopOpen(false)
       else if (flippedId) setFlippedId(null) // a turned card turns back first
       else if (trail.length > 0) setOpenHandId(trail[trail.length - 2]?.id ?? null)
+      else if (compareSel) setCompareSel(null) // the rival leaves the chart last
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [report, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, workDraft, flippedId, trail])
+  }, [report, rulebookOpen, drawerOpen, workshopOpen, workshopFocus, workDraft, flippedId, trail, compareSel])
 
   const targetId = openHand?.id ?? null
 
@@ -445,6 +501,7 @@ export function App(): ReactElement {
         scrub={scrub}
         onScrub={setScrub}
         focus={arenaFocus}
+        compare={arenaCompare}
         // the workbench covers the lower table and only the chart can rescale
         // into the strip left above it — an opened hand's ring cannot, so it
         // waits (openHandId survives) and reappears when the bench folds away
@@ -547,6 +604,10 @@ export function App(): ReactElement {
 
       <FuturesReport open={report === 'table'} mc={mc} doc={playDoc} onClose={() => setReport(null)} />
 
+      {/* a compare contender's futures, unfolded — the same report the plain chart's odds open */}
+      <FuturesReport open={report === 'compare-a'} mc={arenaCompare?.mcA ?? null} doc={compareState?.docA ?? playDoc} onClose={() => setReport(null)} />
+      <FuturesReport open={report === 'compare-b'} mc={arenaCompare?.mcB ?? null} doc={compareState?.docB ?? playDoc} onClose={() => setReport(null)} />
+
       <BundleReport handId={typeof report === 'object' && report !== null ? report.hand : null} mc={mc} doc={playDoc} onClose={() => setReport(null)} />
 
       <DrawPile
@@ -562,6 +623,85 @@ export function App(): ReactElement {
         onDealSaved={handleDealSaved}
         onBurnSaved={handleBurnSaved}
       />
+
+      {/* the compare fixture: two dueling card backs beside the draw pile,
+          there once there is a saved hand to duel — each back wears its
+          curve's stroke, teaching the chart's language before it opens.
+          While a comparison plays, the cards turn over into the two picks. */}
+      {savedHands.length > 0 && !compareSel && (
+        <button
+          className="duel"
+          onClick={() => {
+            setOpenHandId(null) // the comparison lives on the chart — fold any opened hand
+            setCompareSel({ a: COMPARE_TABLE, b: savedHands[savedHands.length - 1]?.id ?? COMPARE_TABLE })
+          }}
+          title="Compare hands — two whole plans on one chart"
+          aria-label="Compare hands"
+        >
+          <span className="duel-card duel-a" aria-hidden="true">
+            <svg viewBox="0 0 40 34">
+              <path d="M4 29 C 16 27, 27 18, 36 5" />
+            </svg>
+          </span>
+          <span className="duel-card duel-b" aria-hidden="true">
+            <svg viewBox="0 0 40 34">
+              <path d="M4 29 C 16 27, 27 18, 36 5" strokeDasharray="5 3" />
+            </svg>
+          </span>
+          <span className="duel-word">Compare</span>
+        </button>
+      )}
+
+      {/* comparing: the fixture's spot holds the two picks — solid stroke
+          chooses the chart's solid line, dashed the dashed — with the way
+          out hung between them and the gold plaque */}
+      {compareSel && (
+        <>
+          <div className="compare-controls">
+            <label className="compare-pick">
+              <span className="compare-swatch a" aria-hidden="true" />
+              <select
+                value={compareSel.a}
+                onChange={(e) => setCompareSel((s) => (s ? { ...s, a: e.target.value } : s))}
+                aria-label="Contender A — the solid line"
+              >
+                <option value={COMPARE_TABLE}>The table now</option>
+                {savedHands.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="compare-vs">against</span>
+            <label className="compare-pick">
+              <span className="compare-swatch b" aria-hidden="true" />
+              <select
+                value={compareSel.b}
+                onChange={(e) => setCompareSel((s) => (s ? { ...s, b: e.target.value } : s))}
+                aria-label="Contender B — the dashed line"
+              >
+                <option value={COMPARE_TABLE}>The table now</option>
+                {savedHands.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button
+            className="sign compare-exit"
+            onClick={() => {
+              setCompareSel(null)
+              setReport((r) => (r === 'compare-a' || r === 'compare-b' ? null : r))
+            }}
+            title="Back to the plain chart"
+          >
+            done comparing
+          </button>
+        </>
+      )}
 
       <Workshop
         open={workshopOpen}
