@@ -4,6 +4,7 @@ import { takeLabel } from '../authored'
 import { MONTH_NAMES, formatAmount, formatPerMonth, formatPercent } from '../format'
 import { glyphOf } from '../glyph'
 import type { CardCompare, Sim } from '../model'
+import { applyTune } from '../tune'
 import { deltaVerdict } from '../verdict'
 import { Card, type CardStat } from './Card'
 import { CardShelf } from './CardShelf'
@@ -91,6 +92,8 @@ export function CardView({
   const sparkline = isRule ? undefined : isBalance ? balanceSeries?.points : contribution?.points
   const verdict = compare ? deltaVerdict(compare, from) : null
   const back = onTune && dialsOf(card).length > 0 ? <TuneDials card={card} onChange={onTune} /> : undefined
+  // the front shows what the table plays: dials applied (the back keeps the authored numbers)
+  const played = applyTune(card)
 
   return (
     <div className={`stack${setAside ? ' set-aside' : ''}`}>
@@ -108,7 +111,7 @@ export function CardView({
                 headline: isBalance ? formatAmount(value) : formatPerMonth(value),
                 headlineClass: value > 0 ? ('pos' as const) : value < 0 ? ('neg' as const) : ('' as const),
               }),
-          stats: frontStats(card),
+          stats: frontStats(played),
           ...(sparkline ? { sparkline } : {}),
           ...(verdict ? { verdict } : {}),
         }}

@@ -1,5 +1,6 @@
 import type { Card, SourceCard } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
+import { frontStats } from '../src/components/CardView'
 import { resolveTable } from '../src/instances'
 import { runSim, type Doc } from '../src/model'
 import { starterDoc } from '../src/starter'
@@ -84,6 +85,21 @@ describe('applyTune', () => {
     const debt: Card = { id: 'd', kind: 'debt', principal: 100, interest: { expected: 0.04 } }
     const played = applyTune(withTune(debt, 'interest.expected', 50))
     expect(played.kind === 'debt' && played.interest.expected).toBeCloseTo(0.06)
+  })
+})
+
+describe('the card front shows the dialed values', () => {
+  it('an asset growth dial moves the Growth stat row', () => {
+    const fund: Card = { id: 'f', kind: 'asset', growth: { expected: 0.07 }, take: { type: 'percent', percent: 0.1 } }
+    const growthOf = (card: Card): string | undefined => frontStats(applyTune(card)).find((s) => s.label === 'Growth')?.value
+    expect(growthOf(fund)).toBe(growthOf(withTune(fund, 'growth.expected', 0)))
+    expect(growthOf(withTune(fund, 'growth.expected', 100))).toBe(growthOf({ ...fund, growth: { expected: 0.14 } }))
+  })
+
+  it('a drain percent dial moves the Takes stat row', () => {
+    const tax: Card = { id: 't', kind: 'drain', percent: 0.3 }
+    const stats = frontStats(applyTune(withTune(tax, 'percent', -50)))
+    expect(stats[0]?.value).toContain('15')
   })
 })
 

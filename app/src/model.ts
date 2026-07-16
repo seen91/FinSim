@@ -159,7 +159,7 @@ export interface Sim {
    */
   remainder: Series
   compares: CardCompare[]
-  /** The table as the sim played it (untuned) — what card faces render from. */
+  /** The resolved table (dials still riding) — card faces apply them per card when rendering. */
   resolvedRoot: Table['root']
 }
 
@@ -199,7 +199,7 @@ export function debtAt(sim: Sim, month: number): number {
 export function runSim(doc: Doc, library: AuthoredCard[] = []): Sim {
   const horizonMonths = effectiveHorizon(doc, library)
   const to = doc.from + horizonMonths - 1
-  // resolve once: the sim plays it tuned (dials applied and stripped), the card faces render it untuned
+  // resolve once: the sim plays it tuned (dials applied and stripped); the faces get the resolved root with dials still riding
   const resolved = resolveTable(doc.table, library)
   const table = applyTuneTable(resolved)
   const world = doc.world ?? {}
