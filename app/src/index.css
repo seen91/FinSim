@@ -560,46 +560,147 @@ button.chart-verdict-odds:hover {
   text-decoration-style: solid;
 }
 
-/* ---- compare mode: the picks live at the compare fixture, on the wood ---- */
-.compare-controls {
+/* ---- compare mode: the picks live at the compare fixture, on the wood.
+   The fixture's two card backs turn over into the contenders — bigger now,
+   each wearing its curve's stroke and its plan's name; the card IS the
+   picker, and clicking it raises the list of hands off the wood ---- */
+.compare-duel {
   position: fixed;
   right: calc(1.4rem + 96px + 1.3rem);
   bottom: 1.6rem;
   z-index: 40;
   display: flex;
-  flex-direction: column;
   align-items: flex-end;
-  gap: 0.35rem;
+  gap: 0.45rem;
 }
 
-.compare-pick {
-  display: inline-flex;
+.compare-card {
+  position: relative;
+  width: 88px;
+  aspect-ratio: 63 / 88;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  padding: 0.7rem 0.45rem 0.55rem;
+  background:
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 8px var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-.compare-pick select {
-  max-width: 150px;
+.compare-card.a {
+  transform: rotate(-3deg);
 }
 
-/* the legend IS the picker: each select wears its curve's stroke —
-   the solid pick is the chart's solid line, the dashed pick the dashed */
-.compare-swatch {
-  display: inline-block;
-  width: 22px;
-  border-top: 2.5px solid var(--wood-ink);
+.compare-card.b {
+  transform: rotate(3deg);
 }
 
-.compare-swatch.b {
-  border-top-style: dashed;
-  border-top-color: var(--gold);
+.compare-card.a:hover,
+.compare-card.a.choosing {
+  transform: rotate(-3deg) translateY(-4px);
 }
 
-.compare-vs {
-  align-self: center;
+.compare-card.b:hover,
+.compare-card.b.choosing {
+  transform: rotate(3deg) translateY(-4px);
+}
+
+.compare-card.choosing {
+  border-color: var(--gold);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 0 0 2px rgba(176, 141, 63, 0.35), 0 3px 10px var(--shadow);
+}
+
+.compare-card svg {
+  width: 46px;
+  height: 34px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+/* the pick's name, engraved on the card back under its curve */
+.compare-card-name {
+  font-family: var(--display);
+  font-size: 0.68rem;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--gold);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+/* a click on the wood puts the list away */
+.compare-veil {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
+/* the list of hands, risen off the wood above the card that asked for it */
+.compare-menu {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  min-width: 168px;
+  max-width: 240px;
+  max-height: 42vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, var(--card) 0%, var(--card-deep) 100%);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px var(--shadow);
+}
+
+.compare-menu.from-a {
+  left: 0;
+}
+
+.compare-menu.from-b {
+  right: 0;
+}
+
+.compare-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: none;
+  border-radius: 5px;
+  background: none;
   font-family: var(--serif);
-  font-size: 0.72rem;
-  color: var(--wood-ink-soft);
+  font-size: 0.82rem;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.compare-menu button:hover {
+  background: rgba(163, 135, 79, 0.18);
+}
+
+.compare-menu button.chosen {
+  font-weight: 700;
+  color: var(--gold-deep);
+}
+
+.compare-menu button.chosen::after {
+  content: ' ✓';
 }
 
 /* the dashed plan's verdict: identical to the usual one, in the opposite

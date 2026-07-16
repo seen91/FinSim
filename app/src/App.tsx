@@ -6,6 +6,7 @@ import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
 import { COMPARE_TABLE, contenderDoc, runCompare, type Contender } from './compare'
 import { CashDock } from './components/CashDock'
+import { ComparePicks } from './components/ComparePicks'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
 import { BundleReport, FuturesReport } from './components/FuturesReport'
@@ -652,44 +653,13 @@ export function App(): ReactElement {
         </button>
       )}
 
-      {/* comparing: the fixture's spot holds the two picks — solid stroke
-          chooses the chart's solid line, dashed the dashed — with the way
-          out hung between them and the gold plaque */}
+      {/* comparing: the fixture's spot holds the two picks, turned over —
+          each card back wears its curve's stroke and its plan's name; click
+          one to choose what it plays — with the way out hung between them
+          and the gold plaque */}
       {compareSel && (
         <>
-          <div className="compare-controls">
-            <label className="compare-pick">
-              <span className="compare-swatch a" aria-hidden="true" />
-              <select
-                value={compareSel.a}
-                onChange={(e) => setCompareSel((s) => (s ? { ...s, a: e.target.value } : s))}
-                aria-label="Contender A — the solid line"
-              >
-                <option value={COMPARE_TABLE}>The table now</option>
-                {savedHands.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span className="compare-vs">against</span>
-            <label className="compare-pick">
-              <span className="compare-swatch b" aria-hidden="true" />
-              <select
-                value={compareSel.b}
-                onChange={(e) => setCompareSel((s) => (s ? { ...s, b: e.target.value } : s))}
-                aria-label="Contender B — the dashed line"
-              >
-                <option value={COMPARE_TABLE}>The table now</option>
-                {savedHands.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <ComparePicks sel={compareSel} savedHands={savedHands} onChange={setCompareSel} />
           <button
             className="sign compare-exit"
             onClick={() => {
