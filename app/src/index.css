@@ -692,6 +692,24 @@ button.chart-verdict-odds:hover {
   box-shadow: 0 4px 14px var(--shadow);
 }
 
+.compare-menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* the challenger list's section names — engraved, not clickable */
+.compare-menu-section {
+  display: block;
+  padding: 0.4rem 0.55rem 0.1rem;
+  font-family: var(--display);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  opacity: 0.85;
+}
+
 .compare-menu button {
   display: block;
   width: 100%;

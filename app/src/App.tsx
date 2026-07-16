@@ -4,7 +4,7 @@ import { mergeLibrary, type AuthoredCard } from './authored'
 import { builtinSeriesOf } from './builtins'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
-import { contenderDoc, runCompare, type Contender } from './compare'
+import { contenderDoc, resolveContender, runCompare, type CompareSel, type Contender } from './compare'
 import { CashDock } from './components/CashDock'
 import { ComparePicks } from './components/ComparePicks'
 import { DrawPile } from './components/DrawPile'
@@ -23,6 +23,7 @@ import { Glyph } from './icons'
 import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, type TableNode } from './instances'
 import { runMc } from './mc'
 import { effectiveHorizon, migrateDoc, runSim, useDoc, type PlayedDoc, type Sim } from './model'
+import { PRESETS } from './presets'
 import { snapshotHand, unpackSavedHand, type SavedHand } from './savedHands'
 import { addSeries, parseMonthText } from './seriesImport'
 import { starterDoc } from './starter'
@@ -69,9 +70,9 @@ export function App(): ReactElement {
   // the unfolded futures: the whole table's report, one hand's scoped one —
   // or one compare contender's, while two plans share the chart
   const [report, setReport] = useState<'table' | 'compare-a' | 'compare-b' | { hand: string } | null>(null)
-  // compare mode: the challenger's saved-hand id, drawn dashed on the battle
-  // chart — the table as it stands is always the solid line
-  const [compareSel, setCompareSel] = useState<string | null>(null)
+  // compare mode: the challenger's pick — a saved hand, a preset, or a single
+  // card — drawn dashed on the battle chart; the table is always the solid line
+  const [compareSel, setCompareSel] = useState<CompareSel | null>(null)
   const [workshopOpen, setWorkshopOpen] = useState(false)
   const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
   // the Workshop's unsaved edits — held here so the chart previews the draft, not the shelf
@@ -149,10 +150,33 @@ export function App(): ReactElement {
     }
   }, [])
 
+  // the comparison plays the raw doc: it resolves its own shared horizon, and
+  // the live table IS a contender whenever "The table now" is picked — every
+  // card edit moves that curve under the other. Each side's doc is kept
+  // (pinned to the shared horizon) so its futures can be rolled and unfolded
+  // exactly like the plain chart's.
+  const compareState = useMemo(() => {
+    if (!compareSel) return null
+    const a: Contender = { type: 'table' }
+    const b: Contender = resolveContender(compareSel, savedHands, library) ?? { type: 'table' }
+    try {
+      const run = runCompare(doc, a, b, library)
+      const docA: PlayedDoc = { ...contenderDoc(doc, a), horizonMonths: run.horizonMonths }
+      const docB: PlayedDoc = { ...contenderDoc(doc, b), horizonMonths: run.horizonMonths }
+      return { run, docA, docB, error: null as string | null }
+    } catch (err) {
+      return { run: null, docA: null, docB: null, error: errorMessage(err) }
+    }
+  }, [compareSel, doc, library, savedHands])
+
   // the horizon resolves to a number exactly once, here — an explicit End
   // passes through, auto ends five years past the goal crossing — and
-  // everything downstream (sims, chart, reports) plays the resolved doc
-  const horizonMonths = useMemo(() => effectiveHorizon(doc, library), [doc, library])
+  // everything downstream (sims, chart, reports) plays the resolved doc.
+  // A comparison's shared horizon can outrun the table's own; the table's sim
+  // follows it, so every month the scrub can reach exists on every series a
+  // card face, hand stack or the cash dock reads.
+  const ownHorizonMonths = useMemo(() => effectiveHorizon(doc, library), [doc, library])
+  const horizonMonths = compareState?.run ? Math.max(ownHorizonMonths, compareState.run.horizonMonths) : ownHorizonMonths
   const playDoc: PlayedDoc = useMemo(() => ({ ...doc, horizonMonths }), [doc, horizonMonths])
 
   // a table can still fail to play — a start before a series begins, a burned
@@ -181,26 +205,6 @@ export function App(): ReactElement {
       return null // the deterministic pass already carries the readable error
     }
   }, [deferred])
-  // the comparison plays the raw doc: it resolves its own shared horizon, and
-  // the live table IS a contender whenever "The table now" is picked — every
-  // card edit moves that curve under the other. Each side's doc is kept
-  // (pinned to the shared horizon) so its futures can be rolled and unfolded
-  // exactly like the plain chart's.
-  const compareState = useMemo(() => {
-    if (!compareSel) return null
-    const saved = savedHands.find((s) => s.id === compareSel)
-    const a: Contender = { type: 'table' }
-    const b: Contender = saved ? { type: 'saved', saved } : { type: 'table' }
-    try {
-      const run = runCompare(doc, a, b, library)
-      const docA: PlayedDoc = { ...contenderDoc(doc, a), horizonMonths: run.horizonMonths }
-      const docB: PlayedDoc = { ...contenderDoc(doc, b), horizonMonths: run.horizonMonths }
-      return { run, docA, docB, error: null as string | null }
-    } catch (err) {
-      return { run: null, docA: null, docB: null, error: errorMessage(err) }
-    }
-  }, [compareSel, doc, library, savedHands])
-
   // both contenders' futures ride the same deferred beat as the table's fan
   const compareMcInput = useMemo(
     () => (compareState?.docA && compareState.docB ? { docA: compareState.docA, docB: compareState.docB, library } : null),
@@ -227,10 +231,10 @@ export function App(): ReactElement {
     }
   }, [compareState, compareMc])
 
+  // the compare horizon is already folded into horizonMonths — the scrub
+  // never points past a month the table's own sim covers
   const to = doc.from + horizonMonths - 1
-  // the compare horizon can outrun the table's own — the scrub follows the longer one
-  const scrubTo = arenaCompare?.run ? Math.max(to, doc.from + arenaCompare.run.horizonMonths - 1) : to
-  const scrub = Math.max(doc.from, Math.min(scrubTo, scrubRaw))
+  const scrub = Math.max(doc.from, Math.min(to, scrubRaw))
   // what the table renders: instances resolved to their canonical cards, per-copy dials riding along
   const root = sim.resolvedRoot
 
@@ -357,7 +361,7 @@ export function App(): ReactElement {
     if (!window.confirm(`Burn the saved hand “${saved.name}”? The copies already dealt stay on the table.`)) return
     setSavedHands((prev) => prev.filter((s) => s.id !== savedId))
     // burning the challenger ends its comparison — table vs table says nothing
-    setCompareSel((sel) => (sel === savedId ? null : sel))
+    setCompareSel((sel) => (sel?.kind === 'saved' && sel.id === savedId ? null : sel))
   }
 
   // a tap on a card in play turns it over to its what-if dials (hands open instead)
@@ -683,18 +687,19 @@ export function App(): ReactElement {
         onBurnSaved={handleBurnSaved}
       />
 
-      {/* the compare fixture: one card back beside the draw pile, there once
-          there is a saved hand to challenge the table. While a comparison
-          plays, the card turns over into the challenger. */}
-      {savedHands.length > 0 && !compareSel && (
+      {/* the compare fixture: one card back beside the draw pile — anything
+          that can be a plan may challenge the table, so it is always there.
+          While a comparison plays, the card turns over into the challenger. */}
+      {!compareSel && (
         <button
           className="duel"
           onClick={() => {
             setOpenHandId(null) // the comparison lives on the chart — fold any opened hand
-            setCompareSel(savedHands[savedHands.length - 1]?.id ?? null)
+            const lastSaved = savedHands[savedHands.length - 1]
+            setCompareSel(lastSaved ? { kind: 'saved', id: lastSaved.id } : { kind: 'preset', id: PRESETS[0]!.id })
           }}
-          title="Compare — the table against a saved hand, on one chart"
-          aria-label="Compare the table against a saved hand"
+          title="Compare — the table against a saved hand, a preset, or a single card, on one chart"
+          aria-label="Compare the table against another plan"
         >
           <span className="duel-card" aria-hidden="true">
             <span className="duel-word">Compare</span>
@@ -710,6 +715,7 @@ export function App(): ReactElement {
         <ComparePicks
           sel={compareSel}
           savedHands={savedHands}
+          library={library}
           onChange={setCompareSel}
           onExit={() => {
             setCompareSel(null)

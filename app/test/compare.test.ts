@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { blankCard } from '../src/authored'
-import { presetRef } from '../src/builtins'
-import { contenderDoc, runCompare } from '../src/compare'
+import { pileRef, presetRef } from '../src/builtins'
+import { contenderDoc, contenderLabel, resolveContender, runCompare, selKey } from '../src/compare'
 import { addCard, removeCard } from '../src/hands'
 import { instanceOf, type HandNode } from '../src/instances'
 import { runSim, type Doc } from '../src/model'
@@ -10,10 +10,10 @@ import { snapshotHand } from '../src/savedHands'
 import { starterDoc } from '../src/starter'
 
 /**
- * Hand comparison: two whole plans — the table as it stands, or a saved hand
- * played as its own root — simulated on otherwise identical docs and judged
- * as a time-to-goal delta. The "what does the car actually cost me" answer
- * the saved-hands feature was built for.
+ * Comparison: two whole plans — the table as it stands, a saved hand, a
+ * preset hand, or a single card played as a one-card plan — simulated on
+ * otherwise identical docs and judged as a time-to-goal delta. The "what does
+ * the car actually cost me" answer the saved-hands feature was built for.
  */
 
 describe('runCompare', () => {
@@ -102,5 +102,62 @@ describe('contenderDoc', () => {
   it('the table contender is the doc itself', () => {
     const doc = starterDoc()
     expect(contenderDoc(doc, { type: 'table' })).toBe(doc)
+  })
+})
+
+describe('challengers beyond saved hands', () => {
+  it('a single card plays as a one-card plan — the base doc untouched', () => {
+    const doc = starterDoc()
+    const before = structuredClone(doc)
+    const run = runCompare(doc, { type: 'table' }, { type: 'card', ref: pileRef('nest-egg') })
+    expect(run.b.label).toBe('Nest egg')
+    expect(run.b.netWorth.points).toHaveLength(run.horizonMonths)
+    expect(doc).toEqual(before)
+
+    const cDoc = contenderDoc(doc, { type: 'card', ref: pileRef('nest-egg') })
+    expect(cDoc.table.root.children).toHaveLength(1)
+  })
+
+  it("a priced built-in carries its series in, like a saved hand's snapshot does", () => {
+    const cDoc = contenderDoc(starterDoc(), { type: 'card', ref: pileRef('demo-history') })
+    expect(Object.keys(cDoc.world?.series ?? {})).not.toHaveLength(0)
+  })
+
+  it('a preset hand challenges whole — built fresh, judged like any plan', () => {
+    const doc = starterDoc()
+    const preset = PRESETS.find((p) => p.id === 'buy-the-car')!
+    const run = runCompare(doc, { type: 'table' }, { type: 'preset', preset })
+    expect(run.b.label).toBe(preset.name)
+    expect(run.b.netWorth.points).toHaveLength(run.horizonMonths)
+    // the car alone earns nothing — it never reaches the goal, and says so plainly
+    expect(run.b.crossing).toBeNull()
+  })
+
+  it('a card label comes from its canonical — a design by its name, a built-in by its own', () => {
+    const design = blankCard('source', 'd9')
+    expect(contenderLabel({ type: 'card', ref: design.id }, [design])).toBe('New source')
+    expect(contenderLabel({ type: 'card', ref: pileRef('salary') })).toBe('Salary')
+  })
+})
+
+describe('resolveContender', () => {
+  it('resolves each kind fresh, and answers null when nothing does', () => {
+    const saved = snapshotHand({ id: 'h', kind: 'hand', children: [] }, 'Empty', 'u1', [])
+    expect(resolveContender({ kind: 'saved', id: saved.id }, [saved], [])).toEqual({ type: 'saved', saved })
+    expect(resolveContender({ kind: 'saved', id: 'gone' }, [saved], [])).toBeNull()
+    expect(resolveContender({ kind: 'card', ref: pileRef('salary') }, [], [])).toEqual({ type: 'card', ref: pileRef('salary') })
+    expect(resolveContender({ kind: 'card', ref: 'lost-design' }, [], [])).toBeNull()
+    expect(resolveContender({ kind: 'preset', id: PRESETS[0]!.id }, [], [])?.type).toBe('preset')
+    expect(resolveContender({ kind: 'preset', id: 'nope' }, [], [])).toBeNull()
+  })
+
+  it('selKey tells every pick apart, kinds included', () => {
+    const keys = [
+      selKey({ kind: 'saved', id: 'x' }),
+      selKey({ kind: 'preset', id: 'x' }),
+      selKey({ kind: 'card', ref: 'x' }),
+      selKey({ kind: 'card', ref: pileRef('x') }),
+    ]
+    expect(new Set(keys).size).toBe(keys.length)
   })
 })
