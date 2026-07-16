@@ -80,8 +80,8 @@ function ContenderVerdict({
   return (
     <>
       {crossing !== null ? (
-        <span className="chart-verdict-text num pos" title={`${line} reaches the goal ${formatMonth(crossing)}`}>
-          goal in {formatMonthsDelta(crossing - from)}
+        <span className="chart-verdict-text num" title={`${line} reaches the goal ${formatMonth(crossing)}`}>
+          goal in <span className="pos">{formatMonthsDelta(crossing - from)}</span>
         </span>
       ) : (
         <span className="chart-verdict-text num neg" title={`${line} never reaches the goal within the horizon`}>
@@ -90,7 +90,7 @@ function ContenderVerdict({
       )}
       {mc && (
         <button
-          className={`chart-verdict-odds num${mc.goalProbability >= 0.5 ? ' pos' : ' neg'}`}
+          className="chart-verdict-odds num"
           onClick={onOpenReport}
           title={`share of simulated futures where ${line} reaches the goal — click to unfold its futures report`}
         >
@@ -399,8 +399,8 @@ export function Arena(props: Props): ReactElement {
         <Timeline sim={sim} goal={doc.goal} from={doc.from} horizonMonths={doc.horizonMonths} scrub={scrub} onScrub={onScrub} mc={mc} />
         <div className="chart-verdict">
           {cross !== null ? (
-            <span className="chart-verdict-text num pos" title={`the whole table reaches the goal ${formatMonth(cross)}`}>
-              goal in {formatMonthsDelta(cross - doc.from)}
+            <span className="chart-verdict-text num" title={`the whole table reaches the goal ${formatMonth(cross)}`}>
+              goal in <span className="pos">{formatMonthsDelta(cross - doc.from)}</span>
             </span>
           ) : (
             <span className="chart-verdict-text num neg" title="the whole table never reaches the goal within the horizon">
@@ -409,7 +409,7 @@ export function Arena(props: Props): ReactElement {
           )}
           {mc && (
             <button
-              className={`chart-verdict-odds num${mc.goalProbability >= 0.5 ? ' pos' : ' neg'}`}
+              className="chart-verdict-odds num"
               onClick={onOpenReport}
               title="share of simulated futures that reach the goal within the horizon — click to unfold the full futures report"
             >

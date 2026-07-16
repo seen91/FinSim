@@ -527,7 +527,9 @@ button:not(:disabled):hover {
   pointer-events: auto;
 }
 
-.chart-verdict-text.pos { color: var(--money-pos); }
+/* "goal in" stays ink — only the time itself wears the money color */
+.chart-verdict-text .pos { color: var(--money-pos); }
+.chart-verdict-text .neg { color: var(--money-neg); }
 .chart-verdict-text.neg { color: var(--money-neg); }
 
 /* the goal-probability read under the plan's verdict — quieter than the date */
@@ -606,6 +608,14 @@ button.chart-verdict-odds:hover {
 .chart-verdict.compare-rival {
   top: auto;
   bottom: 2.6rem;
+}
+
+/* the rival's verdict wears its curve's gold, so the corner reads as the
+   dashed line's — the time keeps its money color, "out of reach" its red,
+   and the Δ its direction */
+.chart-verdict.compare-rival .chart-verdict-text:not(.neg),
+.chart-verdict.compare-rival button.chart-verdict-odds {
+  color: var(--gold-deep);
 }
 
 .chart-verdict-note {
