@@ -38,13 +38,18 @@ interface Props {
   muted?: boolean
 }
 
+/** The band's word. The margin kind wears its companion flavor here — the engine name stays mechanical. */
+function bandLabel(kind: string): string {
+  return kind === 'margin' ? 'companion' : kind
+}
+
 export function Card({ face, size = 'table', flipped = false, onFlip, back, muted }: Props): ReactElement {
   return (
     <div className={`pcard pcard-${size} kind-${face.kind}${muted ? ' muted' : ''}`}>
       <div className={`pcard-inner${flipped ? ' flipped' : ''}`} onClick={back ? onFlip : undefined}>
         <div className="pcard-face pcard-front">
           <header className="pcard-band">
-            <span>{face.kind}</span>
+            <span>{bandLabel(face.kind)}</span>
           </header>
           <h3 className="pcard-name">{face.name}</h3>
           <div className="pcard-art">
@@ -76,7 +81,7 @@ export function Card({ face, size = 'table', flipped = false, onFlip, back, mute
         {back !== undefined && (
           <div className="pcard-face pcard-back">
             <header className="pcard-band">
-              <span>{face.kind}</span>
+              <span>{bandLabel(face.kind)}</span>
             </header>
             <h3 className="pcard-name">{face.name}</h3>
             <div

@@ -18,6 +18,7 @@ export type GlyphName =
   | 'building'
   | 'bank'
   | 'bundle'
+  | 'companion'
   | 'cash'
   | 'check'
   | 'flame'
@@ -113,6 +114,13 @@ const PATHS: Record<GlyphName, ReactElement> = {
     <>
       <rect x="4.5" y="7" width="11" height="13" rx="1.2" />
       <rect x="8.5" y="4" width="11" height="13" rx="1.2" />
+    </>
+  ),
+  // a card leaning on its asset — the companion mark the margin kind wears
+  companion: (
+    <>
+      <rect x="11.5" y="4.5" width="8.5" height="15" rx="1.2" />
+      <rect x="3" y="7" width="7.5" height="12.5" rx="1.2" transform="rotate(14 6.75 19.5)" />
     </>
   ),
   cash: (

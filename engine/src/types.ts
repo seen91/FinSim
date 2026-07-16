@@ -4,7 +4,7 @@
  */
 
 /** Card kinds. Kind alone determines what a card does in the pipeline (DESIGN.md §7). */
-export type Kind = 'source' | 'drain' | 'asset' | 'debt' | 'hand' | 'rule'
+export type Kind = 'source' | 'drain' | 'asset' | 'debt' | 'hand' | 'rule' | 'margin'
 
 /**
  * Growth is `(expected, volatility?)` from day one. The deterministic engine
@@ -163,7 +163,30 @@ export interface HandCard extends CardBase {
   children: Card[]
 }
 
-export type Card = SourceCard | DrainCard | AssetCard | DebtCard | HandCard | RuleCard
+/**
+ * A loan pegged to the asset cards below it in its hand, nested hands
+ * included — positional scoping, like a rule card's. At its position it
+ * draws the month's interest on the current loan from the running total (in
+ * full — the honest-overdraft convention). At month-end, after assets tick
+ * and take their deposits, the loan rebalances to `ltv` × the pegged
+ * balance: the borrowed delta is deposited straight into the pegged assets
+ * (pro-rata by balance; priced assets buy units) — broker credit, never
+ * passing through the running total — and a negative delta sells down to
+ * pay off, so a crash deleverages mechanically. Entering play, the same
+ * step performs the initial borrow: loan = ltv⁄(1−ltv) × equity, the closed
+ * form, because "loan = ltv × post-deposit balance" is circular. Reported
+ * like a debt — a negative balance, counted in net worth. Debt cards stay
+ * untouched: the circular peg is its own kind, not a field on debt.
+ */
+export interface MarginCard extends CardBase {
+  kind: 'margin'
+  /** The share of the pegged assets' balance the loan is held at, 0 < ltv < 1 (exclusive). */
+  ltv: number
+  /** Annual interest on the loan. */
+  interest: GrowthParam
+}
+
+export type Card = SourceCard | DrainCard | AssetCard | DebtCard | HandCard | RuleCard | MarginCard
 
 /**
  * A scheduled rule played as a card. Like every other card it acts on what

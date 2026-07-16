@@ -23,7 +23,7 @@ export interface AuthoredCard {
 }
 
 /** The kinds a blank card can start as. A hand is composed on the table, not authored. */
-export const AUTHORABLE_KINDS = ['source', 'drain', 'asset', 'debt', 'rule'] as const
+export const AUTHORABLE_KINDS = ['source', 'drain', 'asset', 'debt', 'margin', 'rule'] as const
 export type AuthorableKind = (typeof AUTHORABLE_KINDS)[number]
 
 /**
@@ -71,6 +71,15 @@ export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
           payment: { type: 'fixed', amountPerMonth: 1_500 },
           tags: [],
         },
+      }
+    case 'margin':
+      // the companion: it leans on the asset cards below it in its hand
+      return {
+        id,
+        glyph,
+        description:
+          'A broker’s margin loan that leans on the asset cards below it: the loan is held at 5 % of their balance — borrowing more as they grow, selling down when they fall — and its 1 % interest is drawn from the flow at its position.',
+        card: { id, kind, name: 'Margin loan', ltv: 0.05, interest: { expected: 0.01 }, tags: [] },
       }
     case 'rule':
       return {
@@ -180,6 +189,8 @@ export function headlineFor(card: Card): string {
     }
     case 'debt':
       return `${formatAmount(card.principal)} @ ${formatPercent(card.interest.expected)}`
+    case 'margin':
+      return `${formatPercent(card.ltv, 0)} LTV @ ${formatPercent(card.interest.expected)}`
     case 'hand':
       return `${card.children.length} card${card.children.length === 1 ? '' : 's'}`
     case 'rule': {

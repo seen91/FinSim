@@ -29,8 +29,9 @@ export function withTune(card: Card, path: string, pct: number): Card {
   return next
 }
 
-/** Shares live in 0..1; correlations in −1..1; month counts and unit counts stay whole. */
+/** Shares live in 0..1; a margin's ltv strictly inside it; correlations in −1..1; month counts and unit counts stay whole. */
 const SHARE = /(^|\.)(percent|rate)$/
+const LTV = /(^|\.)ltv$/
 const CORRELATION = /(^|\.)correlation$/
 const WHOLE = /(^|\.)(atMonth|periodMonths|initialUnits)$/
 
@@ -38,6 +39,7 @@ const WHOLE = /(^|\.)(atMonth|periodMonths|initialUnits)$/
 export function effectiveValue(path: string, base: number, pct: number): number {
   let v = base * (1 + pct / 100)
   if (SHARE.test(path)) v = Math.min(1, Math.max(0, v))
+  if (LTV.test(path)) v = Math.min(0.99, Math.max(0.001, v)) // the engine rejects 0 and 1 outright
   if (CORRELATION.test(path)) v = Math.min(1, Math.max(-1, v))
   if (WHOLE.test(path)) v = Math.max(path.endsWith('atMonth') || path.endsWith('periodMonths') ? 1 : 0, Math.round(v))
   return v

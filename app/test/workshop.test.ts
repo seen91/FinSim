@@ -164,6 +164,14 @@ describe('pack format (decides DESIGN §14.4)', () => {
     expect(pack.cards[0]!.glyph).toBe('trend')
   })
 
+  it('writes the lowest version the content needs: only a margin card forces v2 (§0 migrate-or-reject)', () => {
+    // a new KIND is not an ignorable optional field — an older app would silently skip it in play
+    expect((JSON.parse(serializePack(samplePack())) as { version: number }).version).toBe(1)
+    const leveraged: Pack = { name: 'Leverage', cards: [blankCard('margin', 'm1')] }
+    expect((JSON.parse(serializePack(leveraged)) as { version: number }).version).toBe(2)
+    expect(deserializePack(serializePack(leveraged))).toEqual(leveraged)
+  })
+
   it('carries unknown optional fields through — additive changes never bump the version', () => {
     const envelope = JSON.parse(serializePack(samplePack())) as { pack: Pack & { futureField?: string } }
     envelope.pack.futureField = 'from a newer app'

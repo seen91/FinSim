@@ -5,6 +5,7 @@ import type {
   Card,
   DebtCard,
   HandCard,
+  MarginCard,
   RuleEffect,
   RuleSchedule,
   RuleTarget,
@@ -33,7 +34,11 @@ import { CASH_ID, validateTable } from './validate.js'
  *     net at its position — recursion is the scoping rule;
  *   - a rule card moves no money itself: its scheduled rule applies to
  *     matching cards *below* it in its hand (nested hands included) — a tax
- *     played as a card, positional like everything else.
+ *     played as a card, positional like everything else;
+ *   - a margin card draws the month's interest on its loan from the running
+ *     total at its position; at month-end the loan rebalances to ltv × the
+ *     balance of the asset cards below it in its hand, the delta traded
+ *     straight in/out of those assets (see the rebalance step below).
  *
  * Whatever reaches the bottom of the root lands in cash. Then scheduled
  * balance rules (taxes, crashes) fire — world rules table-wide, rule-card
@@ -76,6 +81,16 @@ interface DebtState {
   monthlyRate: number
   balance: number
   start: number
+}
+
+interface MarginState {
+  card: MarginCard
+  monthlyRate: number
+  /** The loan, kept positive like a debt's; reported negated. */
+  balance: number
+  start: number
+  /** The asset cards below it in its hand (nested hands included) — what the loan pegs. */
+  pegged: AssetCard[]
 }
 
 function scheduleMatches(schedule: RuleSchedule, month: number): boolean {
@@ -159,18 +174,29 @@ export function simulate(table: Table, world: World, from: number, to: number, s
     start: number
   }
   const activeRules: ActiveRule[] = (world.rules ?? []).map((rule) => ({ rule, scope: null, start: from }))
-  const collectRuleCards = (hand: HandCard): void => {
+  // Margin loans, in table order — a later margin rebalances over an earlier
+  // one's deposits, deterministically. Set-aside margins never enter play.
+  const marginStates = new Map<string, MarginState>()
+  const collectPositional = (hand: HandCard): void => {
     for (const [index, child] of hand.children.entries()) {
       if (child.enabled === false) continue
+      const below = (): Card[] => hand.children.slice(index + 1).flatMap((c) => (c.kind === 'hand' ? [c, ...allCards(c)] : [c]))
       if (child.kind === 'rule') {
-        const below = hand.children.slice(index + 1).flatMap((c) => (c.kind === 'hand' ? [c, ...allCards(c)] : [c]))
-        activeRules.push({ rule: child.rule, scope: new Set(below.map((c) => c.id)), start: child.startMonth ?? from })
+        activeRules.push({ rule: child.rule, scope: new Set(below().map((c) => c.id)), start: child.startMonth ?? from })
+      } else if (child.kind === 'margin') {
+        marginStates.set(child.id, {
+          card: child,
+          monthlyRate: monthlyFactor(child.interest.expected) - 1,
+          balance: 0,
+          start: child.startMonth ?? from,
+          pegged: below().filter((c): c is AssetCard => c.kind === 'asset'),
+        })
       } else if (child.kind === 'hand') {
-        collectRuleCards(child)
+        collectPositional(child)
       }
     }
   }
-  collectRuleCards(table.root)
+  collectPositional(table.root)
   const isFlow = (r: ActiveRule): boolean => r.rule.effect.type === 'flowTax' || r.rule.effect.type === 'flowScale'
   const flowRules = activeRules.filter(isFlow)
   const balanceRules = activeRules.filter((r) => !isFlow(r))
@@ -210,7 +236,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
     cards.filter((c) => c.kind === 'hand' && c.take).map((c) => [c.id, new Array<number>(n).fill(0)]),
   )
   const balancePoints = new Map<string, number[]>(
-    cards.filter((c) => c.kind === 'asset' || c.kind === 'debt').map((c) => [c.id, new Array<number>(n).fill(0)]),
+    cards.filter((c) => c.kind === 'asset' || c.kind === 'debt' || c.kind === 'margin').map((c) => [c.id, new Array<number>(n).fill(0)]),
   )
   const cashPoints = new Array<number>(n).fill(0)
   const netWorthPoints = new Array<number>(n).fill(0)
@@ -312,6 +338,16 @@ export function simulate(table: Table, world: World, from: number, to: number, s
           contributions.get(card.id)![i] = net === 0 ? 0 : net
           break
         }
+        case 'margin': {
+          // Interest on the loan carried in from last month-end — zero on the
+          // card's start month, when nothing was borrowed yet. Drawn in full,
+          // like every fixed draw: the honest-overdraft convention.
+          const state = marginStates.get(card.id)!
+          const interest = state.balance * state.monthlyRate
+          total -= interest
+          contributions.get(card.id)![i] = neg(interest)
+          break
+        }
         case 'rule':
           break // moves no money — its rule fires with the balance rules
       }
@@ -326,6 +362,45 @@ export function simulate(table: Table, world: World, from: number, to: number, s
     const remainder = playHand(table.root, month, i, 0)
     if (month > from) cash *= cashFactor
     cash += remainder
+
+    // 2½. Margin rebalance, at month-end after assets ticked and took their
+    // deposits: each loan re-pegs to ltv × its pegged balance. The naive
+    // target "ltv × post-deposit balance" is circular (the deposit moves the
+    // balance), so the closed form on equity does it in one step:
+    // loan = ltv⁄(1−ltv) × (balance − loan) — on entry, with loan 0, that IS
+    // the initial borrow. The delta is broker credit: deposited straight
+    // into the pegged assets pro-rata by balance (priced assets buy units),
+    // never passing through the running total; a negative delta sells down,
+    // so a crash deleverages mechanically — under Monte Carlo too, since the
+    // month's shocks have already landed on the balances read here. Equity
+    // at or below zero sells everything; whatever loan the sale cannot cover
+    // stays, accruing interest — an honest wipeout, never leaked money.
+    // Balance rules fire AFTER this, so an ISK schablonskatt keeps taxing
+    // the gross, margin-inflated balance.
+    for (const state of marginStates.values()) {
+      if (month < state.start) continue
+      const positions = state.pegged.map((c) => assetStates.get(c.id)!)
+      const gross = positions.reduce((sum, a) => sum + a.balance, 0)
+      const equity = gross - state.balance
+      const delta = equity > 0 ? (state.card.ltv / (1 - state.card.ltv)) * equity - state.balance : -gross
+      if (delta !== 0 && gross > 0) {
+        for (const a of positions) {
+          const share = (delta * a.balance) / gross
+          if (share === 0) continue
+          if (a.data) {
+            const price = a.price
+            if (price === null || price <= 0) throw new Error(`Margin "${state.card.id}": cannot trade "${a.card.id}" at price ${String(price)}`)
+            a.units += share / price
+            a.balance = a.units * price
+          } else {
+            a.balance += share
+          }
+          balancePoints.get(a.card.id)![i] = a.balance
+        }
+      }
+      state.balance += delta
+      balancePoints.get(state.card.id)![i] = neg(state.balance)
+    }
 
     // 3. Scheduled balance rules (taxes, crashes) at end of tick.
     for (const r of balanceRules) {
@@ -348,6 +423,12 @@ export function simulate(table: Table, world: World, from: number, to: number, s
           balancePoints.get(state.card.id)![i] = neg(state.balance)
         }
       }
+      for (const state of marginStates.values()) {
+        if (month >= state.start && ruleApplies(r, state.card, month)) {
+          state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
+          balancePoints.get(state.card.id)![i] = neg(state.balance)
+        }
+      }
       // the cash vessel lives outside every hand — only world rules reach it
       if (r.scope === null && targetsCash(rule.target)) {
         cash = applyBalanceEffect(rule.effect, cash, rule.id)
@@ -362,7 +443,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
         if (card.enabled === false) continue
         if (card.kind === 'hand') {
           sumEnabled(card)
-        } else if (card.kind === 'asset' || card.kind === 'debt') {
+        } else if (card.kind === 'asset' || card.kind === 'debt' || card.kind === 'margin') {
           net += balancePoints.get(card.id)![i]!
         }
       }
@@ -378,7 +459,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
     points: contributions.get(c.id)!,
   }))
   const balanceSeries: Series[] = cards
-    .filter((c) => c.kind === 'asset' || c.kind === 'debt')
+    .filter((c) => c.kind === 'asset' || c.kind === 'debt' || c.kind === 'margin')
     .map((c) => ({ id: c.id, role: 'balance' as const, startMonth: from, points: balancePoints.get(c.id)! }))
   const shortfallSeries: Series[] = [...shortfallPoints].map(([id, points]) => ({ id, role: 'shortfall' as const, startMonth: from, points }))
 

@@ -100,6 +100,13 @@ function validateCard(card: Card, errors: string[]): void {
       validateTake(card.take, 'take', `Card "${card.id}"`, errors)
       for (const child of card.children) validateCard(child, errors)
       break
+    case 'margin':
+      // strictly exclusive: 0 pegs nothing and 1 makes the closed-form borrow (ltv⁄(1−ltv) × equity) unbounded
+      if (!(card.ltv > 0 && card.ltv < 1)) {
+        errors.push(`Card "${card.id}": margin ltv must be strictly between 0 and 1`)
+      }
+      validateGrowth(card.interest, `Card "${card.id}"`, errors)
+      break
     case 'rule': {
       const { schedule, effect } = card.rule
       if (schedule.kind === 'yearly' && (schedule.monthOfYear < 1 || schedule.monthOfYear > 12)) {

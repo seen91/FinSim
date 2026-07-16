@@ -23,6 +23,7 @@ export const CARD_GLYPHS: GlyphName[] = [
   'building',
   'bank',
   'bundle',
+  'companion',
   'cash',
 ]
 
@@ -38,6 +39,7 @@ export const KIND_GLYPHS: Record<Kind, GlyphName> = {
   debt: 'bank',
   hand: 'bundle',
   rule: 'percent',
+  margin: 'companion',
 }
 
 type Glyphed = Card & { glyph?: GlyphName }

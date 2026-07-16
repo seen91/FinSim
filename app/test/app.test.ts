@@ -1,9 +1,10 @@
 import { allCards, firstCrossing, formatMonthsDelta, ym, type ScheduledRule } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
+import { blankCard } from '../src/authored'
 import { pileRef } from '../src/builtins'
 import { deserializeDoc, serializeDoc } from '../src/exchange'
 import { addCard } from '../src/hands'
-import { isInstance, resolveTable, type HandNode } from '../src/instances'
+import { instanceOf, isInstance, resolveTable, type HandNode } from '../src/instances'
 import { debtAt, effectiveHorizon, runSim, type Doc } from '../src/model'
 import { PRESETS } from '../src/presets'
 import { starterDoc } from '../src/starter'
@@ -174,6 +175,18 @@ describe('JSON export/import', () => {
     doc.table.root.children.push(structuredClone(dupe)) // duplicate card id
     expect(() => deserializeDoc(serializeDoc(doc))).toThrow('Duplicate card id')
   })
+
+  it('a margin card forces v3 so older apps reject readably; margin-free tables keep writing v2 (§0 migrate-or-reject)', () => {
+    expect((JSON.parse(serializeDoc(starterDoc())) as { version: number }).version).toBe(2)
+    const doc = starterAt2026()
+    const design = blankCard('margin', 'm1')
+    investingHand(doc).children.splice(1, 0, instanceOf(design.id, 'play1'))
+    const json = serializeDoc(doc, [design])
+    expect((JSON.parse(json) as { version: number }).version).toBe(3)
+    const imported = deserializeDoc(json)
+    expect(imported.doc).toEqual(doc)
+    expect(imported.designs.map((d) => d.id)).toContain(design.id)
+  })
 })
 
 /**
@@ -288,6 +301,18 @@ describe('debtAt: what the debt cards owe at a month (the scrub readout reads it
     ;(car as { enabled?: boolean }).enabled = false
     const without = runSim(doc)
     expect(debtAt(without, doc.from)).toBe(0)
+  })
+
+  it('counts a margin loan while it leans on its fund', () => {
+    const doc = starterAt2026()
+    const design = blankCard('margin', 'm1')
+    // between the ISK card and the fund: the fund is below it, so it is pegged
+    investingHand(doc).children.splice(1, 0, instanceOf(design.id, 'play1'))
+    const sim = runSim(doc, [design])
+    expect(debtAt(sim, doc.from)).toBeLessThan(0)
+    // the loan is 5 % of the fund's gross balance, forever pegged
+    const horizon = doc.from + effectiveHorizon(doc, [design]) - 1
+    expect(debtAt(sim, horizon)).toBeLessThan(debtAt(sim, doc.from))
   })
 
   it('a debt-free table owes nothing anywhere', () => {

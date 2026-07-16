@@ -36,6 +36,10 @@ export function frontStats(card: EngineCard): CardStat[] {
   } else if (card.kind === 'debt') {
     stats.push({ label: 'Interest', value: `${formatPercent(card.interest.expected)} /yr` })
     if (card.payment) stats.push({ label: 'Payment', value: takeLabel(card.payment) })
+  } else if (card.kind === 'margin') {
+    stats.push({ label: 'Leans on', value: 'assets below' })
+    stats.push({ label: 'Loan', value: `${formatPercent(card.ltv, 0)} of their value` })
+    stats.push({ label: 'Interest', value: `${formatPercent(card.interest.expected)} /yr`, cls: 'neg' })
   } else if (card.kind === 'hand' && card.take) {
     stats.push({ label: 'Takes', value: takeLabel(card.take) })
   } else if (card.kind === 'rule') {
@@ -80,7 +84,7 @@ export function CardView({
   const setAside = card.enabled === false
   const contribution = sim.active.contributions.find((s) => s.id === card.id)
   const balanceSeries = sim.active.balances.find((s) => s.id === card.id)
-  const isBalance = card.kind === 'asset' || card.kind === 'debt'
+  const isBalance = card.kind === 'asset' || card.kind === 'debt' || card.kind === 'margin'
   // a rule card moves no money of its own — its stats say what it does
   const isRule = card.kind === 'rule'
   const value = isBalance ? (balanceSeries ? valueAt(balanceSeries, scrub) : 0) : contribution ? valueAt(contribution, scrub) : 0

@@ -1,6 +1,6 @@
 import { validateTable } from '@finsim/engine'
 import type { AuthoredCard } from './authored'
-import { refsIn, resolveTable } from './instances'
+import { isInstance, refsIn, resolveTable, type TableNode } from './instances'
 import { migrateDoc, type Doc } from './model'
 
 /**
@@ -15,10 +15,25 @@ import { migrateDoc, type Doc } from './model'
  * references. Version 1 files (full engine cards, optional design stamps)
  * are migrated on read: stamped copies re-point at their design, unedited
  * one-offs at their built-in, and edited orphans mint into the library.
+ *
+ * Version 3 (2026-07-16): the margin kind exists. A new KIND is not an
+ * ignorable optional field — an older app's kind switches would silently
+ * skip it and mis-simulate the table — so a file that carries one must be
+ * rejected there, readably (§0 "Pack format versioning": migrate-or-reject).
+ * The writer keeps sharing friendly by writing the lowest version the
+ * content needs: margin-free tables still export as v2. Reading v2 as v3
+ * needs no migration — the shape is unchanged.
  */
 
 const FORMAT = 'finsim-table'
-const VERSION = 2
+const VERSION = 3
+
+/** Does the file carry a margin card — in a design's template, or raw on the table? */
+function carriesMargin(doc: Doc, designs: AuthoredCard[]): boolean {
+  const raw = (node: TableNode): boolean =>
+    !isInstance(node) && (node.kind === 'hand' ? node.children.some(raw) : node.kind === 'margin')
+  return designs.some((a) => a.card.kind === 'margin') || doc.table.root.children.some(raw)
+}
 
 interface Envelope {
   format: typeof FORMAT
@@ -37,7 +52,9 @@ export interface ImportedDoc {
 export function serializeDoc(doc: Doc, library: AuthoredCard[] = []): string {
   const refs = refsIn(doc.table.root)
   const designs = library.filter((a) => refs.includes(a.id))
-  const envelope: Envelope = { format: FORMAT, version: VERSION, doc, ...(designs.length > 0 ? { designs } : {}) }
+  // the lowest version the content needs: only a margin card forces v3
+  const version = carriesMargin(doc, designs) ? VERSION : 2
+  const envelope: Envelope = { format: FORMAT, version, doc, ...(designs.length > 0 ? { designs } : {}) }
   return JSON.stringify(envelope, null, 2)
 }
 
@@ -68,9 +85,10 @@ export function deserializeDoc(json: string, library: AuthoredCard[] = []): Impo
   const carried = Array.isArray(envelope.designs) ? envelope.designs : []
   const known = [...library.filter((a) => !carried.some((c) => c.id === a.id)), ...carried]
   // a v1 file migrates on read; the designs it mints from edited orphans
-  // travel to the library like carried ones. A v2 file is already instances
-  // (plain engine cards in one pass through the resolver untouched).
-  const minted = envelope.version < VERSION ? migrateDoc(doc as Doc, known) : []
+  // travel to the library like carried ones. A v2+ file is already instances
+  // (plain engine cards in one pass through the resolver untouched) — v2→v3
+  // changed no shapes, so only v1 needs lifting.
+  const minted = envelope.version === 1 ? migrateDoc(doc as Doc, known) : []
   const designs = [...carried, ...minted]
 
   let resolved

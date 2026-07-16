@@ -164,8 +164,8 @@ export interface Sim {
 }
 
 /**
- * What the table's debt cards owe at a month: the sum of enabled debt
- * balances (negative), 0 once everything is paid off. The chart's scrub
+ * What the table's debt and margin cards owe at a month: the sum of their
+ * enabled balances (negative), 0 once everything is paid off. The chart's scrub
  * readout adds any cash overdraft on top and shows the total as one
  * "debt" figure — hovering tells the whole borrowing story.
  */
@@ -174,7 +174,7 @@ export function debtAt(sim: Sim, month: number): number {
   const walk = (hand: Table['root']): void => {
     for (const card of hand.children) {
       if (card.enabled === false) continue
-      if (card.kind === 'debt') {
+      if (card.kind === 'debt' || card.kind === 'margin') {
         const s = sim.active.balances.find((b) => b.id === card.id)
         if (s) sum += valueAt(s, month)
       } else if (card.kind === 'hand') {

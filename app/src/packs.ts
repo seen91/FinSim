@@ -15,10 +15,16 @@ import { isCardGlyph } from './glyph'
  * change bumps the version, and the reader must either migrate the old shape
  * on import (like `migrateDoc`) or reject with a human-readable message.
  * Readers always reject versions newer than they know.
+ *
+ * Version 2 (2026-07-16): the margin kind exists. A new kind is not an
+ * ignorable optional field — an older app would silently skip such a card in
+ * play — so a pack that carries one is written as v2 and rejected there,
+ * readably. Margin-free packs keep writing v1; reading v1 as v2 needs no
+ * migration, the shape is unchanged.
  */
 
 const FORMAT = 'finsim-pack'
-const VERSION = 1
+const VERSION = 2
 
 export interface Pack {
   name: string
@@ -40,7 +46,9 @@ interface Envelope {
 }
 
 export function serializePack(pack: Pack): string {
-  const envelope: Envelope = { format: FORMAT, version: VERSION, pack }
+  // the lowest version the content needs: only a margin card forces v2
+  const version = pack.cards.some((a) => a.card.kind === 'margin') ? VERSION : 1
+  const envelope: Envelope = { format: FORMAT, version, pack }
   return JSON.stringify(envelope, null, 2)
 }
 

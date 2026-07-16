@@ -23,7 +23,7 @@ export function handHeld(hand: HandCard, sim: Sim, scrub: number): number | null
   let has = false
   const walk = (h: HandCard): void => {
     for (const c of h.children) {
-      if (c.kind === 'asset' || c.kind === 'debt') {
+      if (c.kind === 'asset' || c.kind === 'debt' || c.kind === 'margin') {
         has = true
         const s = sim.active.balances.find((b) => b.id === c.id)
         if (s) sum += valueAt(s, scrub)

@@ -7,6 +7,7 @@ import {
   type Curve,
   type DebtCard,
   type DrainCard,
+  type MarginCard,
   type RuleCard,
   type SourceCard,
   type Take,
@@ -737,6 +738,21 @@ function DebtEditor({ card, onChange }: { card: DebtCard; onChange: (c: EngineCa
   )
 }
 
+/**
+ * The companion's two dials. The loan-to-value is a share of the pegged
+ * assets' balance, kept strictly inside 0..1 — the engine rejects both ends
+ * (0 pegs nothing, 1 borrows without limit) — and what it pegs is not a
+ * parameter at all: position is the peg, the assets below it in its hand.
+ */
+function MarginEditor({ card, onChange }: { card: MarginCard; onChange: (c: EngineCard) => void }): ReactElement {
+  return (
+    <>
+      <Num label="Loan-to-value" value={card.ltv} onCommit={(v) => onChange({ ...card, ltv: Math.min(0.99, Math.max(0.001, v)) })} scale={100} unit="%" />
+      <RateField label="Interest" value={card.interest.expected} onCommit={(expected) => onChange({ ...card, interest: { ...card.interest, expected } })} />
+    </>
+  )
+}
+
 const MONTH_OPTIONS: [string, string][] = MONTH_NAMES.map((name, i) => [String(i + 1), name])
 
 function RuleEditor({ card, onChange, from }: { card: RuleCard; onChange: (c: EngineCard) => void; from: number }): ReactElement {
@@ -836,6 +852,7 @@ export function CardMathEditor({ card, onChange, from }: { card: EngineCard; onC
       {card.kind === 'drain' && <DrainEditor card={card} onChange={onChange} />}
       {card.kind === 'asset' && <AssetEditor card={card} onChange={onChange} />}
       {card.kind === 'debt' && <DebtEditor card={card} onChange={onChange} />}
+      {card.kind === 'margin' && <MarginEditor card={card} onChange={onChange} />}
       {card.kind === 'rule' && <RuleEditor card={card} onChange={onChange} from={from} />}
       {card.kind === 'hand' && <TakeField label="Takes" take={card.take} onCommit={(take) => onChange(withOptional(card, 'take', take))} />}
       <Text

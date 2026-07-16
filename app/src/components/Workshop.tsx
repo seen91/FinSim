@@ -183,7 +183,7 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
     const inPlay = refsInPlay.includes(canonical.id)
     // the bench face reads like a table card: scrub the chart above and the
     // headline follows — this month's flow, or an asset/debt's balance
-    const isBalance = card.kind === 'asset' || card.kind === 'debt'
+    const isBalance = card.kind === 'asset' || card.kind === 'debt' || card.kind === 'margin'
     const liveSeries = focusSim && card.kind !== 'rule' ? (isBalance ? focusSim.active.balances : focusSim.active.contributions).find((s) => s.id === card.id) : undefined
     const live = liveSeries ? valueAt(liveSeries, scrub) : null
     const face = {

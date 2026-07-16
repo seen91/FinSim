@@ -49,6 +49,12 @@ describe('effectiveValue', () => {
     expect(effectiveValue('rule.effect.rate', 0.006, 50)).toBeCloseTo(0.009)
   })
 
+  it('keeps a margin ltv strictly inside 0..1 — the engine rejects both ends', () => {
+    expect(effectiveValue('ltv', 0.6, 100)).toBe(0.99)
+    expect(effectiveValue('ltv', 0.05, -100)).toBe(0.001)
+    expect(effectiveValue('ltv', 0.05, 100)).toBeCloseTo(0.1, 12)
+  })
+
   it('keeps month and unit counts whole', () => {
     expect(effectiveValue('flow.periodMonths', 12, 37)).toBe(16)
     expect(effectiveValue('flow.periodMonths', 12, -100)).toBe(1)

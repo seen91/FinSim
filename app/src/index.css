@@ -33,6 +33,7 @@
   --kind-debt: #7c4a33;
   --kind-rule: #5f4b85;
   --kind-hand: #5f4b85;
+  --kind-margin: #3f6e6e;
 
   --money-pos: #2e6b2e;
   --money-neg: #9c2b1f;
@@ -882,6 +883,7 @@ button.chart-verdict-odds:hover {
 .kind-debt .pcard-band { border-color: var(--kind-debt); color: var(--kind-debt); }
 .kind-rule .pcard-band { border-color: var(--kind-rule); color: var(--kind-rule); }
 .kind-hand .pcard-band { border-color: var(--kind-hand); color: var(--kind-hand); }
+.kind-margin .pcard-band { border-color: var(--kind-margin); color: var(--kind-margin); }
 
 .pcard-name {
   font-family: var(--serif);
@@ -928,6 +930,7 @@ button.chart-verdict-odds:hover {
 .kind-asset .pcard-art { color: var(--kind-asset); }
 .kind-debt .pcard-art { color: var(--kind-debt); }
 .kind-hand .pcard-art { color: var(--kind-hand); }
+.kind-margin .pcard-art { color: var(--kind-margin); }
 
 .pcard-stats {
   margin: 0 0 0.2rem;
@@ -2356,6 +2359,7 @@ button.hub-range:hover {
 .kind-pick-btn.kind-asset { color: var(--kind-asset); }
 .kind-pick-btn.kind-debt { color: var(--kind-debt); }
 .kind-pick-btn.kind-rule { color: var(--kind-rule); }
+.kind-pick-btn.kind-margin { color: var(--kind-margin); }
 
 .kind-pick-cancel {
   border: none;

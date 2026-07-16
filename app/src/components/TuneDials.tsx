@@ -83,6 +83,8 @@ export function dialsOf(card: EngineCard): Dial[] {
         ...dial('Interest', 'interest.expected', card.interest.expected, rate),
         ...takeDials('Pays', 'payment', card.payment),
       ]
+    case 'margin':
+      return [...dial('Loan-to-value', 'ltv', card.ltv, share), ...dial('Interest', 'interest.expected', card.interest.expected, rate)]
     case 'rule': {
       const effect = card.rule.effect
       return 'rate' in effect
