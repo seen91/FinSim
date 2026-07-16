@@ -225,7 +225,6 @@ export function DrawPile({ open, targetName, authored, savedHands, onOpen, onClo
         <span className="pile-card" />
         <span className="pile-card" />
         <span className="pile-card pile-top">
-          <em>f(t)</em>
           <span className="pile-word">Draw</span>
         </span>
       </button>

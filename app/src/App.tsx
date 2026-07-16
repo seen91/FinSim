@@ -626,9 +626,8 @@ export function App(): ReactElement {
       />
 
       {/* the compare fixture: one card back beside the draw pile, there once
-          there is a saved hand to challenge the table — its two strokes,
-          solid against dashed, teach the chart's language before it opens.
-          While a comparison plays, the card turns over into the challenger. */}
+          there is a saved hand to challenge the table. While a comparison
+          plays, the card turns over into the challenger. */}
       {savedHands.length > 0 && !compareSel && (
         <button
           className="duel"
@@ -640,19 +639,15 @@ export function App(): ReactElement {
           aria-label="Compare the table against a saved hand"
         >
           <span className="duel-card" aria-hidden="true">
-            <svg viewBox="0 0 40 30">
-              <path d="M4 24 C 16 22, 27 13, 36 2" />
-              <path d="M4 28 C 17 27, 29 23, 38 14" strokeDasharray="5 3" />
-            </svg>
             <span className="duel-word">Compare</span>
           </span>
         </button>
       )}
 
       {/* comparing: the fixture's spot holds the challenger, turned over —
-          the card back wears the dashed stroke and the pick's name; the table
-          is always the solid line, so this one card is the whole choosing,
-          and clicking it again turns the comparison off */}
+          the card back wears the pick's name; the table is always the solid
+          line, so this one card is the whole choosing, and clicking it again
+          turns the comparison off */}
       {compareSel && (
         <ComparePicks
           sel={compareSel}

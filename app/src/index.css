@@ -561,12 +561,12 @@ button.chart-verdict-odds:hover {
 }
 
 /* ---- compare mode: the pick lives at the compare fixture, on the wood.
-   The fixture's card back turns over into the challenger — bigger than the
-   old duel backs, wearing the dashed stroke and its plan's name; the card IS
-   the picker, and clicking it raises the list of hands off the wood ---- */
+   The fixture's card back turns over into the challenger, wearing its plan's
+   name; the card IS the picker, and clicking it raises the list of hands off
+   the wood ---- */
 .compare-duel {
   position: fixed;
-  right: calc(1.4rem + 96px + 1.3rem);
+  right: 1.4rem;
   bottom: 1.6rem;
   z-index: 40;
 }
@@ -578,9 +578,8 @@ button.chart-verdict-odds:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.35rem;
-  padding: 0.7rem 0.45rem 0.55rem;
+  justify-content: center;
+  padding: 0.45rem;
   background:
     repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
     repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
@@ -589,13 +588,12 @@ button.chart-verdict-odds:hover {
   border-radius: 8px;
   box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 8px var(--shadow);
   cursor: pointer;
-  transform: rotate(-4deg);
   transition: transform 0.15s ease;
 }
 
 .compare-card:hover,
 .compare-card.choosing {
-  transform: rotate(-4deg) translateY(-4px);
+  transform: translateY(-4px);
 }
 
 .compare-card.choosing {
@@ -603,18 +601,7 @@ button.chart-verdict-odds:hover {
   box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 0 0 2px rgba(176, 141, 63, 0.35), 0 3px 10px var(--shadow);
 }
 
-.compare-card svg {
-  width: 46px;
-  height: 34px;
-  flex-shrink: 0;
-  fill: none;
-  stroke: var(--gold);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  opacity: 0.85;
-}
-
-/* the pick's name, engraved on the card back under its curve */
+/* the pick's name, engraved on the card back */
 .compare-card-name {
   font-family: var(--display);
   font-size: 0.68rem;
@@ -703,11 +690,10 @@ button.chart-verdict-odds:hover {
   pointer-events: auto;
 }
 
-/* the compare fixture: one card back beside the draw pile, wearing both of
-   the chart's strokes — the table's solid line against a dashed challenger */
+/* the compare fixture: one card back beside the draw pile */
 .duel {
   position: fixed;
-  right: calc(1.4rem + 96px + 1.3rem);
+  right: 1.4rem;
   bottom: 1.6rem;
   z-index: 40;
   width: 88px;
@@ -724,9 +710,8 @@ button.chart-verdict-odds:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.45rem;
-  padding: 0.7rem 0.45rem 0.55rem;
+  justify-content: center;
+  padding: 0.45rem;
   background:
     repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
     repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
@@ -734,26 +719,14 @@ button.chart-verdict-odds:hover {
   border: 1.5px solid var(--gold-deep);
   border-radius: 8px;
   box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 8px var(--shadow);
-  transform: rotate(-4deg);
   transition: transform 0.15s ease;
 }
 
 .duel:hover .duel-card {
-  transform: rotate(-4deg) translateY(-4px);
+  transform: translateY(-4px);
 }
 
-.duel-card svg {
-  width: 46px;
-  height: 34px;
-  flex-shrink: 0;
-  fill: none;
-  stroke: var(--gold);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  opacity: 0.85;
-}
-
-/* the fixture's name, engraved on the card back under the curves */
+/* the fixture's name, engraved on the card back */
 .duel-word {
   font-family: var(--display);
   font-size: 0.66rem;
@@ -1634,11 +1607,11 @@ button.hub-range:hover {
 /* ---- the draw pile: a leather-backed deck ---- */
 .pile {
   position: fixed;
-  right: 1.4rem;
+  right: calc(1.4rem + 88px + 1.3rem);
   bottom: 1.6rem;
   z-index: 40;
   width: 96px;
-  height: 130px;
+  height: 131px;
   background: none;
   border: none;
   padding: 0;
@@ -1649,7 +1622,7 @@ button.hub-range:hover {
   position: absolute;
   inset: 0 auto auto 0;
   width: 88px;
-  height: 118px;
+  aspect-ratio: 63 / 88;
   background:
     repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
     repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
@@ -1670,36 +1643,9 @@ button.hub-range:hover {
   transform: translate(3px, 4px) rotate(-1.5deg);
 }
 
-/* the tooled inner frame on the face-down back — only the top card earns it */
-.pile-top::before {
-  content: '';
-  position: absolute;
-  inset: 5px;
-  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
-  border-radius: 5px;
-  pointer-events: none;
-}
-
-/* the maker's mark: f(t) in a double-ring gold medallion */
-.pile-top em {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  font-family: var(--display);
-  font-size: 1.2rem;
-  color: var(--gold);
-  border: 1.5px solid color-mix(in srgb, var(--gold) 65%, transparent);
-  border-radius: 50%;
-  outline: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
-  outline-offset: 3px;
-  background: radial-gradient(circle, rgba(255, 220, 150, 0.08), transparent 70%);
-}
-
 /* the deck's name lives on the top card itself — no caption row below */
 .pile-top {
   flex-direction: column;
-  gap: 7px;
 }
 
 .pile-word {

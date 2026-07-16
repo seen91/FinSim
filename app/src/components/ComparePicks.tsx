@@ -15,8 +15,7 @@ interface Props {
  * challenger. The table as it stands is always the chart's solid line, so
  * there is only one thing to choose — the dashed rival. The list of saved
  * hands rises off the wood the moment compare opens; the card wears the
- * dashed stroke and the chosen hand's name, and clicking it again puts the
- * whole comparison away.
+ * chosen hand's name, and clicking it again puts the whole comparison away.
  */
 export function ComparePicks({ sel, savedHands, onChange, onExit }: Props): ReactElement {
   // open from the first click — entering compare IS asking "against what?"
@@ -46,9 +45,6 @@ export function ComparePicks({ sel, savedHands, onChange, onExit }: Props): Reac
         title="Stop comparing — back to the plain chart"
         aria-label={`Stop comparing against ${name}`}
       >
-        <svg viewBox="0 0 40 30" aria-hidden="true">
-          <path d="M4 26 C 16 24, 27 16, 36 4" strokeDasharray="5 3" />
-        </svg>
         <span className="compare-card-name">{name}</span>
       </button>
       {menu && (
