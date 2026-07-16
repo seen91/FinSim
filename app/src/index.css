@@ -560,18 +560,15 @@ button.chart-verdict-odds:hover {
   text-decoration-style: solid;
 }
 
-/* ---- compare mode: the picks live at the compare fixture, on the wood.
-   The fixture's two card backs turn over into the contenders — bigger now,
-   each wearing its curve's stroke and its plan's name; the card IS the
-   picker, and clicking it raises the list of hands off the wood ---- */
+/* ---- compare mode: the pick lives at the compare fixture, on the wood.
+   The fixture's card back turns over into the challenger — bigger than the
+   old duel backs, wearing the dashed stroke and its plan's name; the card IS
+   the picker, and clicking it raises the list of hands off the wood ---- */
 .compare-duel {
   position: fixed;
   right: calc(1.4rem + 96px + 1.3rem);
   bottom: 1.6rem;
   z-index: 40;
-  display: flex;
-  align-items: flex-end;
-  gap: 0.45rem;
 }
 
 .compare-card {
@@ -592,25 +589,13 @@ button.chart-verdict-odds:hover {
   border-radius: 8px;
   box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 8px var(--shadow);
   cursor: pointer;
+  transform: rotate(-4deg);
   transition: transform 0.15s ease;
 }
 
-.compare-card.a {
-  transform: rotate(-3deg);
-}
-
-.compare-card.b {
-  transform: rotate(3deg);
-}
-
-.compare-card.a:hover,
-.compare-card.a.choosing {
-  transform: rotate(-3deg) translateY(-4px);
-}
-
-.compare-card.b:hover,
-.compare-card.b.choosing {
-  transform: rotate(3deg) translateY(-4px);
+.compare-card:hover,
+.compare-card.choosing {
+  transform: rotate(-4deg) translateY(-4px);
 }
 
 .compare-card.choosing {
@@ -651,10 +636,11 @@ button.chart-verdict-odds:hover {
   z-index: -1;
 }
 
-/* the list of hands, risen off the wood above the card that asked for it */
+/* the list of hands, risen off the wood above the card */
 .compare-menu {
   position: absolute;
   bottom: calc(100% + 0.5rem);
+  right: 0;
   margin: 0;
   padding: 0.3rem;
   list-style: none;
@@ -666,14 +652,6 @@ button.chart-verdict-odds:hover {
   border: 1.5px solid var(--gold-deep);
   border-radius: 8px;
   box-shadow: 0 4px 14px var(--shadow);
-}
-
-.compare-menu.from-a {
-  left: 0;
-}
-
-.compare-menu.from-b {
-  right: 0;
 }
 
 .compare-menu button {
@@ -725,15 +703,15 @@ button.chart-verdict-odds:hover {
   pointer-events: auto;
 }
 
-/* the compare fixture: two dueling card backs beside the draw pile, each
-   wearing its curve's stroke — solid ink-gold vs dashed */
+/* the compare fixture: one card back beside the draw pile, wearing both of
+   the chart's strokes — the table's solid line against a dashed challenger */
 .duel {
   position: fixed;
   right: calc(1.4rem + 96px + 1.3rem);
   bottom: 1.6rem;
   z-index: 40;
-  width: 96px;
-  height: 130px;
+  width: 88px;
+  aspect-ratio: 63 / 88;
   background: none;
   border: none;
   padding: 0;
@@ -742,26 +720,32 @@ button.chart-verdict-odds:hover {
 
 .duel-card {
   position: absolute;
-  bottom: 12px;
-  width: 56px;
-  height: 76px;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  padding: 0.7rem 0.45rem 0.55rem;
   background:
     repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
     repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
     #4c3018;
   border: 1.5px solid var(--gold-deep);
-  border-radius: 7px;
-  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 6px var(--shadow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 8px var(--shadow);
+  transform: rotate(-4deg);
   transition: transform 0.15s ease;
 }
 
+.duel:hover .duel-card {
+  transform: rotate(-4deg) translateY(-4px);
+}
+
 .duel-card svg {
-  width: 38px;
-  height: 32px;
-  margin-bottom: 16px;
+  width: 46px;
+  height: 34px;
+  flex-shrink: 0;
   fill: none;
   stroke: var(--gold);
   stroke-width: 2.5;
@@ -769,47 +753,14 @@ button.chart-verdict-odds:hover {
   opacity: 0.85;
 }
 
-.duel-a {
-  left: 0;
-  transform: rotate(-7deg);
-}
-
-.duel-b {
-  right: 0;
-  transform: rotate(7deg);
-}
-
-.duel:hover .duel-a {
-  transform: rotate(-9deg) translateY(-4px);
-}
-
-.duel:hover .duel-b {
-  transform: rotate(9deg) translateY(-4px);
-}
-
-/* the fixture's name, engraved across the two card backs, under the curves */
+/* the fixture's name, engraved on the card back under the curves */
 .duel-word {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 28px;
-  text-align: center;
   font-family: var(--display);
   font-size: 0.66rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--gold);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
-  pointer-events: none;
-}
-
-/* the way out of compare mode: a sign hung under the gold plaque, over the
-   compare fixture's picks */
-.compare-exit {
-  position: fixed;
-  right: 1.4rem;
-  bottom: calc(1.6rem + 130px + 0.6rem);
-  z-index: 40;
 }
 
 /* ---- playing cards: parchment, gold frame, engraved sigil ---- */
@@ -1576,9 +1527,7 @@ button.hub-range:hover {
 .cash-dock {
   position: fixed;
   right: 1.4rem;
-  /* raised a notch above the pile so the compare mode's "done comparing"
-     sign has a rung of its own beneath the plaque */
-  bottom: calc(1.6rem + 130px + 1rem + 2.2rem);
+  bottom: calc(1.6rem + 130px + 1rem);
   z-index: 40;
   display: flex;
   justify-content: flex-end;

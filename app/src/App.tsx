@@ -4,7 +4,7 @@ import { mergeLibrary, type AuthoredCard } from './authored'
 import { builtinSeriesOf } from './builtins'
 import { Arena } from './components/Arena'
 import { CardView } from './components/CardView'
-import { COMPARE_TABLE, contenderDoc, runCompare, type Contender } from './compare'
+import { contenderDoc, runCompare, type Contender } from './compare'
 import { CashDock } from './components/CashDock'
 import { ComparePicks } from './components/ComparePicks'
 import { DrawPile } from './components/DrawPile'
@@ -69,8 +69,9 @@ export function App(): ReactElement {
   // the unfolded futures: the whole table's report, one hand's scoped one —
   // or one compare contender's, while two plans share the chart
   const [report, setReport] = useState<'table' | 'compare-a' | 'compare-b' | { hand: string } | null>(null)
-  // compare mode: two contender ids ('table' or a saved hand's) drawn on the battle chart
-  const [compareSel, setCompareSel] = useState<{ a: string; b: string } | null>(null)
+  // compare mode: the challenger's saved-hand id, drawn dashed on the battle
+  // chart — the table as it stands is always the solid line
+  const [compareSel, setCompareSel] = useState<string | null>(null)
   const [workshopOpen, setWorkshopOpen] = useState(false)
   const [workshopFocus, setWorkshopFocus] = useState<WorkshopFocus | null>(null)
   // the Workshop's unsaved edits — held here so the chart previews the draft, not the shelf
@@ -187,12 +188,9 @@ export function App(): ReactElement {
   // exactly like the plain chart's.
   const compareState = useMemo(() => {
     if (!compareSel) return null
-    const contender = (id: string): Contender => {
-      const saved = savedHands.find((s) => s.id === id)
-      return saved ? { type: 'saved', saved } : { type: 'table' }
-    }
-    const a = contender(compareSel.a)
-    const b = contender(compareSel.b)
+    const saved = savedHands.find((s) => s.id === compareSel)
+    const a: Contender = { type: 'table' }
+    const b: Contender = saved ? { type: 'saved', saved } : { type: 'table' }
     try {
       const run = runCompare(doc, a, b, library)
       const docA: PlayedDoc = { ...contenderDoc(doc, a), horizonMonths: run.horizonMonths }
@@ -358,6 +356,8 @@ export function App(): ReactElement {
     if (!saved) return
     if (!window.confirm(`Burn the saved hand “${saved.name}”? The copies already dealt stay on the table.`)) return
     setSavedHands((prev) => prev.filter((s) => s.id !== savedId))
+    // burning the challenger ends its comparison — table vs table says nothing
+    setCompareSel((sel) => (sel === savedId ? null : sel))
   }
 
   // a tap on a card in play turns it over to its what-if dials (hands open instead)
@@ -625,52 +625,44 @@ export function App(): ReactElement {
         onBurnSaved={handleBurnSaved}
       />
 
-      {/* the compare fixture: two dueling card backs beside the draw pile,
-          there once there is a saved hand to duel — each back wears its
-          curve's stroke, teaching the chart's language before it opens.
-          While a comparison plays, the cards turn over into the two picks. */}
+      {/* the compare fixture: one card back beside the draw pile, there once
+          there is a saved hand to challenge the table — its two strokes,
+          solid against dashed, teach the chart's language before it opens.
+          While a comparison plays, the card turns over into the challenger. */}
       {savedHands.length > 0 && !compareSel && (
         <button
           className="duel"
           onClick={() => {
             setOpenHandId(null) // the comparison lives on the chart — fold any opened hand
-            setCompareSel({ a: COMPARE_TABLE, b: savedHands[savedHands.length - 1]?.id ?? COMPARE_TABLE })
+            setCompareSel(savedHands[savedHands.length - 1]?.id ?? null)
           }}
-          title="Compare hands — two whole plans on one chart"
-          aria-label="Compare hands"
+          title="Compare — the table against a saved hand, on one chart"
+          aria-label="Compare the table against a saved hand"
         >
-          <span className="duel-card duel-a" aria-hidden="true">
-            <svg viewBox="0 0 40 34">
-              <path d="M4 29 C 16 27, 27 18, 36 5" />
+          <span className="duel-card" aria-hidden="true">
+            <svg viewBox="0 0 40 30">
+              <path d="M4 24 C 16 22, 27 13, 36 2" />
+              <path d="M4 28 C 17 27, 29 23, 38 14" strokeDasharray="5 3" />
             </svg>
+            <span className="duel-word">Compare</span>
           </span>
-          <span className="duel-card duel-b" aria-hidden="true">
-            <svg viewBox="0 0 40 34">
-              <path d="M4 29 C 16 27, 27 18, 36 5" strokeDasharray="5 3" />
-            </svg>
-          </span>
-          <span className="duel-word">Compare</span>
         </button>
       )}
 
-      {/* comparing: the fixture's spot holds the two picks, turned over —
-          each card back wears its curve's stroke and its plan's name; click
-          one to choose what it plays — with the way out hung between them
-          and the gold plaque */}
+      {/* comparing: the fixture's spot holds the challenger, turned over —
+          the card back wears the dashed stroke and the pick's name; the table
+          is always the solid line, so this one card is the whole choosing,
+          and clicking it again turns the comparison off */}
       {compareSel && (
-        <>
-          <ComparePicks sel={compareSel} savedHands={savedHands} onChange={setCompareSel} />
-          <button
-            className="sign compare-exit"
-            onClick={() => {
-              setCompareSel(null)
-              setReport((r) => (r === 'compare-a' || r === 'compare-b' ? null : r))
-            }}
-            title="Back to the plain chart"
-          >
-            done comparing
-          </button>
-        </>
+        <ComparePicks
+          sel={compareSel}
+          savedHands={savedHands}
+          onChange={setCompareSel}
+          onExit={() => {
+            setCompareSel(null)
+            setReport((r) => (r === 'compare-a' || r === 'compare-b' ? null : r))
+          }}
+        />
       )}
 
       <Workshop
