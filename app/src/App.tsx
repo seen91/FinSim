@@ -351,8 +351,22 @@ export function App(): ReactElement {
     setSavedHands((prev) => [...prev, snapshotHand(hand, name, newUid(), library, doc.world?.series)])
   }
 
+  // onto an empty table, a saved hand becomes the plan itself — its cards
+  // spread at top level, its name on the root — instead of arriving as one
+  // stack; anywhere else it stays a hand so it doesn't shuffle into what's
+  // already in play
   const handleDealSaved = (saved: SavedHand): void => {
-    dealNode(unpackSavedHand(saved, newUid), saved.series)
+    const unpacked = unpackSavedHand(saved, newUid)
+    if (targetId === null && doc.table.root.children.length === 0) {
+      store.update((d) => {
+        addSeries(d, saved.series)
+        for (const inst of instancesIn(unpacked)) addSeries(d, builtinSeriesOf(inst.ref))
+        d.table.root.children = unpacked.children
+        d.table.root.name = unpacked.name
+      })
+      return
+    }
+    dealNode(unpacked, saved.series)
   }
 
   const handleBurnSaved = (savedId: string): void => {
