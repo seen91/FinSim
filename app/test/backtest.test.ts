@@ -9,7 +9,6 @@ import { instanceOf, resolveTable } from '../src/instances'
 import { LIBRARY } from '../src/library'
 import { runMc } from '../src/mc'
 import { migrateDoc, runSim, type Doc } from '../src/model'
-import { deserializePack, serializePack, type Pack } from '../src/packs'
 import { addSeries, mintPricedDesign, parseMonthText, parseSeriesText, seriesInUse } from '../src/seriesImport'
 
 /**
@@ -211,11 +210,4 @@ describe('doc round-trips', () => {
     expect(runSim(back.doc, back.designs).active.balances.find((b) => b.id === 'fund')!.points).toEqual(GOLDEN_BALANCES)
   })
 
-  it('a pack carries the series its designs wear', () => {
-    const design = mintPricedDesign('golden', { startMonth: ym(1999, 1), values: PRICES }, 'uid1')
-    const pack: Pack = { name: 'History', cards: [design], series: { golden: { startMonth: ym(1999, 1), values: PRICES } } }
-    const back = deserializePack(serializePack(pack))
-    expect(back.series).toEqual(pack.series)
-    expect(back.cards[0]!.id).toBe(design.id)
-  })
 })

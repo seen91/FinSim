@@ -489,7 +489,7 @@ export function App(): ReactElement {
         <div className="topbar-actions">
           {/* planked boards hanging from one wooden rail; the Workshop's
               signal-yellow board stays the one loud thing on the table */}
-          <button className="workshop" onClick={() => setWorkshopOpen(true)} title="The Workshop — author cards, tune the ones in play, share packs">
+          <button className="workshop" onClick={() => setWorkshopOpen(true)} title="The Workshop — author cards and tune the ones in play">
             <span className="workshop-board">
               <Glyph name="hammer" size={15} />
               Workshop

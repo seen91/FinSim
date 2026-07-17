@@ -10,9 +10,9 @@ import { migrateDoc, type Doc } from './model'
  *
  * Version 2 (2026-07-14, "One card — instances"): the table's leaves are
  * instances referencing canonical cards, so the envelope carries the library
- * designs those instances play (`designs`) — the way packs carry the series
- * their cards wear. Built-in refs resolve on any table and travel as bare
- * references. Version 1 files (full engine cards, optional design stamps)
+ * designs those instances play (`designs`) — the way presets carry the
+ * series their cards wear. Built-in refs resolve on any table and travel as
+ * bare references. Version 1 files (full engine cards, optional design stamps)
  * are migrated on read: stamped copies re-point at their design, unedited
  * one-offs at their built-in, and edited orphans mint into the library.
  *

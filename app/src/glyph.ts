@@ -8,7 +8,7 @@ import type { GlyphName } from './icons'
  * without one falls back to its kind's default.
  */
 
-/** The glyphs a card face may carry — pickable in the Workshop, checked on pack import. */
+/** The glyphs a card face may carry — pickable in the Workshop; unknown values fall back to the kind's default. */
 export const CARD_GLYPHS: GlyphName[] = [
   'coins',
   'briefcase',

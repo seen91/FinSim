@@ -5,14 +5,12 @@ import { builtinOf, pileRef, presetRef } from '../src/builtins'
 import { addCard } from '../src/hands'
 import { canonicalOf, instanceOf, isInstance, resolveInstance, resolveTable } from '../src/instances'
 import { LIBRARY } from '../src/library'
-import { deserializePack, serializePack, type Pack } from '../src/packs'
 import { starterDoc } from '../src/starter'
 
 /**
- * M2/M3c — the Workshop's data layer: blank cards must be born valid,
- * playing a canonical card deals an INSTANCE that never collides ids, and
- * the pack format must round-trip exactly and reject what it cannot read
- * (DESIGN.md §3, §14.4, §0 "One card — instances").
+ * M2/M3c — the Workshop's data layer: blank cards must be born valid, and
+ * playing a canonical card deals an INSTANCE that never collides ids
+ * (DESIGN.md §3, §0 "One card — instances").
  */
 
 describe('blank-card authoring', () => {
@@ -115,68 +113,6 @@ describe('the starter table is instances all the way down', () => {
       else expect(child.kind).toBe('hand')
     }
     expect(validateTable(resolveTable(doc.table, []))).toEqual([])
-  })
-})
-
-function samplePack(): Pack {
-  return {
-    name: 'Test pack',
-    description: 'Two designs and a series',
-    cards: [blankCard('source', 'p1'), blankCard('rule', 'p2')],
-    series: { 'test-series': { startMonth: 0, values: [1, 2, 3] } },
-  }
-}
-
-describe('pack format (decides DESIGN §14.4)', () => {
-  it('round-trips exactly', () => {
-    const pack = samplePack()
-    expect(deserializePack(serializePack(pack))).toEqual(pack)
-  })
-
-  it('rejects garbage with a human-readable reason', () => {
-    expect(() => deserializePack('not json')).toThrow('not a JSON file')
-    expect(() => deserializePack('{"some":"json"}')).toThrow('not a FinSim pack file')
-    expect(() => deserializePack(JSON.stringify({ format: 'finsim-table', version: 1, pack: {} }))).toThrow('not a FinSim pack file')
-  })
-
-  it('rejects versions newer than it knows', () => {
-    const json = serializePack(samplePack()).replace('"version": 1', '"version": 99')
-    expect(() => deserializePack(json)).toThrow('version 99')
-  })
-
-  it('rejects a pack whose card is structurally invalid', () => {
-    const pack = samplePack()
-    const drain = blankCard('drain', 'bad')
-    if (drain.card.kind === 'drain') drain.card.percent = 2 // and amount too — doubly wrong
-    pack.cards.push(drain)
-    expect(() => deserializePack(serializePack(pack))).toThrow('is invalid')
-  })
-
-  it('rejects duplicate card ids inside a pack', () => {
-    const pack = samplePack()
-    pack.cards.push(structuredClone(pack.cards[0]!))
-    expect(() => deserializePack(serializePack(pack))).toThrow('two cards')
-  })
-
-  it('coerces an unknown glyph instead of failing the pack', () => {
-    const json = serializePack(samplePack()).replace('"glyph": "coins"', '"glyph": "dragon"')
-    const pack = deserializePack(json)
-    expect(pack.cards[0]!.glyph).toBe('trend')
-  })
-
-  it('writes the lowest version the content needs: only a margin card forces v2 (§0 migrate-or-reject)', () => {
-    // a new KIND is not an ignorable optional field — an older app would silently skip it in play
-    expect((JSON.parse(serializePack(samplePack())) as { version: number }).version).toBe(1)
-    const leveraged: Pack = { name: 'Leverage', cards: [blankCard('margin', 'm1')] }
-    expect((JSON.parse(serializePack(leveraged)) as { version: number }).version).toBe(2)
-    expect(deserializePack(serializePack(leveraged))).toEqual(leveraged)
-  })
-
-  it('carries unknown optional fields through — additive changes never bump the version', () => {
-    const envelope = JSON.parse(serializePack(samplePack())) as { pack: Pack & { futureField?: string } }
-    envelope.pack.futureField = 'from a newer app'
-    const pack = deserializePack(JSON.stringify(envelope)) as Pack & { futureField?: string }
-    expect(pack.futureField).toBe('from a newer app')
   })
 })
 

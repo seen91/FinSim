@@ -4,14 +4,14 @@ import { blankCard, mergeLibrary, validateAuthored, type AuthoredCard } from '..
 import { addCard, moveCard } from '../src/hands'
 import { instanceOf, isInstance, resolveTable, type HandNode } from '../src/instances'
 import { runSim, type Doc } from '../src/model'
-import { deserializePack, serializePack } from '../src/packs'
+import { deserializeDoc, serializeDoc } from '../src/exchange'
 
 /**
  * The M3(a) acceptance pass (DESIGN.md §13): the M1 question answered
- * end-to-end through the M2 path. No starter pack, no presets — every card
- * is born as a Workshop blank, edited to its numbers, validated, carried
- * through a pack export/import round-trip, dealt with fresh ids, and played
- * onto an empty table with the app's own gestures. The verdict must match
+ * end-to-end through the M2 path. No starter hand, no presets — every card
+ * is born as a Workshop blank, edited to its numbers, validated, dealt with
+ * fresh ids onto an empty table with the app's own gestures, and carried
+ * through a table-file export/import round-trip. The verdict must match
  * the hand-checked golden expectation (engine/test/acceptance.car.test.ts,
  * derived from closed-form annuity and amortization formulas):
  *
@@ -66,7 +66,7 @@ function authorLibrary(): AuthoredCard[] {
   return [salary, tax, expenses, fund, carValue, carCosts, carLoan].reduce<AuthoredCard[]>((lib, card) => mergeLibrary(lib, [card]), [])
 }
 
-/** An empty table — no starter pack anywhere near this test. */
+/** An empty table — no starter hand anywhere near this test. */
 function emptyDoc(): Doc {
   return {
     from: FROM,
@@ -76,20 +76,16 @@ function emptyDoc(): Doc {
   }
 }
 
-describe('M3(a): the M1 question through the Workshop path, no starter pack', () => {
-  it('author → validate → pack round-trip → deal → play → the hand-checked verdict', () => {
+describe('M3(a): the M1 question through the Workshop path, no starter hand', () => {
+  it('author → validate → deal → table-file round-trip → play → the hand-checked verdict', () => {
     // 1. Author every card at the bench.
     const library = authorLibrary()
 
-    // 2. Share it with yourself: export the pack, read it back in.
-    const packed = deserializePack(serializePack({ name: 'Authored from scratch', cards: library }))
-    expect(packed.cards).toEqual(library)
-
-    // 3. Deal onto an empty table with the app's own gestures: every leaf an
+    // 2. Deal onto an empty table with the app's own gestures: every leaf an
     //    instance of its design. Hands are composed on the table (a Workshop
     //    rule), so the bundles are fresh hand nodes.
     const doc = emptyDoc()
-    const find = (id: string): AuthoredCard => packed.cards.find((c) => c.id.includes(id))!
+    const find = (id: string): AuthoredCard => library.find((c) => c.id.includes(id))!
 
     const budget: HandNode = { id: 'budget-hand', name: 'Current budget', kind: 'hand', children: [] }
     addCard(doc, null, budget)
@@ -110,14 +106,20 @@ describe('M3(a): the M1 question through the Workshop path, no starter pack', ()
     addCard(doc, car.id, financing)
     addCard(doc, financing.id, instanceOf(find('car-loan').id, 'p1'))
 
+    // 3. Share it with yourself: export the table file (it carries the
+    //    designs its instances play), read it back in on an empty library.
+    const shared = deserializeDoc(serializeDoc(doc, library))
+    expect(shared.designs).toEqual(library)
+    expect(shared.doc).toEqual(doc)
+
     // the dealt table is structurally valid, with every id freshly suffixed
-    const resolved = resolveTable(doc.table, packed.cards)
+    const resolved = resolveTable(shared.doc.table, shared.designs)
     expect(validateTable(resolved)).toEqual([])
     const ids = allCards(resolved.root).map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
 
     // 4. Read the verdict off the table — the hand-checked golden answer.
-    const sim = runSim(doc, packed.cards)
+    const sim = runSim(shared.doc, shared.designs)
     const verdict = sim.compares.find((c) => c.name === 'Buy the car')!
     expect(verdict.delta.baseMonth).toBe(ym(2045, 6))
     expect(verdict.delta.variantMonth).toBe(ym(2046, 9))

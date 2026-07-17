@@ -1,15 +1,12 @@
 import { valueAt } from '@finsim/engine'
 import { useCallback, useRef, useState, type ReactElement } from 'react'
-import { AUTHORABLE_KINDS, blankCard, headlineFor, mergeLibrary, redesign, type AuthoredCard, type AuthorableKind } from '../authored'
+import { AUTHORABLE_KINDS, blankCard, headlineFor, redesign, type AuthoredCard, type AuthorableKind } from '../authored'
 import { builtinOf } from '../builtins'
-import { downloadJson } from '../download'
-import { errorMessage, formatAmount, formatPerMonth } from '../format'
+import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
 import { refBase, refsIn, repointInstances } from '../instances'
 import type { Doc, Sim } from '../model'
-import { deserializePack, serializePack, type Pack } from '../packs'
 import type { SavedHand } from '../savedHands'
-import { seriesIdsIn } from '../seriesImport'
 import { newUid } from '../uid'
 import { Card } from './Card'
 import { CardMathEditor, FrontMatterEditor } from './CardEditor'
@@ -30,9 +27,8 @@ import { DataBench } from './DataBench'
  * re-points at it — the default becomes YOUR salary in one gesture, and the
  * pristine template stays in the pile. "copy" mints from the template
  * without re-pointing, for a variant beside the default. The back of a blank
- * card is the card creator; packs move designs between tables. Edits buffer
- * as a draft until the green save commits them — a blank never touches the
- * shelf unsaved.
+ * card is the card creator. Edits buffer as a draft until the green save
+ * commits them — a blank never touches the shelf unsaved.
  */
 
 /** What the Workshop has zoomed into — App mirrors it onto the chart. */
@@ -62,7 +58,6 @@ interface Props {
 export function Workshop({ open, onClose, doc, update, library, savedHands, onLibraryChange, onPlay, focus, onFocus, draft, onDraftChange, focusSim, scrub }: Props): ReactElement | null {
   const [picking, setPicking] = useState(false)
   const [dataOpen, setDataOpen] = useState(false)
-  const importInput = useRef<HTMLInputElement>(null)
 
   // the bench overlays the lower table — publish its measured height so the
   // arena (and the chart in it) can duck above instead of drawing behind it
@@ -109,33 +104,6 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
     copy.card.name = `${builtin.card.name ?? 'Card'} copy`
     onLibraryChange([...library, copy])
     onFocus({ where: 'library', id: copy.id })
-  }
-
-  const handleExport = (): void => {
-    const name = window.prompt('Pack name', 'My cards')
-    if (!name) return
-    // a design priced by a series is broken without it — the pack carries what its cards wear
-    const worn = new Set(library.flatMap((a) => seriesIdsIn(a.card)))
-    const series = Object.fromEntries(Object.entries(doc.world?.series ?? {}).filter(([id]) => worn.has(id)))
-    const pack: Pack = { name, cards: library, ...(Object.keys(series).length > 0 ? { series } : {}) }
-    downloadJson(`finsim-pack-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`, serializePack(pack))
-  }
-
-  const handleImportFile = (file: File): void => {
-    void file.text().then((text) => {
-      try {
-        const pack = deserializePack(text)
-        onLibraryChange(mergeLibrary(library, pack.cards))
-        if (pack.series && Object.keys(pack.series).length > 0) {
-          const series = pack.series
-          update((d) => {
-            d.world = { ...d.world, series: { ...d.world?.series, ...series } }
-          })
-        }
-      } catch (err) {
-        alert(`Could not import pack: ${errorMessage(err)}`)
-      }
-    })
   }
 
   // ---- FOCUS: one canonical card on the bench, face and back side by side ----
@@ -359,7 +327,7 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
       <header className="workbench-bar">
         <h2>The Workshop</h2>
         <p className="drawer-hint">
-          pick a card up to work on it — every copy in play follows its design by construction · packs carry your designs between tables
+          pick a card up to work on it — every copy in play follows its design by construction
         </p>
         <button className="drawer-close" onClick={onClose} aria-label="Close the Workshop">
           ×
@@ -371,23 +339,6 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
         <button className={dataOpen ? 'sign data-open' : 'sign'} onClick={() => setDataOpen(!dataOpen)} title="Import historical data and manage the table's series">
           {dataOpen ? '← cards' : 'Data'}
         </button>
-        <button className="sign" onClick={handleExport} disabled={library.length === 0} title="Bundle your designs into a pack file to share">
-          Export pack
-        </button>
-        <button className="sign" onClick={() => importInput.current?.click()} title="Merge a pack file into your designs">
-          Import pack
-        </button>
-        <input
-          ref={importInput}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) handleImportFile(file)
-            e.target.value = ''
-          }}
-        />
       </div>
 
       {dataOpen ? (
