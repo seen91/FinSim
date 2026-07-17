@@ -296,7 +296,8 @@ export function App(): ReactElement {
 
   // while a hand is opened in the arena, the main strip below reads as "the
   // rest of the table" — a click anywhere down there (cards included) folds
-  // the hand away like the ×. Buttons keep their own clicks, and a drag that
+  // the hand away like the ×, except another hand's stack, which switches the
+  // arena straight to it. Buttons keep their own clicks, and a drag that
   // travelled is a reorder, not a close. The gesture means what it meant at
   // pointerdown: the click that OPENS a hand bubbles here after the state
   // already flipped, and must not close it right back.
@@ -637,7 +638,13 @@ export function App(): ReactElement {
           onGroup={handleGroup}
           onItemClick={(card) => {
             if (stripCloses) {
-              setOpenHandId(null)
+              // another hand's stack switches straight to it — one click, not
+              // fold-then-open; the gesture is spent so the bubbled click on
+              // the strip below cannot fold the fresh hand right back
+              if (card.kind === 'hand' && card.id !== openHandId) {
+                setOpenHandId(card.id)
+                stripDown.current = null
+              } else setOpenHandId(null)
               return
             }
             if (card.kind === 'hand') setOpenHandId(card.id)
