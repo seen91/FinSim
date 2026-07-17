@@ -439,7 +439,6 @@ export function App(): ReactElement {
   // below is the scorched-earth version)
   const handleClearTable = (): void => {
     if (doc.table.root.children.length === 0) return
-    if (!window.confirm('Clear the table? Every card in play is discarded — your authored cards and saved hands stay.')) return
     store.update((d) => {
       d.table.root.children = []
       delete d.table.root.name
@@ -560,7 +559,7 @@ export function App(): ReactElement {
                       }}
                     >
                       <Glyph name="flame" size={13} />
-                      Clear table…
+                      Clear table
                     </button>
                   </li>
                   <li className="menu-divide">
