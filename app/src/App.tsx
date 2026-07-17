@@ -417,7 +417,7 @@ export function App(): ReactElement {
   }
 
   const handleExport = (): void => {
-    downloadJson(`finsim-${new Date().toISOString().slice(0, 10)}.json`, serializeDoc(doc, library))
+    downloadJson(`finsim-${new Date().toISOString().slice(0, 10)}.json`, serializeDoc(doc, library, savedHands))
   }
 
   const handleImportFile = (file: File): void => {
@@ -425,6 +425,7 @@ export function App(): ReactElement {
       try {
         const imported = deserializeDoc(text, library)
         if (imported.designs.length > 0) setLibrary((current) => mergeLibrary(current, imported.designs))
+        if (imported.savedHands.length > 0) setSavedHands((current) => mergeLibrary(current, imported.savedHands))
         store.replace(imported.doc)
         setOpenHandId(null)
         setScrub(imported.doc.from)

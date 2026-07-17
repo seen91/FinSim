@@ -7,6 +7,7 @@ import { addCard } from '../src/hands'
 import { instanceOf, isInstance, resolveTable, type HandNode } from '../src/instances'
 import { debtAt, effectiveHorizon, runSim, type Doc } from '../src/model'
 import { PRESETS } from '../src/presets'
+import type { SavedHand } from '../src/savedHands'
 import { starterDoc } from '../src/starter'
 
 /**
@@ -186,6 +187,24 @@ describe('JSON export/import', () => {
     const imported = deserializeDoc(json)
     expect(imported.doc).toEqual(doc)
     expect(imported.designs.map((d) => d.id)).toContain(design.id)
+    // a margin riding only a saved hand forces v3 the same way
+    const stash: SavedHand = { id: 'saved-m', name: 'Stash', hand: { id: 'stash-hand', kind: 'hand', name: 'Stash', children: [structuredClone(design.card)] } }
+    expect((JSON.parse(serializeDoc(starterDoc(), [], [stash])) as { version: number }).version).toBe(3)
+  })
+
+  it('exports everything: the whole shelf and the draw pile ride along, played or not (a backup, not just the table)', () => {
+    const unplayed = blankCard('source', 'shelf1')
+    const saved: SavedHand = {
+      id: 'saved-stash',
+      name: 'Rainy day',
+      hand: { id: 'stash-hand', kind: 'hand', name: 'Rainy day', children: [instanceOf(unplayed.id, 's1')] },
+    }
+    // the starter table plays neither the design nor the saved hand — both must still travel
+    const imported = deserializeDoc(serializeDoc(starterDoc(), [unplayed], [saved]))
+    expect(imported.designs).toEqual([unplayed])
+    expect(imported.savedHands).toEqual([saved])
+    // older files carry no saved hands — the pile comes back empty, not undefined
+    expect(deserializeDoc(serializeDoc(starterDoc())).savedHands).toEqual([])
   })
 })
 

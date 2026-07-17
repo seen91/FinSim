@@ -141,8 +141,8 @@ export function validateAuthored(authored: AuthoredCard): string[] {
   return validateTable({ root: { id: 'validate-root', kind: 'hand', children: [structuredClone(authored.card)] } })
 }
 
-/** Merge imported/authored cards into a library: same id replaces, new appends. */
-export function mergeLibrary(library: AuthoredCard[], incoming: AuthoredCard[]): AuthoredCard[] {
+/** Merge imported items (authored cards, saved hands) into a collection: same id replaces, new appends. */
+export function mergeLibrary<T extends { id: string }>(library: T[], incoming: T[]): T[] {
   const next = [...library]
   for (const card of incoming) {
     const i = next.findIndex((c) => c.id === card.id)

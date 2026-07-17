@@ -107,7 +107,7 @@ describe('M3(a): the M1 question through the Workshop path, no starter hand', ()
     addCard(doc, financing.id, instanceOf(find('car-loan').id, 'p1'))
 
     // 3. Share it with yourself: export the table file (it carries the
-    //    designs its instances play), read it back in on an empty library.
+    //    whole shelf), read it back in on an empty library.
     const shared = deserializeDoc(serializeDoc(doc, library))
     expect(shared.designs).toEqual(library)
     expect(shared.doc).toEqual(doc)

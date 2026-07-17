@@ -90,21 +90,21 @@ describe('the TODO acceptance: three copies of a built-in drain', () => {
   })
 })
 
-describe('table export/import carries the designs its instances reference', () => {
-  it('exports only referenced designs; import returns them for the library', () => {
+describe('table export/import carries the whole shelf', () => {
+  it('exports every design, played or not; import returns them for the library', () => {
     const doc = threeRentsDoc()
     const design = redesign(builtinOf(RENT)!, 'rent-mine')
     repointInstances(doc.table.root, RENT, design.id)
-    const unrelated = redesign(builtinOf(pileRef('savings'))!, 'savings-mine')
+    const unplayed = redesign(builtinOf(pileRef('savings'))!, 'savings-mine')
 
-    const json = serializeDoc(doc, [design, unrelated])
+    const json = serializeDoc(doc, [design, unplayed])
     const envelope = JSON.parse(json) as { version: number; designs?: AuthoredCard[] }
     expect(envelope.version).toBe(2)
-    expect(envelope.designs?.map((d) => d.id)).toEqual(['rent-mine'])
+    expect(envelope.designs?.map((d) => d.id)).toEqual(['rent-mine', 'savings-mine'])
 
     // a reader with an empty library gets a playable table AND the designs
     const imported = deserializeDoc(json, [])
-    expect(imported.designs.map((d) => d.id)).toEqual(['rent-mine'])
+    expect(imported.designs.map((d) => d.id)).toEqual(['rent-mine', 'savings-mine'])
     expect(imported.doc).toEqual(doc)
     expect(rentContribution(imported.doc, imported.designs, 'rent-a')).toBe(-12_000)
   })

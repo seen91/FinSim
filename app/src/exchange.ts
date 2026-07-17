@@ -1,7 +1,8 @@
 import { validateTable } from '@finsim/engine'
 import type { AuthoredCard } from './authored'
-import { isInstance, refsIn, resolveTable, type TableNode } from './instances'
+import { isInstance, resolveTable, type TableNode } from './instances'
 import { migrateDoc, type Doc } from './model'
+import type { SavedHand } from './savedHands'
 
 /**
  * JSON export/import of the table document — the local-first backup and
@@ -23,38 +24,58 @@ import { migrateDoc, type Doc } from './model'
  * The writer keeps sharing friendly by writing the lowest version the
  * content needs: margin-free tables still export as v2. Reading v2 as v3
  * needs no migration — the shape is unchanged.
+ *
+ * 2026-07-17: Export is the full backup, not just the table. The whole
+ * shelf rides in `designs` (referenced or not) and the draw pile rides in
+ * `savedHands`. Both are optional fields an older reader safely ignores —
+ * it already merges every carried design and never simulates a saved hand —
+ * so neither forces a version bump. Margin detection scans everything the
+ * file carries, so a margin design on the shelf or riding a saved hand
+ * forces v3 the same as one on the table.
  */
 
 const FORMAT = 'finsim-table'
 const VERSION = 3
 
-/** Does the file carry a margin card — in a design's template, or raw on the table? */
-function carriesMargin(doc: Doc, designs: AuthoredCard[]): boolean {
+/** Does the file carry a margin card — in a design's template, raw on the table, or riding a saved hand? */
+function carriesMargin(doc: Doc, designs: AuthoredCard[], savedHands: SavedHand[]): boolean {
   const raw = (node: TableNode): boolean =>
     !isInstance(node) && (node.kind === 'hand' ? node.children.some(raw) : node.kind === 'margin')
-  return designs.some((a) => a.card.kind === 'margin') || doc.table.root.children.some(raw)
+  return (
+    designs.some((a) => a.card.kind === 'margin') ||
+    doc.table.root.children.some(raw) ||
+    savedHands.some((s) => s.hand.children.some(raw))
+  )
 }
 
 interface Envelope {
   format: typeof FORMAT
   version: number
   doc: Doc
-  /** The library designs the table's instances reference. */
+  /** The whole authored library — every design on the shelf, referenced or not. */
   designs?: AuthoredCard[]
+  /** The draw pile — every saved hand, series riding along inside each. */
+  savedHands?: SavedHand[]
 }
 
 export interface ImportedDoc {
   doc: Doc
-  /** Designs to merge into the library: carried by a v2 file, or minted migrating a v1 file. */
+  /** Designs to merge into the library: carried by a v2+ file, or minted migrating a v1 file. */
   designs: AuthoredCard[]
+  /** Saved hands to merge into the draw pile. */
+  savedHands: SavedHand[]
 }
 
-export function serializeDoc(doc: Doc, library: AuthoredCard[] = []): string {
-  const refs = refsIn(doc.table.root)
-  const designs = library.filter((a) => refs.includes(a.id))
+export function serializeDoc(doc: Doc, library: AuthoredCard[] = [], savedHands: SavedHand[] = []): string {
   // the lowest version the content needs: only a margin card forces v3
-  const version = carriesMargin(doc, designs) ? VERSION : 2
-  const envelope: Envelope = { format: FORMAT, version, doc, ...(designs.length > 0 ? { designs } : {}) }
+  const version = carriesMargin(doc, library, savedHands) ? VERSION : 2
+  const envelope: Envelope = {
+    format: FORMAT,
+    version,
+    doc,
+    ...(library.length > 0 ? { designs: library } : {}),
+    ...(savedHands.length > 0 ? { savedHands } : {}),
+  }
   return JSON.stringify(envelope, null, 2)
 }
 
@@ -99,5 +120,12 @@ export function deserializeDoc(json: string, library: AuthoredCard[] = []): Impo
   }
   const errors = validateTable(resolved)
   if (errors.length > 0) throw new Error(`table file is invalid:\n- ${errors.join('\n- ')}`)
-  return { doc: doc as Doc, designs }
+
+  const savedHands = Array.isArray(envelope.savedHands) ? envelope.savedHands : []
+  const wellFormed = (s: SavedHand): boolean =>
+    typeof s === 'object' && s !== null && typeof s.id === 'string' && typeof s.name === 'string' &&
+    typeof s.hand === 'object' && s.hand !== null && s.hand.kind === 'hand'
+  if (!savedHands.every(wellFormed)) throw new Error('table file has invalid saved hands')
+
+  return { doc: doc as Doc, designs, savedHands }
 }
