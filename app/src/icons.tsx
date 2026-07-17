@@ -22,6 +22,7 @@ export type GlyphName =
   | 'cash'
   | 'check'
   | 'flame'
+  | 'skull'
   | 'hand'
   | 'save'
   | 'pause'
@@ -147,6 +148,15 @@ const PATHS: Record<GlyphName, ReactElement> = {
     <>
       <path d="M12 3.5c2.8 3.6-1.6 4.8 1.2 7.8.9-.9 1.3-1.9 1.1-3.1 1.9 1.7 3.2 3.6 3.2 5.6a5.5 5.5 0 0 1-11 0c0-3.6 3.5-5.4 5.5-10.3Z" />
       <path d="M12 19.5c-1.4-.6-2-1.7-1.7-3" opacity="0.5" />
+    </>
+  ),
+  // the graver mark: reset wipes the shelves too, not just the table
+  skull: (
+    <>
+      <path d="M12 3.5a7 7 0 0 0-7 7c0 2.3 1.1 4 2.8 5.1v2.4A1.5 1.5 0 0 0 9.3 19.5h5.4a1.5 1.5 0 0 0 1.5-1.5v-2.4C17.9 14.5 19 12.8 19 10.5a7 7 0 0 0-7-7Z" />
+      <circle cx="9.4" cy="11" r="1.4" />
+      <circle cx="14.6" cy="11" r="1.4" />
+      <path d="M10.5 19.5v-1.8M13.5 19.5v-1.8" opacity="0.5" />
     </>
   ),
   pause: (

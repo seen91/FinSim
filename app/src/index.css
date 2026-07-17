@@ -243,6 +243,27 @@ body {
   opacity: 0.7;
 }
 
+/* burn actions wear the ember, same as the discard flame on the cards */
+.sign-menu button.menu-burn .glyph {
+  color: var(--flame);
+  opacity: 1;
+}
+
+/* Reset torches the shelves too — set apart below a rule, dressed in ember */
+.sign-menu li.menu-divide {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid rgba(163, 135, 79, 0.45);
+}
+
+.sign-menu button.menu-grave {
+  color: color-mix(in srgb, var(--flame) 80%, black);
+}
+
+.sign-menu button.menu-grave:hover {
+  background: color-mix(in srgb, var(--flame) 14%, transparent);
+}
+
 /* the Workshop's tavern sign: a road-work-yellow board hanging from the
    topbar rail — the one loud thing on the table, so it reads from afar.
    (Signal yellow is signage, not money — green/red stay untouched.) */

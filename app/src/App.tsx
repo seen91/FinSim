@@ -434,6 +434,21 @@ export function App(): ReactElement {
     })
   }
 
+  // the fast sweep: every card in play goes back to the pile, the shelves keep
+  // everything — the move before importing a file or building anew (Reset
+  // below is the scorched-earth version)
+  const handleClearTable = (): void => {
+    if (doc.table.root.children.length === 0) return
+    if (!window.confirm('Clear the table? Every card in play is discarded — your authored cards and saved hands stay.')) return
+    store.update((d) => {
+      d.table.root.children = []
+      delete d.table.root.name
+    })
+    setOpenHandId(null)
+    setFlippedId(null)
+    setReport(null)
+  }
+
   // the clean slate: a lone salary card, empty shelves — everything authored or
   // saved is gone (Export sits right above it for anyone who wants a backup)
   const handleReset = (): void => {
@@ -537,13 +552,28 @@ export function App(): ReactElement {
                   <li>
                     <button
                       role="menuitem"
+                      className="menu-burn"
+                      title="discard every card in play — authored cards and saved hands stay on their shelves"
+                      onClick={() => {
+                        setTableMenuOpen(false)
+                        handleClearTable()
+                      }}
+                    >
+                      <Glyph name="flame" size={13} />
+                      Clear table…
+                    </button>
+                  </li>
+                  <li className="menu-divide">
+                    <button
+                      role="menuitem"
+                      className="menu-burn menu-grave"
                       title="the clean slate — a lone salary card, authored cards and saved hands cleared"
                       onClick={() => {
                         setTableMenuOpen(false)
                         handleReset()
                       }}
                     >
-                      <Glyph name="flame" size={13} />
+                      <Glyph name="skull" size={13} />
                       Reset…
                     </button>
                   </li>
