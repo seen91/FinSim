@@ -1696,6 +1696,50 @@ button.hub-range:hover {
   margin-top: 0.2rem;
 }
 
+/* the clear fixture: a small burn token beside the draw pile — an action,
+   not a card, so it sits lower and smaller than the two card backs */
+.burn-table {
+  position: fixed;
+  right: calc(1.4rem + 88px + 1.3rem + 96px + 1.2rem);
+  bottom: 1.6rem;
+  z-index: 40;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.burn-table-token {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background:
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.14) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 6px var(--shadow);
+  color: var(--flame);
+  transition: transform 0.15s ease;
+}
+
+.burn-table:hover .burn-table-token {
+  transform: translateY(-4px);
+}
+
+.burn-table-word {
+  font-family: var(--display);
+  font-size: 0.56rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  opacity: 0.9;
+}
+
 /* ---- the draw pile: a leather-backed deck ---- */
 .pile {
   position: fixed;

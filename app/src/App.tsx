@@ -435,8 +435,8 @@ export function App(): ReactElement {
   }
 
   // the fast sweep: every card in play goes back to the pile, the shelves keep
-  // everything — the move before importing a file or building anew (Reset
-  // below is the scorched-earth version)
+  // everything — the move before importing a file or building anew (Reset in
+  // the Table menu is the scorched-earth version)
   const handleClearTable = (): void => {
     if (doc.table.root.children.length === 0) return
     store.update((d) => {
@@ -546,20 +546,6 @@ export function App(): ReactElement {
                     >
                       <Glyph name="import" size={13} />
                       Import…
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      role="menuitem"
-                      className="menu-burn"
-                      title="discard every card in play — authored cards and saved hands stay on their shelves"
-                      onClick={() => {
-                        setTableMenuOpen(false)
-                        handleClearTable()
-                      }}
-                    >
-                      <Glyph name="flame" size={13} />
-                      Clear table
                     </button>
                   </li>
                   <li className="menu-divide">
@@ -721,6 +707,23 @@ export function App(): ReactElement {
       <FuturesReport open={report === 'compare-b'} mc={arenaCompare?.mcB ?? null} doc={compareState?.docB ?? playDoc} onClose={() => setReport(null)} />
 
       <BundleReport handId={typeof report === 'object' && report !== null ? report.hand : null} mc={mc} doc={playDoc} onClose={() => setReport(null)} />
+
+      {/* the clear fixture: a burn token beside the draw pile — every card in
+          play goes back to the pile; shelves keep everything. Only on the
+          table while there is something to sweep. */}
+      {root.children.length > 0 && (
+        <button
+          className="burn-table"
+          onClick={handleClearTable}
+          title="Clear the table — discard every card in play; authored cards and saved hands stay on their shelves"
+          aria-label="Clear the table"
+        >
+          <span className="burn-table-token" aria-hidden="true">
+            <Glyph name="flame" size={16} />
+            <span className="burn-table-word">Clear</span>
+          </span>
+        </button>
+      )}
 
       <DrawPile
         open={drawerOpen}
