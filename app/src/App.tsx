@@ -341,15 +341,14 @@ export function App(): ReactElement {
     store.update((d) => removeCard(d, cardId))
   }
 
-  // snapshot a hand — the root included — to the draw pile: a named copy of
-  // the tree as it stands (instances with their dials and set-asides, nested
-  // hands whole), dealt back later as a fresh, fully editable composition
-  const handleSaveHand = (handId: string | null): void => {
-    const hand = handId === null ? doc.table.root : findNode(doc.table.root, handId)
-    if (!hand || isInstance(hand) || hand.kind !== 'hand') return
-    const name = window.prompt('Save this hand to the pile as…', hand.name ?? 'Your plan')?.trim()
+  // snapshot the whole table — always the root, never the hand the user
+  // happens to be inside — to the draw pile: a named copy of the tree as it
+  // stands (instances with their dials and set-asides, nested hands whole),
+  // dealt back later as a fresh, fully editable composition
+  const handleSavePlan = (): void => {
+    const name = window.prompt('Save your whole plan to the pile as…', doc.table.root.name ?? 'Your plan')?.trim()
     if (!name) return
-    setSavedHands((prev) => [...prev, snapshotHand(hand, name, newUid(), library, doc.world?.series)])
+    setSavedHands((prev) => [...prev, snapshotHand(doc.table.root, name, newUid(), library, doc.world?.series)])
   }
 
   // onto an empty table, a saved hand becomes the plan itself — its cards
@@ -615,7 +614,6 @@ export function App(): ReactElement {
             }
           })
         }}
-        onSaveHand={handleSaveHand}
         onOpenReport={() => setReport('table')}
         onOpenHandReport={(handId) => setReport({ hand: handId })}
       />
@@ -698,13 +696,14 @@ export function App(): ReactElement {
       <DrawPile
         open={drawerOpen}
         targetName={openHand ? (openHand.name ?? openHand.id) : (root.name ?? 'Your plan')}
+        planName={root.name ?? 'Your plan'}
         authored={library}
         savedHands={savedHands}
         onOpen={() => setDrawerOpen(true)}
         onClose={() => setDrawerOpen(false)}
         onChooseRef={dealRef}
         onDealNode={dealNode}
-        onSaveTarget={() => handleSaveHand(openHand?.id ?? null)}
+        onSavePlan={handleSavePlan}
         onDealSaved={handleDealSaved}
         onBurnSaved={handleBurnSaved}
       />

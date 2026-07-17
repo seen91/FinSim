@@ -132,8 +132,6 @@ interface Props {
   onRenameHand: (handId: string, name: string) => void
   /** Set (or clear) what the hand draws out of its parent each month. */
   onSetHandTake: (handId: string, take: Take | undefined) => void
-  /** Snapshot this hand to the draw pile — dealt back later as a fresh copy. */
-  onSaveHand: (handId: string) => void
   /** Unfold the fan: open the futures report. */
   onOpenReport: () => void
   /** Unfold one hand's range: open its scoped futures report. */
@@ -315,7 +313,6 @@ export function Arena(props: Props): ReactElement {
     onWorkshopCard,
     onRenameHand,
     onSetHandTake,
-    onSaveHand,
     onOpenReport,
     onOpenHandReport,
   } = props
@@ -507,13 +504,6 @@ export function Arena(props: Props): ReactElement {
             {...(range ? { range } : {})}
             onReport={() => onOpenHandReport(hand.id)}
           />
-          <button
-            className="sign hub-save"
-            title="Save a copy of this hand to the draw pile — deal it back onto any table later, cards and all"
-            onClick={() => onSaveHand(hand.id)}
-          >
-            <Glyph name="save" size={12} /> save to pile
-          </button>
           <button
             className="sign hub-toggle"
             title={hand.enabled === false ? 'Bring this hand back into play' : 'Set aside — the table plays as if this hand were not there'}

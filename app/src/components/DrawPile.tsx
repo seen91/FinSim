@@ -24,6 +24,8 @@ interface Props {
   open: boolean
   /** Name of the hand a drawn card will play into. */
   targetName: string
+  /** Name of the whole plan — what the save tile snapshots, whatever hand is open. */
+  planName: string
   /** The Workshop's authored cards, drawable like any other. */
   authored: AuthoredCard[]
   /** Whole hands snapshotted to the pile — dealt back as fresh copies. */
@@ -34,8 +36,8 @@ interface Props {
   onChooseRef: (ref: string) => void
   /** Deal a prebuilt node (a preset hand) with any series it wears. */
   onDealNode: (node: TableNode, series?: Record<string, SampledData>) => void
-  /** Snapshot the hand the pile currently deals into (the whole plan when none is open). */
-  onSaveTarget: () => void
+  /** Snapshot the whole plan — the root, never just the opened hand. */
+  onSavePlan: () => void
   /** Deal a saved hand back — unpacked, fresh ids, fully editable. */
   onDealSaved: (saved: SavedHand) => void
   /** Burn a saved hand off the pile (dealt copies stay on the table). */
@@ -205,7 +207,7 @@ function AuthoredSlot({ authored, onChoose }: { authored: AuthoredCard; onChoose
   )
 }
 
-export function DrawPile({ open, targetName, authored, savedHands, onOpen, onClose, onChooseRef, onDealNode, onSaveTarget, onDealSaved, onBurnSaved }: Props): ReactElement {
+export function DrawPile({ open, targetName, planName, authored, savedHands, onOpen, onClose, onChooseRef, onDealNode, onSavePlan, onDealSaved, onBurnSaved }: Props): ReactElement {
   // the last thing dealt, echoed in the bar as "✓ Salary → Main hand"; n keys
   // the element so the fade replays on every deal, and reopening starts blank
   const [dealt, setDealt] = useState<{ label: string; n: number } | null>(null)
@@ -276,14 +278,14 @@ export function DrawPile({ open, targetName, authored, savedHands, onOpen, onClo
               ))}
               <button
                 className="preset-tile save-target"
-                onClick={onSaveTarget}
-                title="Snapshot the hand the pile deals into — cards, dials and nested hands, dealt back whole whenever you like"
+                onClick={onSavePlan}
+                title="Snapshot your whole plan — every card, dial and nested hand on the table, dealt back whole whenever you like"
               >
                 <span className="preset-glyph">
                   <Glyph name="save" size={30} />
                 </span>
-                <span className="preset-name">save {targetName}</span>
-                <span className="preset-count">a copy of the whole hand, kept on the pile</span>
+                <span className="preset-name">save {planName}</span>
+                <span className="preset-count">a copy of the whole table, kept on the pile</span>
               </button>
             </div>
             {authored.length > 0 && (

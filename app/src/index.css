@@ -1437,7 +1437,6 @@ input[type='range'].tuned {
 .hub-range.neg { color: var(--money-neg); }
 
 .hub-remove,
-.hub-save,
 .hub-toggle {
   margin-top: 0.2rem;
   font-size: 0.7rem;
