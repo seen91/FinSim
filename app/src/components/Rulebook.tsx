@@ -114,8 +114,9 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
           <section>
             <h3>Set aside &amp; the verdict</h3>
             <p>
-              Every card and hand carries a <strong>verdict</strong>: the table is silently replayed without it, and the difference in time-to-goal is
-              stamped on the card — &ldquo;+1&nbsp;yr&nbsp;3&nbsp;mo to goal&rdquo; means playing this card delays the goal by that much. Set a card aside (
+              Every card and hand carries a <strong>verdict</strong>: the table is silently replayed without it, and the difference is stamped on the card
+              in both units — &ldquo;+1&nbsp;yr&nbsp;3&nbsp;mo to goal · −312&nbsp;k&rdquo; means playing this card delays the goal by that much and
+              leaves you that much poorer at the goal date, lost compounding included. Set a card aside (
               <Glyph name="pause" size={11} />) and the table plays as if it were not there — it stays in your hand so you can weigh it without discarding
               it.
             </p>

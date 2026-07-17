@@ -1,4 +1,5 @@
 import { formatMonth, formatMonthsDelta } from '@finsim/engine'
+import { formatCompact } from './format'
 import type { BundleRange } from './mc'
 import type { CardCompare } from './model'
 
@@ -10,37 +11,54 @@ export interface Verdict {
 }
 
 /**
- * The verdict on a card. A card that reaches the goal on its own says when —
- * that number is the card's alone and never moves when other cards change.
- * Anything else is judged marginally: what playing it does to the plan.
+ * The verdict on a card always answers the discard question: the table is
+ * replayed without the card, and the difference is stamped on the face in
+ * both units — months to the goal and money at the goal month (lost or
+ * earned compounding included). A card that would reach the goal all on its
+ * own says so in the tooltip only; that solo number lives in a different
+ * world (no siblings feeding or draining it) and never sums with anything.
  */
 export function deltaVerdict(c: CardCompare, from: number): Verdict | null {
   const { baseMonth, variantMonth, deltaMonths } = c.delta
-  if (c.soloGoalMonth !== null) {
-    return {
-      text: `goal in ${formatMonthsDelta(c.soloGoalMonth - from)}`,
-      cls: 'pos',
-      tooltip: `this card alone reaches the goal ${formatMonth(c.soloGoalMonth)} — the rest of the table does not move this number`,
-    }
-  }
+  const kr = Math.abs(c.worthDelta) >= 1 ? `${c.worthDelta < 0 ? '−' : '+'}${formatCompact(Math.abs(c.worthDelta))}` : null
+  const krTold = kr === null ? '' : `; ${formatCompact(Math.abs(c.worthDelta))} ${c.worthDelta < 0 ? 'less' : 'more'} at ${formatMonth(c.worthMonth)} because of it`
+  const solo = c.soloGoalMonth === null ? '' : ` — alone it would reach the goal ${formatMonth(c.soloGoalMonth)}`
   if (baseMonth !== null && variantMonth !== null && deltaMonths !== null) {
-    if (deltaMonths === 0) return null
+    if (deltaMonths === 0) {
+      if (kr === null) return null
+      return {
+        text: `${kr} at goal`,
+        cls: c.worthDelta < 0 ? 'neg' : 'pos',
+        tooltip: `the goal date does not move without this card${krTold}${solo}`,
+      }
+    }
     const costs = deltaMonths > 0
     return {
-      text: `${costs ? '+' : '−'}${formatMonthsDelta(Math.abs(deltaMonths))} to goal`,
+      text: `${costs ? '+' : '−'}${formatMonthsDelta(Math.abs(deltaMonths))} to goal${kr === null ? '' : ` · ${kr}`}`,
       cls: costs ? 'neg' : 'pos',
-      tooltip: `goal ${formatMonth(baseMonth)} without → ${formatMonth(variantMonth)} with`,
+      tooltip: `goal ${formatMonth(baseMonth)} without → ${formatMonth(variantMonth)} with${krTold}${solo}`,
     }
   }
-  if (baseMonth !== null) return { text: 'goal out of reach', cls: 'neg', tooltip: `goal ${formatMonth(baseMonth)} without — never with` }
+  if (baseMonth !== null) {
+    return {
+      text: `goal out of reach${kr === null ? '' : ` · ${kr}`}`,
+      cls: 'neg',
+      tooltip: `goal ${formatMonth(baseMonth)} without — never with${krTold}${solo}`,
+    }
+  }
   if (variantMonth !== null) {
     return {
-      text: `goal in ${formatMonthsDelta(variantMonth - from).replaceAll(' ', ' ')}`,
+      text: `goal in ${formatMonthsDelta(variantMonth - from).replaceAll(' ', ' ')}${kr === null ? '' : ` · ${kr}`}`,
       cls: 'pos',
-      tooltip: `this card brings the goal in reach: never without it — ${formatMonth(variantMonth)} with`,
+      tooltip: `this card brings the goal in reach: never without it — ${formatMonth(variantMonth)} with${krTold}${solo}`,
     }
   }
-  return null
+  if (kr === null) return null
+  return {
+    text: `${kr} by ${formatMonth(c.worthMonth)}`,
+    cls: c.worthDelta < 0 ? 'neg' : 'pos',
+    tooltip: `the goal stays out of reach with or without this card${krTold}${solo}`,
+  }
 }
 
 /** "+1 yr – 2 yr 6 mo" — a signed month count, for range spans. */

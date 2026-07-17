@@ -149,6 +149,14 @@ export interface CardCompare {
    * A property of the card itself — nothing else on the table moves it.
    */
   soloGoalMonth: number | null
+  /**
+   * Net worth with the card minus without it, read at worthMonth — the kr the
+   * card lifts (positive) or weighs down (negative) the plan, lost/earned
+   * compounding included.
+   */
+  worthDelta: number
+  /** Where worthDelta is read: the plan's goal month, or the last simulated month when the goal is never reached. */
+  worthMonth: number
 }
 
 export interface Sim {
@@ -212,6 +220,7 @@ export function runSim(doc: Doc, library: AuthoredCard[] = []): Sim {
   }
   const remainder: Series = { id: 'remainder', role: 'net', startMonth: doc.from, points }
   // a set-aside card is already out of the sim — its ghost would equal the plan, so no verdict
+  const worthMonth = firstCrossing(active, doc.goal) ?? to
   const compares = allCards(table.root)
     .filter((card) => card.enabled !== false)
     .map((card) => {
@@ -223,6 +232,8 @@ export function runSim(doc: Doc, library: AuthoredCard[] = []): Sim {
         name: card.name ?? card.id,
         delta: goalDelta(ghost, active, doc.goal),
         soloGoalMonth: firstCrossing(alone, doc.goal),
+        worthDelta: valueAt(active.netWorth, worthMonth) - valueAt(ghost.netWorth, worthMonth),
+        worthMonth,
       }
     })
   return { active, remainder, compares, resolvedRoot: resolved.root }
