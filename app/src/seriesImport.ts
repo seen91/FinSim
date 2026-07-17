@@ -123,8 +123,9 @@ export function seriesInUse(seriesId: string, table: { root: HandNode }, library
  * runs out mid-horizon it takes over from the last real price (edit or
  * remove it on the card; without one the price freezes).
  */
-export function mintPricedDesign(seriesId: string, data: SampledData, uid: string): AuthoredCard {
-  const id = `series-${seriesId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${uid}`
+export function mintPricedDesign(seriesId: string, data: SampledData): AuthoredCard {
+  // the name IS the id (identity.ts) — re-importing a series refreshes its design
+  const id = seriesId
   const last = data.startMonth + data.values.length - 1
   return {
     id,

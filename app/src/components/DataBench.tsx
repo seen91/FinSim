@@ -1,11 +1,10 @@
 import { formatMonth, type SampledData } from '@finsim/engine'
 import { useRef, useState, type ReactElement } from 'react'
-import type { AuthoredCard } from '../authored'
+import { mergeLibrary, type AuthoredCard } from '../authored'
 import { errorMessage } from '../format'
 import { Glyph } from '../icons'
 import type { Doc } from '../model'
 import { mintPricedDesign, parseMonthText, parseSeriesText, seriesInUse } from '../seriesImport'
-import { newUid } from '../uid'
 import type { WorkshopFocus } from './Workshop'
 
 /**
@@ -60,8 +59,9 @@ export function DataBench({ doc, update, library, onLibraryChange, onFocus }: Pr
       setFirstMonth('')
       setText('')
       if (mint) {
-        const design = mintPricedDesign(trimmed, data, newUid())
-        onLibraryChange([...library, design])
+        // same name = same card: re-importing a series refreshes its design
+        const design = mintPricedDesign(trimmed, data)
+        onLibraryChange(mergeLibrary(library, [design]))
         onFocus({ where: 'library', id: design.id })
       }
     } catch (err) {

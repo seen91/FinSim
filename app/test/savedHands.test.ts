@@ -49,8 +49,8 @@ function dressedHand(): HandNode {
 
 describe('snapshotHand', () => {
   it('keeps the tree with its per-copy state and wears the chosen name', () => {
-    const saved = snapshotHand(dressedHand(), 'Economy 2026', 'u1', [])
-    expect(saved.id).toBe('saved-u1')
+    const saved = snapshotHand(dressedHand(), 'Economy 2026', [])
+    expect(saved.id).toBe('Economy 2026') // the name IS the id — saving the same name replaces
     expect(saved.name).toBe('Economy 2026')
     expect(saved.hand.name).toBe('Economy 2026')
     expect(saved.hand.take).toEqual({ type: 'percent', percent: 0.5 })
@@ -62,7 +62,7 @@ describe('snapshotHand', () => {
 
   it('is a deep copy — the table moving on never rewrites the snapshot', () => {
     const hand = dressedHand()
-    const saved = snapshotHand(hand, 'Frozen', 'u1', [])
+    const saved = snapshotHand(hand, 'Frozen', [])
     hand.children.pop()
     ;(hand.children[0] as { tune?: object }).tune = { 'flow.base': 1 }
     expect(saved.hand.children).toHaveLength(3)
@@ -77,16 +77,16 @@ describe('snapshotHand', () => {
       'my-series': { startMonth: 600, values: [100, 101] },
       'unworn-series': { startMonth: 600, values: [1, 2] },
     }
-    const saved = snapshotHand(hand, 'Priced', 'u1', [priced], world)
+    const saved = snapshotHand(hand, 'Priced', [priced], world)
     expect(saved.series).toEqual({ 'my-series': world['my-series'] })
     // and a hand wearing nothing carries nothing
-    expect(snapshotHand(dressedHand(), 'Plain', 'u2', [], world).series).toBeUndefined()
+    expect(snapshotHand(dressedHand(), 'Plain', [], world).series).toBeUndefined()
   })
 })
 
 describe('unpackSavedHand', () => {
   it('deals the same tree unpacked: fresh unique ids, refs and state preserved', () => {
-    const saved = snapshotHand(dressedHand(), 'Economy', 'u1', [])
+    const saved = snapshotHand(dressedHand(), 'Economy', [])
     const dealt = unpackSavedHand(saved, uids('a'))
 
     // structure and state survive
@@ -109,7 +109,7 @@ describe('unpackSavedHand', () => {
   })
 
   it('two deals live side by side — no id collides, the snapshot never mutates', () => {
-    const saved = snapshotHand(dressedHand(), 'Economy', 'u1', [])
+    const saved = snapshotHand(dressedHand(), 'Economy', [])
     const first = unpackSavedHand(saved, uids('a'))
     const second = unpackSavedHand(saved, uids('b'))
     const idsOf = (h: HandNode): string[] => [h.id, ...[...instancesIn(h)].map((i) => i.id)]
@@ -121,7 +121,7 @@ describe('unpackSavedHand', () => {
   it('the whole plan round-trips: saved from the root, dealt to a fresh table, same simulation', () => {
     const original = starterDoc()
     original.horizonMonths = 120
-    const saved = snapshotHand(original.table.root, 'Your plan', 'u1', [])
+    const saved = snapshotHand(original.table.root, 'Your plan', [])
 
     const fresh: Doc = { ...original, table: { root: { id: 'root', kind: 'hand', children: [] } } }
     addCard(fresh, null, unpackSavedHand(saved, uids('a')))

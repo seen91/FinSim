@@ -77,7 +77,7 @@ describe('minting a priced design from an imported series', () => {
   const data: SampledData = { startMonth: ym(1999, 1), values: PRICES }
 
   it('is structurally valid and carries the coverage, the fallback and the data traps in its footnote', () => {
-    const design = mintPricedDesign('golden', data, 'uid1')
+    const design = mintPricedDesign('golden', data)
     expect(validateAuthored(design)).toEqual([])
     expect((design.card as AssetCard).price?.seriesId).toBe('golden')
     // the generic component that takes over when the data runs out
@@ -90,7 +90,7 @@ describe('minting a priced design from an imported series', () => {
 
   it('plays onto a table (as an instance) and simulates against its series', () => {
     const doc = goldenDoc(ym(1999, 1))
-    const design = mintPricedDesign('golden', data, 'uid1')
+    const design = mintPricedDesign('golden', data)
     addCard(doc, null, instanceOf(design.id, 'play1'))
     const table = resolveTable(doc.table, [design])
     expect(validateTable(table)).toEqual([])
@@ -102,7 +102,7 @@ describe('minting a priced design from an imported series', () => {
     expect(seriesInUse('golden', doc.table, [])).toBe(true)
     const empty: Doc['table'] = { root: { id: 'root', kind: 'hand', children: [] } }
     expect(seriesInUse('golden', empty, [])).toBe(false)
-    expect(seriesInUse('golden', empty, [mintPricedDesign('golden', data, 'uid1')])).toBe(true)
+    expect(seriesInUse('golden', empty, [mintPricedDesign('golden', data)])).toBe(true)
   })
 })
 

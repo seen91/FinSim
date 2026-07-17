@@ -102,10 +102,11 @@ describe('table export/import carries the whole shelf', () => {
     expect(envelope.version).toBe(2)
     expect(envelope.designs?.map((d) => d.id)).toEqual(['rent-mine', 'savings-mine'])
 
-    // a reader with an empty library gets a playable table AND the designs
+    // a reader with an empty library gets a playable table AND the designs —
+    // lifted to name-ids (the name IS the id), refs re-pointed to match
     const imported = deserializeDoc(json, [])
-    expect(imported.designs.map((d) => d.id)).toEqual(['rent-mine', 'savings-mine'])
-    expect(imported.doc).toEqual(doc)
+    expect(imported.designs.map((d) => d.id)).toEqual(['Rent', 'Savings account'])
+    expect(refsIn(imported.doc.table.root)).toContain('Rent')
     expect(rentContribution(imported.doc, imported.designs, 'rent-a')).toBe(-12_000)
   })
 

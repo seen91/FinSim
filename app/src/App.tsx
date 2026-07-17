@@ -20,7 +20,8 @@ import { deserializeDoc, serializeDoc } from './exchange'
 import { errorMessage, formatCompact, parseCompact } from './format'
 import { addCard, findParentHand, groupOnto, moveCard, moveOut, removeCard } from './hands'
 import { Glyph } from './icons'
-import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, type TableNode } from './instances'
+import { adoptNameIds } from './identity'
+import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, repointInstances, type TableNode } from './instances'
 import { runMc } from './mc'
 import { effectiveHorizon, migrateDoc, runSim, useDoc, type PlayedDoc, type Sim } from './model'
 import { PRESETS } from './presets'
@@ -103,8 +104,11 @@ export function App(): ReactElement {
         if (savedDoc.horizonMonths === 30 * 12) savedDoc.horizonMonths = null
         const minted = migrateDoc(savedDoc, lib)
         if (minted.length > 0) lib = mergeLibrary(lib, minted)
-        store.replace(savedDoc)
       }
+      // the name IS the id (identity.ts) — lift stores saved under the old
+      // uid-suffixed scheme, re-pointing the table and the pile as one
+      adoptNameIds(lib, savedDoc ? [savedDoc.table.root] : [], storedHands ?? [])
+      if (savedDoc) store.replace(savedDoc)
       // a design made before the load lands must survive it — merge, don't clobber
       setLibrary((current) => (current.length > 0 ? mergeLibrary(lib, current) : lib))
       if (storedHands) setSavedHands((current) => (current.length > 0 ? [...storedHands, ...current] : storedHands))
@@ -348,7 +352,8 @@ export function App(): ReactElement {
   const handleSavePlan = (): void => {
     const name = window.prompt('Save your whole plan to the pile as…', doc.table.root.name ?? 'Your plan')?.trim()
     if (!name) return
-    setSavedHands((prev) => [...prev, snapshotHand(doc.table.root, name, newUid(), library, doc.world?.series)])
+    // the name is the identity: saving under a taken name replaces that hand
+    setSavedHands((prev) => mergeLibrary(prev, [snapshotHand(doc.table.root, name, library, doc.world?.series)]))
   }
 
   // onto an empty table, a saved hand becomes the plan itself — its cards
@@ -403,6 +408,19 @@ export function App(): ReactElement {
     setWorkDraft(null)
     setWorkshopFocus({ where: library.some((a) => a.id === node.ref) ? 'library' : 'builtin', id: node.ref })
     setWorkshopOpen(true)
+  }
+
+  // a design's name IS its id — renaming it in the Workshop vacates the old
+  // id, so every instance on the table and in the saved hands re-points
+  const handleRenameDesign = (from: string, to: string): void => {
+    store.update((d) => repointInstances(d.table.root, from, to))
+    setSavedHands((prev) =>
+      prev.map((s) => {
+        const clone = structuredClone(s)
+        repointInstances(clone.hand, from, to)
+        return clone
+      }),
+    )
   }
 
   // set aside / bring back: the card stays on the table, the sim plays without it
@@ -789,6 +807,7 @@ export function App(): ReactElement {
         library={library}
         savedHands={savedHands}
         onLibraryChange={setLibrary}
+        onRenameDesign={handleRenameDesign}
         onPlay={dealRef}
         focus={workshopFocus}
         onFocus={setWorkshopFocus}

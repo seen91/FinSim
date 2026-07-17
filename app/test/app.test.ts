@@ -185,8 +185,10 @@ describe('JSON export/import', () => {
     const json = serializeDoc(doc, [design])
     expect((JSON.parse(json) as { version: number }).version).toBe(3)
     const imported = deserializeDoc(json)
-    expect(imported.doc).toEqual(doc)
-    expect(imported.designs.map((d) => d.id)).toContain(design.id)
+    // the read lifts the design to its name-id (the name IS the id) and re-points the played ref
+    expect(imported.designs.map((d) => d.id)).toContain('Margin loan')
+    const played = investingHand(imported.doc).children[1]!
+    expect(isInstance(played) && played.ref).toBe('Margin loan')
     // a margin riding only a saved hand forces v3 the same way
     const stash: SavedHand = { id: 'saved-m', name: 'Stash', hand: { id: 'stash-hand', kind: 'hand', name: 'Stash', children: [structuredClone(design.card)] } }
     expect((JSON.parse(serializeDoc(starterDoc(), [], [stash])) as { version: number }).version).toBe(3)
@@ -199,10 +201,13 @@ describe('JSON export/import', () => {
       name: 'Rainy day',
       hand: { id: 'stash-hand', kind: 'hand', name: 'Rainy day', children: [instanceOf(unplayed.id, 's1')] },
     }
-    // the starter table plays neither the design nor the saved hand — both must still travel
+    // the starter table plays neither the design nor the saved hand — both
+    // still travel, lifted to their name identities on read
     const imported = deserializeDoc(serializeDoc(starterDoc(), [unplayed], [saved]))
-    expect(imported.designs).toEqual([unplayed])
-    expect(imported.savedHands).toEqual([saved])
+    expect(imported.designs.map((d) => d.id)).toEqual(['New source'])
+    expect(imported.savedHands.map((s) => s.id)).toEqual(['Rainy day'])
+    const stashed = imported.savedHands[0]!.hand.children[0]!
+    expect(isInstance(stashed) && stashed.ref).toBe('New source')
     // older files carry no saved hands — the pile comes back empty, not undefined
     expect(deserializeDoc(serializeDoc(starterDoc())).savedHands).toEqual([])
   })

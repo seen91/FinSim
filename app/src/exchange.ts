@@ -1,5 +1,6 @@
 import { validateTable } from '@finsim/engine'
 import type { AuthoredCard } from './authored'
+import { adoptNameIds } from './identity'
 import { isInstance, resolveTable, type TableNode } from './instances'
 import { migrateDoc, type Doc } from './model'
 import type { SavedHand } from './savedHands'
@@ -32,6 +33,11 @@ import type { SavedHand } from './savedHands'
  * so neither forces a version bump. Margin detection scans everything the
  * file carries, so a margin design on the shelf or riding a saved hand
  * forces v3 the same as one on the table.
+ *
+ * 2026-07-17: the name IS the id (identity.ts). Reading lifts a file's old
+ * uid-suffixed design ids to name-ids, so merging an import replaces
+ * same-named designs and saved hands instead of duplicating them. Ids stay
+ * opaque strings to an older reader, so no version bump.
  */
 
 const FORMAT = 'finsim-table'
@@ -103,29 +109,37 @@ export function deserializeDoc(json: string, library: AuthoredCard[] = []): Impo
   if (typeof doc.goal !== 'number' || !(doc.goal > 0)) throw new Error('table file has an invalid goal')
   if (typeof doc.table !== 'object' || doc.table === null) throw new Error('table file has no table')
 
+  const savedHands = Array.isArray(envelope.savedHands) ? envelope.savedHands : []
+  const wellFormed = (s: SavedHand): boolean =>
+    typeof s === 'object' && s !== null && typeof s.id === 'string' && typeof s.name === 'string' &&
+    typeof s.hand === 'object' && s.hand !== null && s.hand.kind === 'hand' && Array.isArray(s.hand.children)
+  if (!savedHands.every(wellFormed)) throw new Error('table file has invalid saved hands')
+
   const carried = Array.isArray(envelope.designs) ? envelope.designs : []
-  const known = [...library.filter((a) => !carried.some((c) => c.id === a.id)), ...carried]
   // a v1 file migrates on read; the designs it mints from edited orphans
   // travel to the library like carried ones. A v2+ file is already instances
   // (plain engine cards in one pass through the resolver untouched) — v2→v3
-  // changed no shapes, so only v1 needs lifting.
-  const minted = envelope.version === 1 ? migrateDoc(doc as Doc, known) : []
+  // changed no shapes, so only v1 needs lifting. The migration matches design
+  // stamps against the file's own uid ids, so it runs BEFORE the identity lift.
+  const minted = envelope.version === 1
+    ? migrateDoc(doc as Doc, [...library.filter((a) => !carried.some((c) => c.id === a.id)), ...carried])
+    : []
   const designs = [...carried, ...minted]
+  // the name IS the id (identity.ts): lift the file's uid-suffixed ids to
+  // name-ids, table and saved-hand refs following — so merging into the
+  // reader's library replaces same-named designs instead of stacking
+  // duplicates of every card the two sides both hold
+  adoptNameIds(designs, [(doc as Doc).table.root], savedHands)
 
   let resolved
   try {
-    resolved = resolveTable((doc as Doc).table, [...known, ...minted])
+    // the file's design wins a name it shares with the reader's — that IS the override
+    resolved = resolveTable((doc as Doc).table, [...library.filter((a) => !designs.some((c) => c.id === a.id)), ...designs])
   } catch (err) {
     throw new Error(`table file is invalid: ${err instanceof Error ? err.message : String(err)}`)
   }
   const errors = validateTable(resolved)
   if (errors.length > 0) throw new Error(`table file is invalid:\n- ${errors.join('\n- ')}`)
-
-  const savedHands = Array.isArray(envelope.savedHands) ? envelope.savedHands : []
-  const wellFormed = (s: SavedHand): boolean =>
-    typeof s === 'object' && s !== null && typeof s.id === 'string' && typeof s.name === 'string' &&
-    typeof s.hand === 'object' && s.hand !== null && s.hand.kind === 'hand'
-  if (!savedHands.every(wellFormed)) throw new Error('table file has invalid saved hands')
 
   return { doc: doc as Doc, designs, savedHands }
 }

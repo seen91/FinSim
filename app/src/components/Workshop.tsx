@@ -4,7 +4,8 @@ import { AUTHORABLE_KINDS, blankCard, headlineFor, redesign, type AuthoredCard, 
 import { builtinOf } from '../builtins'
 import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
-import { refBase, refsIn, repointInstances } from '../instances'
+import { nameIdOf, restampDesign, untaken } from '../identity'
+import { refsIn, repointInstances } from '../instances'
 import type { Doc, Sim } from '../model'
 import type { SavedHand } from '../savedHands'
 import { newUid } from '../uid'
@@ -43,6 +44,8 @@ interface Props {
   /** Hands snapshotted to the draw pile — their instances keep a design worn (no burn). */
   savedHands: SavedHand[]
   onLibraryChange: (next: AuthoredCard[]) => void
+  /** A design's name changed — its name IS its id, so every ref on the table and in the saved hands re-points. */
+  onRenameDesign: (from: string, to: string) => void
   /** Deal a fresh instance of a canonical card onto the table. */
   onPlay: (ref: string) => void
   focus: WorkshopFocus | null
@@ -55,7 +58,7 @@ interface Props {
   scrub: number
 }
 
-export function Workshop({ open, onClose, doc, update, library, savedHands, onLibraryChange, onPlay, focus, onFocus, draft, onDraftChange, focusSim, scrub }: Props): ReactElement | null {
+export function Workshop({ open, onClose, doc, update, library, savedHands, onLibraryChange, onRenameDesign, onPlay, focus, onFocus, draft, onDraftChange, focusSim, scrub }: Props): ReactElement | null {
   const [picking, setPicking] = useState(false)
   const [dataOpen, setDataOpen] = useState(false)
 
@@ -90,9 +93,11 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
     onFocus({ where: 'library', id: fresh.id })
   }
 
+  // the name IS the id, so a copy's name claims the first free "X copy (n)"
   const handleDuplicate = (a: AuthoredCard): void => {
-    const copy = redesign(a, `${a.id}-${newUid()}`)
-    copy.card.name = `${a.card.name ?? 'Card'} copy`
+    const name = untaken(`${a.card.name ?? 'Card'} copy`, new Set(library.map((l) => l.id)))
+    const copy = redesign(a, name)
+    copy.card.name = name
     onLibraryChange([...library, copy])
     onFocus({ where: 'library', id: copy.id })
   }
@@ -100,8 +105,9 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
   // a built-in's "copy": a design cut from the pristine template, NOT
   // re-pointed — the default keeps playing, the copy is a variant beside it
   const handleCopyBuiltin = (builtin: AuthoredCard): void => {
-    const copy = redesign(builtin, `${refBase(builtin.id)}-${newUid()}`)
-    copy.card.name = `${builtin.card.name ?? 'Card'} copy`
+    const name = untaken(`${builtin.card.name ?? 'Card'} copy`, new Set(library.map((l) => l.id)))
+    const copy = redesign(builtin, name)
+    copy.card.name = name
     onLibraryChange([...library, copy])
     onFocus({ where: 'library', id: copy.id })
   }
@@ -124,23 +130,38 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
   // construction, and from here on it is an ordinary design
   const mintFromDraft = (): string | null => {
     if (!activeDraft || !focusedBuiltin) return null
-    const design = redesign(activeDraft, `${refBase(focusedBuiltin.id)}-${newUid()}`)
+    const design = redesign(activeDraft, untaken(nameIdOf(activeDraft), new Set(library.map((l) => l.id))))
     onLibraryChange([...library, design])
     update((d) => repointInstances(d.table.root, focusedBuiltin.id, design.id))
     onDraftChange(null)
     return design.id
   }
 
-  const handleSave = (): void => {
-    if (!activeDraft) return
+  // saving lands the design under its name — the name IS the id. A new name
+  // never eats another design silently: the save suffixes to "name 2" instead.
+  // Returns the id the design now lives under (what "Add to hand" plays).
+  const handleSave = (): string | null => {
+    if (!activeDraft) return null
     if (focusedBuiltin) {
       const id = mintFromDraft()
       if (id !== null) onFocus({ where: 'library', id })
-      return
+      return id
     }
-    if (savedAuthored) onLibraryChange(library.map((a) => (a.id === activeDraft.id ? activeDraft : a)))
-    else onLibraryChange([...library, activeDraft])
+    const kept = savedAuthored && nameIdOf(activeDraft) === savedAuthored.id
+    const taken = new Set(library.filter((l) => l !== savedAuthored).map((l) => l.id))
+    const id = kept ? savedAuthored.id : untaken(nameIdOf(activeDraft), taken)
+    const design = { ...activeDraft, card: structuredClone(activeDraft.card) }
+    restampDesign(design, id)
+    if (savedAuthored) {
+      onLibraryChange(library.map((a) => (a.id === savedAuthored.id ? design : a)))
+      // a rename vacates the old id — every instance in play follows it
+      if (!kept) onRenameDesign(savedAuthored.id, id)
+    } else {
+      onLibraryChange([...library, design])
+    }
+    if (!kept) onFocus({ where: 'library', id })
     onDraftChange(null)
+    return id
   }
 
   const confirmLeave = (): boolean => !dirty || window.confirm(isNew ? 'This card is not saved yet — discard it?' : 'Discard unsaved changes to this card?')
@@ -248,8 +269,8 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
                 aria-label="Add to hand"
                 title="Save, then deal a copy into the hand on the table"
                 onClick={() => {
-                  handleSave()
-                  onPlay(focusedAuthored.id)
+                  // the save may land the design under a fresh name-id — play that one
+                  onPlay(handleSave() ?? focusedAuthored.id)
                   onFocus(null)
                   onClose()
                 }}

@@ -15,6 +15,7 @@ import { UID_SUFFIX } from './uid'
  * so it survives a table that has since lost them.
  */
 export interface SavedHand {
+  /** The name IS the id (identity.ts): saving under a taken name replaces that hand. */
   id: string
   name: string
   /** The snapshot subtree — instances and nested hands, per-copy state riding along. */
@@ -27,7 +28,6 @@ export interface SavedHand {
 export function snapshotHand(
   hand: HandNode,
   name: string,
-  uid: string,
   library: AuthoredCard[],
   worldSeries?: Record<string, SampledData>,
 ): SavedHand {
@@ -35,7 +35,7 @@ export function snapshotHand(
   snapshot.name = name
   const worn = new Set(seriesIdsInNode(snapshot, library))
   const series = Object.fromEntries(Object.entries(worldSeries ?? {}).filter(([id]) => worn.has(id)))
-  return { id: `saved-${uid}`, name, hand: snapshot, ...(Object.keys(series).length > 0 ? { series } : {}) }
+  return { id: name, name, hand: snapshot, ...(Object.keys(series).length > 0 ? { series } : {}) }
 }
 
 /**

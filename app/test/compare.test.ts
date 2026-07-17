@@ -29,7 +29,7 @@ describe('runCompare', () => {
 
     const noCar = structuredClone(doc)
     removeCard(noCar, 'car-t')
-    const saved = snapshotHand(noCar.table.root, 'No car', 'u1', [])
+    const saved = snapshotHand(noCar.table.root, 'No car', [])
 
     // A = the table (with car), B = the saved no-car plan: the same two sims, mirrored
     const run = runCompare(doc, { type: 'table' }, { type: 'saved', saved })
@@ -43,7 +43,7 @@ describe('runCompare', () => {
   it('a contender that never reaches the goal is said plainly, no delta invented', () => {
     const doc = starterDoc() // auto horizon: the table's own crossing sets the probe
     const broke: HandNode = { id: 'h-broke', kind: 'hand', name: 'Broke', children: [instanceOf(presetRef('expenses'), 'x')] }
-    const saved = snapshotHand(broke, 'Broke', 'u1', [])
+    const saved = snapshotHand(broke, 'Broke', [])
 
     const run = runCompare(doc, { type: 'table' }, { type: 'saved', saved })
     expect(run.a.crossing).not.toBeNull()
@@ -56,7 +56,7 @@ describe('runCompare', () => {
     priced.card = { ...priced.card, kind: 'asset', price: { seriesId: 'my-series' } }
     const hand: HandNode = { id: 'h', kind: 'hand', name: 'Priced', children: [{ id: 'priced-x', ref: priced.id }] }
     const world = { 'my-series': { startMonth: 600, values: [100, 101, 102] } }
-    const saved = snapshotHand(hand, 'Priced', 'u1', [priced], world)
+    const saved = snapshotHand(hand, 'Priced', [priced], world)
 
     const fresh: Doc = { from: 600, horizonMonths: 3, goal: 1, table: { root: { id: 'root', kind: 'hand', children: [] } } }
     const run = runCompare(fresh, { type: 'table' }, { type: 'saved', saved }, [priced])
@@ -73,7 +73,7 @@ describe('runCompare', () => {
     const doc = starterDoc()
     doc.horizonMonths = 90
     const empty: HandNode = { id: 'h-empty', kind: 'hand', name: 'Empty', children: [] }
-    const saved = snapshotHand(empty, 'Empty', 'u1', [])
+    const saved = snapshotHand(empty, 'Empty', [])
     const run = runCompare(doc, { type: 'table' }, { type: 'saved', saved })
     expect(run.horizonMonths).toBe(90)
     expect(run.a.netWorth.points).toHaveLength(90)
@@ -91,7 +91,7 @@ describe('contenderDoc', () => {
       tune: { 'take.percent': 20, 'children.0.flow.base': 10 },
       children: [],
     }
-    const saved = snapshotHand(hand, 'Saver', 'u1', [])
+    const saved = snapshotHand(hand, 'Saver', [])
     const doc = contenderDoc(starterDoc(), { type: 'saved', saved })
     expect(doc.table.root.take).toBeUndefined()
     expect(doc.table.root.tune).toEqual({ 'children.0.flow.base': 10 })
@@ -142,7 +142,7 @@ describe('challengers beyond saved hands', () => {
 
 describe('resolveContender', () => {
   it('resolves each kind fresh, and answers null when nothing does', () => {
-    const saved = snapshotHand({ id: 'h', kind: 'hand', children: [] }, 'Empty', 'u1', [])
+    const saved = snapshotHand({ id: 'h', kind: 'hand', children: [] }, 'Empty', [])
     expect(resolveContender({ kind: 'saved', id: saved.id }, [saved], [])).toEqual({ type: 'saved', saved })
     expect(resolveContender({ kind: 'saved', id: 'gone' }, [saved], [])).toBeNull()
     expect(resolveContender({ kind: 'card', ref: pileRef('salary') }, [], [])).toEqual({ type: 'card', ref: pileRef('salary') })

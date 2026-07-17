@@ -13,7 +13,11 @@ import type { GlyphName } from './icons'
  * construction.
  */
 export interface AuthoredCard {
-  /** Library identity — stable across edits, unique within a library/pack. */
+  /**
+   * Library identity — the card's NAME (identity.ts): same name = same card,
+   * so imports override instead of duplicating. A rename is an identity
+   * change; the Workshop re-points every instance in play when it happens.
+   */
   id: string
   glyph: GlyphName
   /** What it is — including the assumptions behind the numbers. */

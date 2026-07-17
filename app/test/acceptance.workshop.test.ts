@@ -1,6 +1,7 @@
 import { allCards, firstCrossing, formatMonthsDelta, validateTable, ym, type AssetCard, type Card, type DebtCard, type DrainCard, type SourceCard } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
 import { blankCard, mergeLibrary, validateAuthored, type AuthoredCard } from '../src/authored'
+import { nameIdOf, restampDesign } from '../src/identity'
 import { addCard, moveCard } from '../src/hands'
 import { instanceOf, isInstance, resolveTable, type HandNode } from '../src/instances'
 import { runSim, type Doc } from '../src/model'
@@ -28,6 +29,7 @@ const FROM = ym(2026, 1)
 function author<C extends Card>(kind: Parameters<typeof blankCard>[0], uid: string, edit: (card: C) => C): AuthoredCard {
   const blank = blankCard(kind, uid)
   const authored = { ...blank, card: edit(blank.card as C) }
+  restampDesign(authored, nameIdOf(authored)) // the save lands it under its name — the name IS the id
   expect(validateAuthored(authored), `authored "${authored.id}" must validate`).toEqual([])
   return authored
 }
@@ -85,26 +87,26 @@ describe('M3(a): the M1 question through the Workshop path, no starter hand', ()
     //    instance of its design. Hands are composed on the table (a Workshop
     //    rule), so the bundles are fresh hand nodes.
     const doc = emptyDoc()
-    const find = (id: string): AuthoredCard => library.find((c) => c.id.includes(id))!
+    const find = (name: string): AuthoredCard => library.find((c) => c.card.name === name)!
 
     const budget: HandNode = { id: 'budget-hand', name: 'Current budget', kind: 'hand', children: [] }
     addCard(doc, null, budget)
-    addCard(doc, budget.id, instanceOf(find('salary').id, 'p1'))
-    addCard(doc, budget.id, instanceOf(find('expenses').id, 'p1'))
-    addCard(doc, budget.id, instanceOf(find('tax').id, 'p1'))
+    addCard(doc, budget.id, instanceOf(find('Salary').id, 'p1'))
+    addCard(doc, budget.id, instanceOf(find('Living expenses').id, 'p1'))
+    addCard(doc, budget.id, instanceOf(find('Income tax').id, 'p1'))
     // played in the wrong order on purpose: drag the tax above the expenses —
     // order is load-bearing, and reordering is a table gesture too
-    const taxId = budget.children.find((c) => isInstance(c) && c.ref === find('tax').id)!.id
+    const taxId = budget.children.find((c) => isInstance(c) && c.ref === find('Income tax').id)!.id
     moveCard(doc, taxId, 1)
-    for (let i = 1; i <= 5; i++) addCard(doc, budget.id, instanceOf(find('fund').id, `p${String(i)}`))
+    for (let i = 1; i <= 5; i++) addCard(doc, budget.id, instanceOf(find('Index fund').id, `p${String(i)}`))
 
     const car: HandNode = { id: 'car-hand', name: 'Buy the car', kind: 'hand', children: [] }
     addCard(doc, null, car)
-    addCard(doc, car.id, instanceOf(find('car-value').id, 'p1'))
-    addCard(doc, car.id, instanceOf(find('car-costs').id, 'p1'))
+    addCard(doc, car.id, instanceOf(find('Car').id, 'p1'))
+    addCard(doc, car.id, instanceOf(find('Running costs').id, 'p1'))
     const financing: HandNode = { id: 'financing-hand', name: 'Financing', kind: 'hand', children: [] }
     addCard(doc, car.id, financing)
-    addCard(doc, financing.id, instanceOf(find('car-loan').id, 'p1'))
+    addCard(doc, financing.id, instanceOf(find('Car loan').id, 'p1'))
 
     // 3. Share it with yourself: export the table file (it carries the
     //    whole shelf), read it back in on an empty library.
