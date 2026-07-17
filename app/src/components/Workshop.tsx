@@ -334,36 +334,42 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
         </button>
       </header>
 
-      {/* the tools ride centered above the shelf — the mouse stays with the cards */}
-      <div className="work-tools">
-        <button className={dataOpen ? 'sign data-open' : 'sign'} onClick={() => setDataOpen(!dataOpen)} title="Import historical data and manage the table's series">
-          {dataOpen ? '← cards' : 'Data'}
-        </button>
-      </div>
-
       {dataOpen ? (
-        <DataBench
-          doc={doc}
-          update={update}
-          library={library}
-          onLibraryChange={onLibraryChange}
-          onFocus={(f) => {
-            setDataOpen(false)
-            onFocus(f)
-          }}
-        />
+        <>
+          <div className="work-tools">
+            <button className="sign" onClick={() => setDataOpen(false)} title="Back to the shelf">
+              ← cards
+            </button>
+          </div>
+          <DataBench
+            doc={doc}
+            update={update}
+            library={library}
+            onLibraryChange={onLibraryChange}
+            onFocus={(f) => {
+              setDataOpen(false)
+              onFocus(f)
+            }}
+          />
+        </>
       ) : (
         <div className="work-grid">
           {picking ? (
             <div className="kind-pick">
-              <p>a blank…</p>
               {AUTHORABLE_KINDS.map((kind) => (
                 <button key={kind} className={`kind-pick-btn kind-${kind}`} onClick={() => handleNew(kind)}>
                   {kind}
                 </button>
               ))}
-              <button className="kind-pick-cancel" onClick={() => setPicking(false)}>
-                never mind
+              <button
+                className="kind-pick-btn kind-data"
+                title="Import historical data and mint a priced card wearing it"
+                onClick={() => {
+                  setPicking(false)
+                  setDataOpen(true)
+                }}
+              >
+                real data…
               </button>
             </div>
           ) : (

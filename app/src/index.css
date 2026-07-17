@@ -2341,13 +2341,6 @@ button.hub-range:hover {
   background: color-mix(in srgb, var(--card) 60%, transparent);
 }
 
-.kind-pick p {
-  margin: 0 0 0.15rem;
-  text-align: center;
-  font-size: 0.66rem;
-  color: var(--ink-soft);
-}
-
 .kind-pick-btn {
   text-transform: capitalize;
   font-size: 0.68rem;
@@ -2360,14 +2353,7 @@ button.hub-range:hover {
 .kind-pick-btn.kind-debt { color: var(--kind-debt); }
 .kind-pick-btn.kind-rule { color: var(--kind-rule); }
 .kind-pick-btn.kind-margin { color: var(--kind-margin); }
-
-.kind-pick-cancel {
-  border: none;
-  background: none;
-  font-size: 0.62rem;
-  color: var(--ink-soft);
-  text-decoration: underline dotted;
-}
+.kind-pick-btn.kind-data { color: var(--kind-asset); }
 
 /* ---- the card creator: fields on the back of the card ---- */
 .card-editor {
