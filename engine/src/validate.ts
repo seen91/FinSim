@@ -85,6 +85,7 @@ function validateCard(card: Card, errors: string[]): void {
       if (!card.price && card.initialUnits !== undefined) {
         errors.push(`Card "${card.id}": initialUnits requires a price curve`)
       }
+      if (card.price && 'type' in card.price) validateCurveShape(card.price, `Card "${card.id}" price`, errors)
       if (card.fee !== undefined && card.fee < 0) {
         errors.push(`Card "${card.id}": fee must be ≥ 0`)
       }

@@ -1,4 +1,4 @@
-import { validateTable, type Card, type Curve, type Take } from '@finsim/engine'
+import { evalCurve, priceCurveOf, validateTable, type AssetCard, type Card, type Curve, type Take } from '@finsim/engine'
 import { formatAmount, formatPercent, formatPerMonth } from './format'
 import { KIND_GLYPHS } from './glyph'
 import type { GlyphName } from './icons'
@@ -177,6 +177,30 @@ function curveHeadline(curve: Curve, sign: '+' | '−', suffix: string): string 
   }
 }
 
+/** The price a curve opens at — sampled reads its first data point; null when only a series id points elsewhere. */
+function priceAtStart(price: Curve): number | null {
+  switch (price.type) {
+    case 'sampled':
+      return price.data?.values[0] ?? null
+    default:
+      // month 0 stands in for expressions that read the calendar — a static preview, not the sim
+      try {
+        return evalCurve(price, { t: 0, month: 0 })
+      } catch {
+        return null
+      }
+  }
+}
+
+/** A priced asset's static headline: what the holding is worth where its curve begins. */
+function pricedHeadline(card: AssetCard, price: Curve): string {
+  const p0 = priceAtStart(price)
+  if (p0 === null) return 'priced by data'
+  const units = card.initialUnits ?? 0
+  const flavor = price.type === 'sampled' ? 'data' : price.type === 'expression' ? 'ƒ(t)' : price.type
+  return units > 0 ? `${formatAmount(units * p0)} · ${flavor}` : `${formatAmount(p0)} /unit · ${flavor}`
+}
+
 /** Static face headline for a card template, in the style of the built-in library. */
 export function headlineFor(card: Card): string {
   switch (card.kind) {
@@ -187,7 +211,7 @@ export function headlineFor(card: Card): string {
         ? `−${formatPercent(card.percent, 0)}`
         : curveHeadline(card.amount ?? { type: 'constant', value: 0 }, '−', CADENCE_SUFFIX[card.cadence ?? 'monthly'])
     case 'asset': {
-      if (card.price) return 'priced by data'
+      if (card.price) return pricedHeadline(card, priceCurveOf(card.price))
       const growth = `${formatPercent(card.growth?.expected ?? 0)} /yr`
       return card.initialBalance ? `${formatAmount(card.initialBalance)} · ${growth}` : growth
     }

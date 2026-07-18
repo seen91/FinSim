@@ -1,4 +1,4 @@
-import { formatMonth, ym, type Card, type SampledData } from '@finsim/engine'
+import { formatMonth, priceCurveOf, ym, type Card, type SampledData } from '@finsim/engine'
 import type { AuthoredCard } from './authored'
 import { canonicalOf, isInstance, type HandNode, type TableNode } from './instances'
 
@@ -91,8 +91,11 @@ export function seriesIdsIn(card: Card): string[] {
       return card.flow.type === 'sampled' && card.flow.seriesId ? [card.flow.seriesId] : []
     case 'drain':
       return card.amount?.type === 'sampled' && card.amount.seriesId ? [card.amount.seriesId] : []
-    case 'asset':
-      return card.price?.seriesId ? [card.price.seriesId] : []
+    case 'asset': {
+      if (!card.price) return []
+      const price = priceCurveOf(card.price)
+      return price.type === 'sampled' && price.seriesId ? [price.seriesId] : []
+    }
     case 'hand':
       return card.children.flatMap(seriesIdsIn)
     default:

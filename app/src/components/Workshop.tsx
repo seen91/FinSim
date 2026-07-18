@@ -181,7 +181,7 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
       glyph: canonical.glyph,
       headline: live !== null ? (isBalance ? formatAmount(live) : formatPerMonth(live)) : headlineFor(card),
       ...(live !== null ? { headlineClass: live > 0 ? ('pos' as const) : live < 0 ? ('neg' as const) : ('' as const) } : {}),
-      stats: frontStats(card),
+      stats: frontStats(card, doc.world),
       ...(canonical.description ? { description: canonical.description } : {}),
     }
     return (

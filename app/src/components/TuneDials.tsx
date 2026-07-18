@@ -1,4 +1,4 @@
-import type { Card as EngineCard, Curve, Take } from '@finsim/engine'
+import { priceCurveOf, type Card as EngineCard, type Curve, type Take } from '@finsim/engine'
 import type { ReactElement } from 'react'
 import { CADENCE_SUFFIX } from '../authored'
 import { formatNumber } from '../format'
@@ -68,15 +68,24 @@ export function dialsOf(card: EngineCard): Dial[] {
       return card.percent !== undefined
         ? dial('Takes', 'percent', card.percent, share)
         : curveDials(card.amount ?? { type: 'constant', value: 0 }, 'amount', suffix)
-    case 'asset':
+    case 'asset': {
+      const price = card.price ? priceCurveOf(card.price) : null
+      // an analytic price is its own dials; growth (and its dice) belong only
+      // to the sampled fallback and the growth-rate asset
+      const sampled = price === null || price.type === 'sampled'
       return [
-        ...(card.price
-          ? dial('Units held', 'initialUnits', card.initialUnits, (v) => formatNumber(round(v)))
+        ...(price
+          ? [
+              ...dial('Units held', 'initialUnits', card.initialUnits, (v) => formatNumber(round(v))),
+              // a bare SampledRef never reaches here as analytic, so 'price.…' paths always resolve
+              ...(price.type === 'sampled' ? [] : curveDials(price, 'price', '')),
+            ]
           : [...dial('Already holds', 'initialBalance', card.initialBalance, money), ...dial('Fee', 'fee', card.fee, rate)]),
-        ...dial(card.price ? 'After data' : 'Grows', 'growth.expected', card.growth?.expected, rate),
-        ...dial('Volatility', 'growth.volatility', card.growth?.volatility, rate),
+        ...(sampled ? dial(price ? 'After data' : 'Grows', 'growth.expected', card.growth?.expected, rate) : []),
+        ...(sampled ? dial('Volatility', 'growth.volatility', card.growth?.volatility, rate) : []),
         ...takeDials('Deposits', 'take', card.take),
       ]
+    }
     case 'debt':
       return [
         ...dial('Principal', 'principal', card.principal, money),

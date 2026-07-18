@@ -118,12 +118,19 @@ export type Take =
 /**
  * A balance with a growth curve. Either a growth-rate asset (funds, savings:
  * `initialBalance` + `growth`, with an optional annual `fee` drag) or a
- * priced asset (stocks, property: a price curve plus units; deposits buy
- * units at the current price). `take` is its monthly deposit. On a priced
- * asset, `growth` is the generic component that takes over when the price
- * data runs out: the price extrapolates at that rate from the last real
- * price — and only that simulated stretch may be shocked by Monte Carlo.
- * Without one the price freezes.
+ * priced asset (stocks, property, a depreciating car: a price curve plus
+ * units; deposits buy units at the current price). `take` is its monthly
+ * deposit.
+ *
+ * The price is any curve f(t) — the pipeline's one grammar. A bare
+ * `SampledRef` (no `type`) is the historical-data shorthand, kept for every
+ * file already in the wild; `priceCurveOf` folds it into the sampled curve.
+ * On a sampled price, `growth` is the generic component that takes over when
+ * the data runs out: the price extrapolates at that rate from the last real
+ * price — and only that simulated stretch may be shocked by Monte Carlo;
+ * without one the price freezes. An analytic price (linear, expression, …)
+ * is exact at every month — it never ends and is never shocked, so `growth`
+ * has nothing to do there.
  */
 export interface AssetCard extends CardBase {
   kind: 'asset'
@@ -131,7 +138,7 @@ export interface AssetCard extends CardBase {
   growth?: GrowthParam
   /** Annual fee drag, e.g. 0.004 = 0.40 %/yr. */
   fee?: number
-  price?: SampledRef
+  price?: Curve | SampledRef
   initialUnits?: number
   take?: Take
 }

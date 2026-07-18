@@ -1,4 +1,4 @@
-import { simulate, validateTable, ym, type AssetCard, type SampledData } from '@finsim/engine'
+import { priceCurveOf, simulate, validateTable, ym, type AssetCard, type SampledData } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
 import { validateAuthored } from '../src/authored'
 import { pileRef } from '../src/builtins'
@@ -79,7 +79,7 @@ describe('minting a priced design from an imported series', () => {
   it('is structurally valid and carries the coverage, the fallback and the data traps in its footnote', () => {
     const design = mintPricedDesign('golden', data)
     expect(validateAuthored(design)).toEqual([])
-    expect((design.card as AssetCard).price?.seriesId).toBe('golden')
+    expect(priceCurveOf((design.card as AssetCard).price!)).toEqual({ type: 'sampled', seriesId: 'golden' })
     // the generic component that takes over when the data runs out
     expect((design.card as AssetCard).growth).toEqual({ expected: 0.07, volatility: 0.15 })
     expect(design.description).toContain('1999-01 … 1999-12')

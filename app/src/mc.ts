@@ -3,6 +3,7 @@ import {
   crossingMonths,
   monteCarlo,
   percentileBand,
+  priceCurveOf,
   quantile,
   withoutCard,
   type MonteCarloRun,
@@ -69,7 +70,9 @@ function hasVolatility(table: Table, world: World, to: number): boolean {
   return allCards(table.root).some((card) => {
     if (card.kind !== 'asset' || card.enabled === false || (card.growth?.volatility ?? 0) === 0) return false
     if (!card.price) return true
-    const data = card.price.data ?? (card.price.seriesId ? world.series?.[card.price.seriesId] : undefined)
+    const price = priceCurveOf(card.price)
+    if (price.type !== 'sampled') return false // an analytic price is exact in every future — the dice never touch it
+    const data = price.data ?? (price.seriesId ? world.series?.[price.seriesId] : undefined)
     if (!data) return true // an unresolvable series is the table's problem, not the fan's
     return to > data.startMonth + data.values.length - 1
   })

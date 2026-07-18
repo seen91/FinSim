@@ -169,6 +169,8 @@ export interface Sim {
   compares: CardCompare[]
   /** The resolved table (dials still riding) — card faces apply them per card when rendering. */
   resolvedRoot: Table['root']
+  /** The world it played under — faces resolve priced cards' series through it. */
+  world: World
 }
 
 /**
@@ -236,7 +238,7 @@ export function runSim(doc: Doc, library: AuthoredCard[] = []): Sim {
         worthMonth,
       }
     })
-  return { active, remainder, compares, resolvedRoot: resolved.root }
+  return { active, remainder, compares, resolvedRoot: resolved.root, world }
 }
 
 export interface DocStore {

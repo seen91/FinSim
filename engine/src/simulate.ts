@@ -1,8 +1,9 @@
-import { evalCurve, monthlyFactor, periodsPerMonth, resolveSampled, sampleAt } from './curves.js'
+import { evalCurve, monthlyFactor, periodsPerMonth, priceCurveOf, resolveSampled, sampleAt } from './curves.js'
 import { allCards } from './tree.js'
 import type {
   AssetCard,
   Card,
+  Curve,
   DebtCard,
   HandCard,
   MarginCard,
@@ -68,7 +69,10 @@ interface AssetState {
   factor: number
   /** σ/√12 — the monthly log-shock scale Monte Carlo samples with. */
   sigmaMonthly: number
+  /** A sampled price's resolved data — the only price shape with an end to fall back from. */
   data: SampledData | null
+  /** An analytic price curve (linear, expression, …) — exact at every month, never shocked. */
+  priceCurve: Curve | null
   /** A priced asset's current price — sampled inside the data, extrapolated by `factor` beyond it. */
   price: number | null
   balance: number
@@ -207,11 +211,13 @@ export function simulate(table: Table, world: World, from: number, to: number, s
   const debtStates = new Map<string, DebtState>()
   for (const card of cards) {
     if (card.kind === 'asset') {
+      const price = card.price ? priceCurveOf(card.price) : null
       assetStates.set(card.id, {
         card,
         factor: monthlyFactor(card.growth?.expected ?? 0) * monthlyFactor(-(card.fee ?? 0)),
         sigmaMonthly: (card.growth?.volatility ?? 0) / Math.sqrt(12),
-        data: card.price ? resolveSampled(card.price, world, `Asset "${card.id}" price`) : null,
+        data: price?.type === 'sampled' ? resolveSampled(price, world, `Asset "${card.id}" price`) : null,
+        priceCurve: price && price.type !== 'sampled' ? price : null,
         price: null,
         balance: 0,
         units: 0,
@@ -276,22 +282,26 @@ export function simulate(table: Table, world: World, from: number, to: number, s
         }
         case 'asset': {
           const state = assetStates.get(card.id)!
-          if (state.data) {
-            // Inside the data the price is history, exact and never shocked.
-            // Beyond its end the card's growth component takes over from the
-            // last price (frozen without one) — that stretch is simulated
-            // future, so it is also the only stretch the dice may touch.
-            // Before the data starts there is nothing to fall back FROM:
-            // sampleAt throws, readably.
-            if (month <= state.data.startMonth + state.data.values.length - 1) {
-              state.price = sampleAt(state.data, month, `Asset "${card.id}" price`)
+          if (state.data || state.priceCurve) {
+            if (state.priceCurve) {
+              // An analytic price IS the curve — exact at every month, in
+              // every future, so the dice never touch it (like history).
+              state.price = evalCurve(state.priceCurve, { t, month, world })
+            } else if (month <= state.data!.startMonth + state.data!.values.length - 1) {
+              // Inside the data the price is history, exact and never shocked.
+              // Beyond its end the card's growth component takes over from the
+              // last price (frozen without one) — that stretch is simulated
+              // future, so it is also the only stretch the dice may touch.
+              // Before the data starts there is nothing to fall back FROM:
+              // sampleAt throws, readably.
+              state.price = sampleAt(state.data!, month, `Asset "${card.id}" price`)
             } else if (state.price === null) {
-              state.price = state.data.values[state.data.values.length - 1]!
+              state.price = state.data!.values[state.data!.values.length - 1]!
             } else if (month > state.start) {
               state.price *= state.factor
               if (shocks && state.sigmaMonthly > 0) state.price *= Math.exp(state.sigmaMonthly * shocks(card, i))
             }
-            const price = state.price
+            const price = state.price!
             if (month === state.start) state.units = card.initialUnits ?? (card.initialBalance ?? 0) / price
             const deposit = card.take ? takeAmount(card.take, total) : 0
             if (deposit !== 0) {
@@ -387,7 +397,7 @@ export function simulate(table: Table, world: World, from: number, to: number, s
         for (const a of positions) {
           const share = (delta * a.balance) / gross
           if (share === 0) continue
-          if (a.data) {
+          if (a.data || a.priceCurve) {
             const price = a.price
             if (price === null || price <= 0) throw new Error(`Margin "${state.card.id}": cannot trade "${a.card.id}" at price ${String(price)}`)
             a.units += share / price
@@ -408,9 +418,14 @@ export function simulate(table: Table, world: World, from: number, to: number, s
       if (!scheduleMatches(rule.schedule, month)) continue
       for (const state of assetStates.values()) {
         if (month >= state.start && ruleApplies(r, state.card, month)) {
-          if (state.data) {
+          if (state.data || state.priceCurve) {
             state.units = applyBalanceEffect(rule.effect, state.units, rule.id)
-            state.balance = state.units * (state.price ?? sampleAt(state.data, month, `Asset "${state.card.id}" price`))
+            const price =
+              state.price ??
+              (state.priceCurve
+                ? evalCurve(state.priceCurve, { t: month - state.start, month, world })
+                : sampleAt(state.data!, month, `Asset "${state.card.id}" price`))
+            state.balance = state.units * price
           } else {
             state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
           }

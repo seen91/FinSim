@@ -1,6 +1,6 @@
 import { compileExpression, type CompiledExpr } from './expression.js'
 import { formatMonth } from './month.js'
-import type { Cadence, Curve, SampledData, World } from './types.js'
+import type { Cadence, Curve, SampledData, SampledRef, World } from './types.js'
 
 /**
  * Curve evaluation. Curves are evaluated at a *local* time `t` (months since
@@ -39,6 +39,15 @@ export function resolveSampled(
     return data
   }
   throw new Error(`${what}: sampled reference has neither inline data nor a seriesId`)
+}
+
+/**
+ * An asset's price as the curve it is: a bare `SampledRef` — the
+ * historical-data shorthand every existing file uses — folds into the
+ * sampled curve; anything already wearing a `type` is itself.
+ */
+export function priceCurveOf(price: Curve | SampledRef): Curve {
+  return 'type' in price ? price : { type: 'sampled', ...price }
 }
 
 /** Value of a sampled series at an absolute month. Out-of-range is an error, not a guess. */

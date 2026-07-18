@@ -2475,6 +2475,14 @@ button.hub-range:hover {
   color: var(--money-neg);
 }
 
+/* a read-only fact in a field's place — inline data's coverage, not editable here */
+.param-note {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
 /* the little inked ⓘ beside a label — an italic i in a hand-drawn ring
    (a span, not a button: the Workshop's read-only fieldset must not mute it) */
 .param-info {

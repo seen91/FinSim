@@ -1,7 +1,7 @@
-import { formatMonth, valueAt, type Card as EngineCard, type RuleSchedule } from '@finsim/engine'
+import { formatMonth, priceCurveOf, valueAt, type AssetCard, type Card as EngineCard, type Curve, type RuleSchedule, type World } from '@finsim/engine'
 import type { ReactElement } from 'react'
 import { takeLabel } from '../authored'
-import { MONTH_NAMES, formatAmount, formatPerMonth, formatPercent } from '../format'
+import { MONTH_NAMES, formatAmount, formatNumber, formatPerMonth, formatPercent } from '../format'
 import { glyphOf } from '../glyph'
 import type { CardCompare, Sim } from '../model'
 import { applyTune } from '../tune'
@@ -23,7 +23,59 @@ function scheduleLabel(schedule: RuleSchedule): string {
   }
 }
 
-export function frontStats(card: EngineCard): CardStat[] {
+const signCls = (v: number): CardStat['cls'] => (v > 0 ? 'pos' : v < 0 ? 'neg' : '')
+
+/** The numbers behind a priced asset, at a glance: what f(t) is, and what the data really did. */
+function priceStats(price: Curve, card: AssetCard, world: World | undefined): CardStat[] {
+  const stats: CardStat[] = []
+  switch (price.type) {
+    case 'constant':
+      stats.push({ label: 'Price', value: formatAmount(price.value) })
+      break
+    case 'linear':
+      stats.push({ label: 'Price', value: formatAmount(price.base) })
+      stats.push({ label: 'Drifts', value: `${price.slopePerMonth > 0 ? '+' : '−'}${formatAmount(Math.abs(price.slopePerMonth))} /mo`, cls: signCls(price.slopePerMonth) })
+      break
+    case 'compound':
+      stats.push({ label: 'Price', value: formatAmount(price.base) })
+      stats.push({ label: 'Trend', value: `${formatPercent(price.annualRate.expected)} /yr`, cls: signCls(price.annualRate.expected) })
+      break
+    case 'step':
+      stats.push({ label: 'Price', value: formatAmount(price.initial) })
+      stats.push({ label: 'Steps', value: `${String(price.steps.length)} scheduled` })
+      break
+    case 'sinusoidal':
+      stats.push({ label: 'Price', value: `${formatAmount(price.base)} ±${formatAmount(price.amplitude)}` })
+      break
+    case 'expression':
+      stats.push({ label: 'ƒ(t)', value: price.expr.length > 24 ? `${price.expr.slice(0, 23)}…` : price.expr })
+      break
+    case 'sampled': {
+      const data = price.data ?? (price.seriesId !== undefined ? world?.series?.[price.seriesId] : undefined)
+      if (data) {
+        const first = data.values[0]!
+        const last = data.values[data.values.length - 1]!
+        stats.push({ label: 'Data', value: `${formatMonth(data.startMonth)} → ${formatMonth(data.startMonth + data.values.length - 1)}` })
+        stats.push({ label: 'Price', value: `${formatAmount(first)} → ${formatAmount(last)}` })
+        if (data.values.length > 1 && first > 0 && last > 0) {
+          const cagr = Math.pow(last / first, 12 / (data.values.length - 1)) - 1
+          stats.push({ label: 'Trend', value: `${formatPercent(cagr)} /yr`, cls: signCls(cagr) })
+        }
+      } else {
+        stats.push({ label: 'Data', value: price.seriesId ?? '—' })
+      }
+      // the generic component that takes over when the series ends — sampled prices only
+      if (card.growth) stats.push({ label: 'After data', value: `${formatPercent(card.growth.expected)} /yr`, cls: signCls(card.growth.expected) })
+      break
+    }
+  }
+  if (card.initialUnits !== undefined && card.initialUnits !== 1) {
+    stats.push({ label: 'Units held', value: formatNumber(card.initialUnits) })
+  }
+  return stats
+}
+
+export function frontStats(card: EngineCard, world?: World): CardStat[] {
   const stats: CardStat[] = []
   if (card.kind === 'source' && card.flow.type === 'compound' && card.flow.annualRate.expected > 0) {
     const anchor = card.flow.holdAnchor !== undefined ? ` each ${MONTH_NAMES[card.flow.holdAnchor - 1]!.slice(0, 3)}` : ''
@@ -31,7 +83,8 @@ export function frontStats(card: EngineCard): CardStat[] {
   } else if (card.kind === 'drain' && card.percent !== undefined) {
     stats.push({ label: 'Takes', value: `${formatPercent(card.percent, 0)} of subtotal` })
   } else if (card.kind === 'asset') {
-    if (!card.price) stats.push({ label: 'Growth', value: `${formatPercent(card.growth?.expected ?? 0)} /yr` })
+    if (card.price) stats.push(...priceStats(priceCurveOf(card.price), card, world))
+    else stats.push({ label: 'Growth', value: `${formatPercent(card.growth?.expected ?? 0)} /yr` })
     if ((card.fee ?? 0) > 0) stats.push({ label: 'Fee', value: `${formatPercent(card.fee!, 2)} /yr` })
     if (card.take) stats.push({ label: 'Takes', value: takeLabel(card.take) })
   } else if (card.kind === 'debt') {
@@ -111,7 +164,7 @@ export function CardView({
                 headline: isBalance ? formatAmount(value) : formatPerMonth(value),
                 headlineClass: value > 0 ? ('pos' as const) : value < 0 ? ('neg' as const) : ('' as const),
               }),
-          stats: frontStats(played),
+          stats: frontStats(played, sim.world),
           ...(sparkline ? { sparkline } : {}),
           ...(verdict ? { verdict } : {}),
         }}

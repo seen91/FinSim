@@ -1,6 +1,7 @@
 import {
   compileExpression,
   formatMonth,
+  priceCurveOf,
   type AssetCard,
   type Cadence,
   type Card as EngineCard,
@@ -15,7 +16,7 @@ import {
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 import { CADENCE_SUFFIX, type AuthoredCard } from '../authored'
-import { MONTH_NAMES, formatNumber, parseCompact } from '../format'
+import { MONTH_NAMES, formatAmount, formatNumber, parseCompact } from '../format'
 import { CARD_GLYPHS } from '../glyph'
 import { Glyph } from '../icons'
 import { parseMonthText } from '../seriesImport'
@@ -446,6 +447,8 @@ function curveBase(curve: Curve): number {
     case 'step':
       return curve.initial
     case 'sampled':
+      // switching away from data seeds the new shape where the data began
+      return curve.data?.values[0] ?? 0
     case 'expression':
       return 0
   }
@@ -512,14 +515,18 @@ function ExpressionField({ expr, onCommit }: { expr: string; onCommit: (expr: st
 /**
  * A flow curve and its cadence, committed together: the primary amount field
  * carries the unit ("…/mo", "…/w"), so the cadence needs no dropdown.
+ * With `money` the amounts are plain kr — a price curve, not a flow: no
+ * cadence in the text, and the committed cadence never changes.
  */
 function CurveField({
   curve,
   cadence,
+  money = false,
   onCommit,
 }: {
   curve: Curve
   cadence: Cadence | undefined
+  money?: boolean
   onCommit: (c: Curve, cadence: Cadence | undefined) => void
 }): ReactElement {
   // secondary fields change the curve only; the cadence rides along untouched
@@ -527,16 +534,29 @@ function CurveField({
   return (
     <>
       <Select label="Curve" value={curve.type} options={CURVE_TYPES} onCommit={(type) => commit(curveOfType(type, curve))} />
-      {curve.type === 'constant' && <AmountField label="Amount" value={curve.value} cadence={cadence} onCommit={(value, cad) => onCommit({ ...curve, value }, cad)} />}
+      {curve.type === 'constant' &&
+        (money ? (
+          <Money label="Price" value={curve.value} onCommit={(value) => commit({ ...curve, value })} />
+        ) : (
+          <AmountField label="Amount" value={curve.value} cadence={cadence} onCommit={(value, cad) => onCommit({ ...curve, value }, cad)} />
+        ))}
       {curve.type === 'linear' && (
         <>
-          <AmountField label="Starts at" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          {money ? (
+            <Money label="Starts at" value={curve.base} onCommit={(base) => commit({ ...curve, base })} />
+          ) : (
+            <AmountField label="Starts at" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          )}
           <Num label="Drift" value={curve.slopePerMonth} onCommit={(slopePerMonth) => commit({ ...curve, slopePerMonth })} unit="/mo" compact />
         </>
       )}
       {curve.type === 'compound' && (
         <>
-          <AmountField label="Starts at" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          {money ? (
+            <Money label="Starts at" value={curve.base} onCommit={(base) => commit({ ...curve, base })} />
+          ) : (
+            <AmountField label="Starts at" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          )}
           <HoldRateField
             label="Grows"
             value={curve.annualRate.expected}
@@ -554,7 +574,11 @@ function CurveField({
       )}
       {curve.type === 'step' && (
         <>
-          <AmountField label="Starts at" value={curve.initial} cadence={cadence} onCommit={(initial, cad) => onCommit({ ...curve, initial }, cad)} />
+          {money ? (
+            <Money label="Starts at" value={curve.initial} onCommit={(initial) => commit({ ...curve, initial })} />
+          ) : (
+            <AmountField label="Starts at" value={curve.initial} cadence={cadence} onCommit={(initial, cad) => onCommit({ ...curve, initial }, cad)} />
+          )}
           {curve.steps.map((step, i) => (
             <div className="step-row" key={i}>
               <Num
@@ -588,14 +612,27 @@ function CurveField({
       )}
       {curve.type === 'sinusoidal' && (
         <>
-          <AmountField label="Around" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          {money ? (
+            <Money label="Around" value={curve.base} onCommit={(base) => commit({ ...curve, base })} />
+          ) : (
+            <AmountField label="Around" value={curve.base} cadence={cadence} onCommit={(base, cad) => onCommit({ ...curve, base }, cad)} />
+          )}
           <Money label="Swings ±" value={curve.amplitude} onCommit={(amplitude) => commit({ ...curve, amplitude })} />
           <Num label="Every" value={curve.periodMonths} onCommit={(periodMonths) => commit({ ...curve, periodMonths: Math.max(1, periodMonths) })} unit="mo" />
         </>
       )}
-      {curve.type === 'sampled' && (
-        <Text label="Data series" value={curve.seriesId ?? ''} placeholder="series id from a data pack" onCommit={(seriesId) => commit({ ...curve, seriesId })} />
-      )}
+      {curve.type === 'sampled' &&
+        (curve.data ? (
+          // inline data is edited on the Data bench — here it reads as what it is
+          <Row label="Data">
+            <p className="param-note num">
+              {formatMonth(curve.data.startMonth)} → {formatMonth(curve.data.startMonth + curve.data.values.length - 1)} ·{' '}
+              {formatAmount(curve.data.values[0] ?? 0)} → {formatAmount(curve.data.values[curve.data.values.length - 1] ?? 0)}
+            </p>
+          </Row>
+        ) : (
+          <Text label="Data series" value={curve.seriesId ?? ''} placeholder="series id from a data pack" onCommit={(seriesId) => commit({ ...curve, seriesId })} />
+        ))}
       {curve.type === 'expression' && <ExpressionField expr={curve.expr} onCommit={(expr) => commit({ ...curve, expr })} />}
     </>
   )
@@ -702,19 +739,40 @@ function GrowthFields({ card, onChange, label }: { card: AssetCard; onChange: (c
 }
 
 function AssetEditor({ card, onChange }: { card: AssetCard; onChange: (c: EngineCard) => void }): ReactElement {
+  const price = card.price ? priceCurveOf(card.price) : null
   return (
     <>
-      {card.price ? (
+      <Select
+        label="Worth"
+        value={price ? 'priced' : 'growth'}
+        options={[
+          ['growth', 'a balance growing by rate'],
+          ['priced', 'units × a price curve f(t)'],
+        ]}
+        onCommit={(mode) => {
+          if ((mode === 'priced') === (price !== null)) return
+          const next = { ...card }
+          if (mode === 'priced') {
+            // the balance carries over as the opening price of one unit
+            next.price = { type: 'linear', base: card.initialBalance ?? 100_000, slopePerMonth: 0 }
+            next.initialUnits = 1
+            delete next.initialBalance
+            delete next.fee
+          } else {
+            next.initialBalance = curveBase(price!) || undefined
+            delete next.price
+            delete next.initialUnits
+          }
+          onChange(next)
+        }}
+      />
+      {price ? (
         <>
-          <Text
-            label="Priced by"
-            value={card.price.seriesId ?? ''}
-            placeholder="series id from a data pack"
-            onCommit={(seriesId) => onChange({ ...card, price: { ...card.price, seriesId } })}
-          />
+          <CurveField curve={price} cadence={undefined} money onCommit={(p) => onChange({ ...card, price: p })} />
           <Num label="Units held" value={card.initialUnits ?? 0} onCommit={(initialUnits) => onChange({ ...card, initialUnits })} />
-          {/* when the series runs out mid-horizon, this generic component takes over from the last real price */}
-          <GrowthFields card={card} onChange={onChange} label="After data" />
+          {/* when a series runs out mid-horizon, this generic component takes over from the last real
+              price; an analytic curve never ends, so it has nothing to fall back to */}
+          {price.type === 'sampled' && <GrowthFields card={card} onChange={onChange} label="After data" />}
         </>
       ) : (
         <>
