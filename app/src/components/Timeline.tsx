@@ -41,7 +41,7 @@ interface Props {
 
 const MARGIN = { top: 24, right: 20, bottom: 30, left: 16 }
 
-export function useSize(): [RefObject<HTMLDivElement | null>, { width: number; height: number }] {
+function useSize(): [RefObject<HTMLDivElement | null>, { width: number; height: number }] {
   const ref = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState({ width: 800, height: 300 })
   useLayoutEffect(() => {

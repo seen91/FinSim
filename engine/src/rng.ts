@@ -1,9 +1,8 @@
 /**
- * Seeded, deterministic randomness. The v1 simulation itself is fully
- * deterministic (volatility is carried but ignored); the RNG exists for
- * shuffles, event schedules and the later Monte Carlo mode. A finished game
- * must be reproducible from (scenario, seed, decisions), so every random
- * draw in the product goes through this module.
+ * Seeded, deterministic randomness. The base simulation is fully
+ * deterministic; the RNG exists for Monte Carlo. Every random draw in the
+ * product goes through this module, so any run is reproducible from its
+ * seed.
  */
 
 export interface Rng {
@@ -56,16 +55,4 @@ export function hashString(s: string): number {
     h = Math.imul(h, 0x01000193)
   }
   return h >>> 0
-}
-
-/** Fisher–Yates shuffle. Returns a new array; the input is not mutated. */
-export function shuffle<T>(rng: Rng, items: readonly T[]): T[] {
-  const out = items.slice()
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = rng.int(i + 1)
-    const tmp = out[i]!
-    out[i] = out[j]!
-    out[j] = tmp
-  }
-  return out
 }

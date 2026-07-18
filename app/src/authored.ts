@@ -107,6 +107,16 @@ export function blankCard(kind: AuthorableKind, uid: string): AuthoredCard {
 }
 
 /**
+ * Stamp a card's identity through its math: the id, and the rule id derived
+ * from it — one invariant (`rule.id = "<id>-rule"`) for every place a card
+ * gets a new identity: a redesign, a rename, a deal, a remint.
+ */
+export function stampCardId(card: Card, id: string): void {
+  card.id = id
+  if (card.kind === 'rule') card.rule.id = `${id}-rule`
+}
+
+/**
  * A clone of a played card with every app-level rider off — the design stamp,
  * the dials, the set-aside flag, the glyph. What remains is template material:
  * the math, plus the id (rewrite it if the copy needs its own identity).
@@ -130,8 +140,7 @@ export function redesign(canonical: AuthoredCard, id: string): AuthoredCard {
   const copy = structuredClone(canonical)
   copy.id = id
   copy.card = stripRiders(copy.card)
-  copy.card.id = id
-  if (copy.card.kind === 'rule') copy.card.rule.id = `${id}-rule`
+  stampCardId(copy.card, id)
   return copy
 }
 
@@ -143,17 +152,6 @@ export function sanitizeAuthored(authored: AuthoredCard): AuthoredCard {
 /** Validate an authored card's template with the engine's own table validator. */
 export function validateAuthored(authored: AuthoredCard): string[] {
   return validateTable({ root: { id: 'validate-root', kind: 'hand', children: [structuredClone(authored.card)] } })
-}
-
-/** Merge imported items (authored cards, saved hands) into a collection: same id replaces, new appends. */
-export function mergeLibrary<T extends { id: string }>(library: T[], incoming: T[]): T[] {
-  const next = [...library]
-  for (const card of incoming) {
-    const i = next.findIndex((c) => c.id === card.id)
-    if (i >= 0) next[i] = card
-    else next.push(card)
-  }
-  return next
 }
 
 /** How a cadence reads on a card face and in an editor field: "/mo", "/yr", … */

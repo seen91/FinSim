@@ -18,6 +18,11 @@ export function allCards(root: HandCard): Card[] {
   return root.children.flatMap((c) => (c.kind === 'hand' ? [c, ...allCards(c)] : [c]))
 }
 
+/** Every card below `index` in a hand, nested hands included — the scope a positional card (rule, margin) sees. */
+export function cardsBelow(hand: HandCard, index: number): Card[] {
+  return hand.children.slice(index + 1).flatMap((c) => (c.kind === 'hand' ? [c, ...allCards(c)] : [c]))
+}
+
 /** Assert the card exists, then clone — tables are plain JSON by design (DESIGN.md §3), so a JSON round-trip is a faithful clone. */
 function cloneWithCard(table: Table, cardId: string, who: string): Table {
   if (!findCard(table.root, cardId)) {

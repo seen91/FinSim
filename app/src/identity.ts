@@ -1,4 +1,4 @@
-import type { AuthoredCard } from './authored'
+import { stampCardId, type AuthoredCard } from './authored'
 import { instancesIn, type HandNode } from './instances'
 import type { SavedHand } from './savedHands'
 
@@ -31,8 +31,18 @@ export function untaken(want: string, taken: ReadonlySet<string>): string {
 /** Stamp a design's identity through its template (and its rule's id). */
 export function restampDesign(authored: AuthoredCard, id: string): void {
   authored.id = id
-  authored.card.id = id
-  if (authored.card.kind === 'rule') authored.card.rule.id = `${id}-rule`
+  stampCardId(authored.card, id)
+}
+
+/** Merge imported items (authored cards, saved hands) into a collection: same id replaces, new appends. */
+export function mergeLibrary<T extends { id: string }>(library: T[], incoming: T[]): T[] {
+  const next = [...library]
+  for (const card of incoming) {
+    const i = next.findIndex((c) => c.id === card.id)
+    if (i >= 0) next[i] = card
+    else next.push(card)
+  }
+  return next
 }
 
 /**

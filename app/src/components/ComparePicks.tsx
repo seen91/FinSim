@@ -18,6 +18,46 @@ interface Props {
 }
 
 /**
+ * The compare fixture: one card back beside the draw pile — anything that can
+ * be a plan may challenge the table, so it is always there. While a
+ * comparison plays, the card turns over into the challenger (ComparePicks).
+ */
+export function CompareFixture({
+  sel,
+  savedHands,
+  library,
+  onEnter,
+  onChange,
+  onExit,
+}: Omit<Props, 'sel'> & {
+  sel: CompareSel | null
+  /** Open compare mode with the fixture's default pick — the freshest saved hand, or the first preset. */
+  onEnter: (sel: CompareSel) => void
+}): ReactElement {
+  if (!sel) {
+    return (
+      <button
+        className="duel"
+        onClick={() => {
+          const lastSaved = savedHands[savedHands.length - 1]
+          onEnter(lastSaved ? { kind: 'saved', id: lastSaved.id } : { kind: 'preset', id: PRESETS[0]!.id })
+        }}
+        title="Compare — the table against a saved hand, a preset, or a single card, on one chart"
+        aria-label="Compare the table against another plan"
+      >
+        <span className="duel-card" aria-hidden="true">
+          <span className="duel-word">Compare</span>
+        </span>
+      </button>
+    )
+  }
+  // comparing: the fixture's spot holds the challenger, turned over — the
+  // table is always the solid line, so this one card is the whole choosing,
+  // and clicking it again turns the comparison off
+  return <ComparePicks sel={sel} savedHands={savedHands} library={library} onChange={onChange} onExit={onExit} />
+}
+
+/**
  * Compare mode's picker: the fixture's card back, turned over into the
  * challenger. The table as it stands is always the chart's solid line, so
  * there is only one thing to choose — the dashed rival, and anything that can
@@ -26,7 +66,7 @@ interface Props {
  * moment compare opens; the card wears the chosen challenger's name, and
  * clicking it again puts the whole comparison away.
  */
-export function ComparePicks({ sel, savedHands, library, onChange, onExit }: Props): ReactElement {
+function ComparePicks({ sel, savedHands, library, onChange, onExit }: Props): ReactElement {
   // open from the first click — entering compare IS asking "against what?"
   const [menu, setMenu] = useState(true)
 

@@ -3,7 +3,7 @@ import type { ReactElement } from 'react'
 import { takeLabel } from '../authored'
 import { MONTH_NAMES, formatAmount, formatNumber, formatPerMonth, formatPercent } from '../format'
 import { glyphOf } from '../glyph'
-import type { CardCompare, Sim } from '../model'
+import { isBalanceKind, type CardCompare, type Sim } from '../model'
 import { applyTune } from '../tune'
 import { deltaVerdict } from '../verdict'
 import { Card, type CardStat } from './Card'
@@ -24,6 +24,14 @@ function scheduleLabel(schedule: RuleSchedule): string {
 }
 
 const signCls = (v: number): CardStat['cls'] => (v > 0 ? 'pos' : v < 0 ? 'neg' : '')
+
+/** How a live value reads on a face: balances as plain amounts, flows per month — signed green/red. */
+export function liveHeadline(value: number, isBalance: boolean): { headline: string; headlineClass: '' | 'pos' | 'neg' } {
+  return {
+    headline: isBalance ? formatAmount(value) : formatPerMonth(value),
+    headlineClass: value > 0 ? 'pos' : value < 0 ? 'neg' : '',
+  }
+}
 
 /** The numbers behind a priced asset, at a glance: what f(t) is, and what the data really did. */
 function priceStats(price: Curve, card: AssetCard, world: World | undefined): CardStat[] {
@@ -138,7 +146,7 @@ export function CardView({
   const setAside = card.enabled === false
   const contribution = sim.active.contributions.find((s) => s.id === card.id)
   const balanceSeries = sim.active.balances.find((s) => s.id === card.id)
-  const isBalance = card.kind === 'asset' || card.kind === 'debt' || card.kind === 'margin'
+  const isBalance = isBalanceKind(card.kind)
   // a rule card moves no money of its own — its stats say what it does
   const isRule = card.kind === 'rule'
   const value = isBalance ? (balanceSeries ? valueAt(balanceSeries, scrub) : 0) : contribution ? valueAt(contribution, scrub) : 0
@@ -158,12 +166,7 @@ export function CardView({
           kind: card.kind,
           name: card.name ?? card.id,
           glyph: glyphOf(card),
-          ...(isRule
-            ? {}
-            : {
-                headline: isBalance ? formatAmount(value) : formatPerMonth(value),
-                headlineClass: value > 0 ? ('pos' as const) : value < 0 ? ('neg' as const) : ('' as const),
-              }),
+          ...(isRule ? {} : liveHeadline(value, isBalance)),
           stats: frontStats(played, sim.world),
           ...(sparkline ? { sparkline } : {}),
           ...(verdict ? { verdict } : {}),

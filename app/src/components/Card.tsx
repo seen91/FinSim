@@ -14,7 +14,7 @@ export interface CardStat {
   cls?: '' | 'pos' | 'neg'
 }
 
-export interface CardFace {
+interface CardFace {
   kind: string
   name: string
   glyph: GlyphName

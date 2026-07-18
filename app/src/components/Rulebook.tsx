@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Glyph } from '../icons'
+import { Drawer } from './Drawer'
 
 /**
  * The Rulebook: the table's rules written down for the player, in the same
@@ -10,18 +11,16 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
   if (!open) return null
 
   return (
-    <div className="drawer" role="dialog" aria-label="Rulebook" onClick={onClose}>
-      <div className="drawer-panel rulebook" onClick={(e) => e.stopPropagation()}>
-        <header className="drawer-bar">
-          <Glyph name="book" size={22} />
-          <h2>Rulebook</h2>
-          <p className="drawer-hint">how the table plays — press Esc or click outside to close</p>
-          <button className="drawer-close" onClick={onClose} aria-label="Close the rulebook">
-            ×
-          </button>
-        </header>
-
-        <div className="rulebook-body">
+    <Drawer
+      label="Rulebook"
+      panelClass="rulebook"
+      glyph="book"
+      title="Rulebook"
+      hint="how the table plays — press Esc or click outside to close"
+      closeLabel="Close the rulebook"
+      onClose={onClose}
+    >
+      <div className="rulebook-body">
           <section>
             <h3>The one rule of the table</h3>
             <p>
@@ -186,7 +185,6 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
             </p>
           </section>
         </div>
-      </div>
-    </div>
+    </Drawer>
   )
 }

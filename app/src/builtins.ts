@@ -16,8 +16,8 @@ import { PRESETS } from './presets'
  * Workshop bench and the resolver treat both species alike; its id is its ref.
  */
 
-export const PILE_PREFIX = 'pile:'
-export const PRESET_PREFIX = 'preset:'
+const PILE_PREFIX = 'pile:'
+const PRESET_PREFIX = 'preset:'
 
 export function pileRef(blueprintId: string): string {
   return `${PILE_PREFIX}${blueprintId}`

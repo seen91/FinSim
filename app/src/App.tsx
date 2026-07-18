@@ -1,66 +1,37 @@
-import { findCard, formatMonth, type Card, type HandCard, type SampledData } from '@finsim/engine'
+import { findCard, type Card, type HandCard, type SampledData } from '@finsim/engine'
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { mergeLibrary, type AuthoredCard } from './authored'
+import type { AuthoredCard } from './authored'
 import { builtinSeriesOf } from './builtins'
 import { Arena } from './components/Arena'
-import { CardView } from './components/CardView'
 import { contenderDoc, resolveContender, runCompare, type CompareSel, type Contender } from './compare'
 import { CashDock } from './components/CashDock'
-import { ComparePicks } from './components/ComparePicks'
+import { CompareFixture } from './components/ComparePicks'
 import { DrawPile } from './components/DrawPile'
 import { Fan, type FanGeometry } from './components/Fan'
 import { BundleReport, FuturesReport } from './components/FuturesReport'
-import { HandStack } from './components/HandStack'
 import { Rulebook } from './components/Rulebook'
+import { TableCard } from './components/TableCard'
+import { TopBar } from './components/TopBar'
 import { Workshop, type WorkshopFocus } from './components/Workshop'
 import type { ArenaCompare, ArenaFocus } from './components/Arena'
-import { loadDoc, loadLibrary, loadSavedHands, saveDoc, saveLibrary, saveSavedHands } from './db'
 import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
-import { errorMessage, formatCompact, parseCompact } from './format'
+import { errorMessage } from './format'
 import { addCard, findParentHand, groupOnto, moveCard, moveOut, removeCard } from './hands'
 import { Glyph } from './icons'
-import { adoptNameIds } from './identity'
+import { mergeLibrary } from './identity'
 import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, repointInstances, type TableNode } from './instances'
 import { runMc } from './mc'
-import { effectiveHorizon, migrateDoc, runSim, useDoc, type PlayedDoc, type Sim } from './model'
-import { PRESETS } from './presets'
+import { effectiveHorizon, runSim, type Doc, type PlayedDoc, type Sim } from './model'
 import { snapshotHand, unpackSavedHand, type SavedHand } from './savedHands'
-import { addSeries, parseMonthText } from './seriesImport'
+import { addSeries } from './seriesImport'
 import { freshDoc } from './starter'
+import { useDoc, usePersistence } from './store'
 import type { Tune } from './tune'
 import { newUid } from './uid'
 
 /** The main hand at the bottom of the screen: a wide, gentle arc. */
 const MAIN_FAN: FanGeometry = { radius: 1150, maxStep: 6, maxSpread: 46, visibleTo: 90, cardWidth: 184 }
-
-/** The goal in compact money ("10 M", "250 k"); accepts "1,5m", "10M", "250k" or a plain number. */
-function GoalInput({ goal, onCommit }: { goal: number; onCommit: (v: number) => void }): ReactElement {
-  const [draft, setDraft] = useState(() => formatCompact(goal))
-  useEffect(() => setDraft(formatCompact(goal)), [goal])
-  const commit = (): void => {
-    const parsed = parseCompact(draft)
-    if (parsed !== null && parsed > 0) {
-      onCommit(parsed)
-      setDraft(formatCompact(parsed))
-    } else {
-      setDraft(formatCompact(goal))
-    }
-  }
-  return (
-    <input
-      type="text"
-      className="num"
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur()
-        if (e.key === 'Escape') setDraft(formatCompact(goal))
-      }}
-    />
-  )
-}
 
 export function App(): ReactElement {
   const store = useDoc(freshDoc())
@@ -81,78 +52,11 @@ export function App(): ReactElement {
   const [library, setLibrary] = useState<AuthoredCard[]>([])
   const [savedHands, setSavedHands] = useState<SavedHand[]>([])
   const [openHandId, setOpenHandId] = useState<string | null>(null)
-  // the Table sign's little menu: export, import, reset under one board
-  const [tableMenuOpen, setTableMenuOpen] = useState(false)
   // the one card turned face-down to its what-if dials — tap to turn, tap to turn back
   const [flippedId, setFlippedId] = useState<string | null>(null)
-  const loaded = useRef(false)
-  const importInput = useRef<HTMLInputElement>(null)
 
-  // local-first: load once, then save (debounced) on every change. The doc and
-  // the library load together because a pre-instances doc migrates against the
-  // library (design stamps → refs) and may mint designs into it.
-  useEffect(() => {
-    void Promise.all([loadDoc(), loadLibrary(), loadSavedHands()]).then(([savedDoc, savedLibrary, storedHands]) => {
-      let lib = savedLibrary ?? []
-      if (savedDoc) {
-        // the removed Sweden-rules toggle was the only app-side writer of world
-        // rules — lift what it left behind in old saves. Imported files keep
-        // theirs: world rules are engine surface, and exchange round-trips them.
-        if (savedDoc.world?.rules) delete savedDoc.world.rules
-        // the fixed 30-year starter horizon predates the auto horizon — lift
-        // it to auto (the End field, added the same day, makes 30y expressible again)
-        if (savedDoc.horizonMonths === 30 * 12) savedDoc.horizonMonths = null
-        const minted = migrateDoc(savedDoc, lib)
-        if (minted.length > 0) lib = mergeLibrary(lib, minted)
-      }
-      // the name IS the id (identity.ts) — lift stores saved under the old
-      // uid-suffixed scheme, re-pointing the table and the pile as one
-      adoptNameIds(lib, savedDoc ? [savedDoc.table.root] : [], storedHands ?? [])
-      if (savedDoc) store.replace(savedDoc)
-      // a design made before the load lands must survive it — merge, don't clobber
-      setLibrary((current) => (current.length > 0 ? mergeLibrary(lib, current) : lib))
-      if (storedHands) setSavedHands((current) => (current.length > 0 ? [...storedHands, ...current] : storedHands))
-      loaded.current = true
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  useEffect(() => {
-    if (!loaded.current) return
-    const timer = setTimeout(() => void saveDoc(doc), 400)
-    return () => clearTimeout(timer)
-  }, [doc])
-  useEffect(() => {
-    if (!loaded.current) return
-    // no debounce: designs are few and precious — a fresh one must hit disk
-    // before any reload can eat it (the doc keeps its debounce; it churns)
-    void saveLibrary(library)
-  }, [library])
-  useEffect(() => {
-    if (!loaded.current) return
-    // saved hands are few and precious too — straight to disk
-    void saveSavedHands(savedHands)
-  }, [savedHands])
-
-  // the debounced saves lose the last change when the page goes away inside
-  // their 400 ms window (a reload right after authoring ate the fresh design) —
-  // flush whatever is pending on the way out
-  const latest = useRef({ doc, library, savedHands })
-  latest.current = { doc, library, savedHands }
-  useEffect(() => {
-    const flush = (): void => {
-      if (document.visibilityState !== 'hidden') return
-      if (!loaded.current) return
-      void saveDoc(latest.current.doc)
-      void saveLibrary(latest.current.library)
-      void saveSavedHands(latest.current.savedHands)
-    }
-    document.addEventListener('visibilitychange', flush)
-    window.addEventListener('pagehide', flush)
-    return () => {
-      document.removeEventListener('visibilitychange', flush)
-      window.removeEventListener('pagehide', flush)
-    }
-  }, [])
+  // local-first: load once, then save on every change (store.ts)
+  usePersistence(store, library, savedHands, setLibrary, setSavedHands)
 
   // the comparison plays the raw doc: it resolves its own shared horizon, and
   // the live table IS a contender whenever "The table now" is picked — every
@@ -308,13 +212,19 @@ export function App(): ReactElement {
   const stripCloses = !workshopOpen && trail.length > 0
   const stripDown = useRef<{ x: number; y: number; closes: boolean } | null>(null)
 
+  // land the series a node's cards wear — the ones riding the deal, then
+  // whatever its instances' built-ins carry
+  const landSeries = (d: Doc, node: TableNode, series?: Record<string, SampledData>): void => {
+    addSeries(d, series)
+    for (const inst of instancesIn(node)) addSeries(d, builtinSeriesOf(inst.ref))
+  }
+
   // one dealing gesture for everything the pile offers — a fresh instance of
   // a canonical card (blueprint, preset member, Workshop design), or a whole
   // preset hand of them: land any series the cards wear, then the nodes
   const dealNode = (node: TableNode, series?: Record<string, SampledData>): void => {
     store.update((d) => {
-      addSeries(d, series)
-      for (const inst of instancesIn(node)) addSeries(d, builtinSeriesOf(inst.ref))
+      landSeries(d, node, series)
       addCard(d, targetId, node)
     })
   }
@@ -364,8 +274,7 @@ export function App(): ReactElement {
     const unpacked = unpackSavedHand(saved, newUid)
     if (targetId === null && doc.table.root.children.length === 0) {
       store.update((d) => {
-        addSeries(d, saved.series)
-        for (const inst of instancesIn(unpacked)) addSeries(d, builtinSeriesOf(inst.ref))
+        landSeries(d, unpacked, saved.series)
         d.table.root.children = unpacked.children
         d.table.root.name = unpacked.name
       })
@@ -482,121 +391,19 @@ export function App(): ReactElement {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <h1>FinSim</h1>
-        <label className="goal-input">
-          Goal
-          <GoalInput
-            goal={doc.goal}
-            onCommit={(v) => {
-              store.update((d) => (d.goal = v))
-            }}
-          />
-        </label>
-        <label className="goal-input" title="the table's first month — set it in the past to backtest against historical data">
-          Start
-          <input
-            type="month"
-            value={formatMonth(doc.from)}
-            onChange={(e) => {
-              const month = parseMonthText(e.target.value)
-              if (month !== null) store.update((d) => (d.from = month))
-            }}
-          />
-        </label>
-        <label
-          className="goal-input"
-          title="the table's last month — by default it follows the goal (five years past the crossing); set a month to pin it, clear the field to follow again"
-        >
-          End
-          <input
-            type="month"
-            value={formatMonth(to)}
-            onChange={(e) => {
-              const month = parseMonthText(e.target.value)
-              store.update((d) => (d.horizonMonths = month === null ? null : Math.max(1, month - d.from + 1)))
-            }}
-          />
-        </label>
-        <div className="topbar-actions">
-          {/* planked boards hanging from one wooden rail; the Workshop's
-              signal-yellow board stays the one loud thing on the table */}
-          <button className="workshop" onClick={() => setWorkshopOpen(true)} title="The Workshop — author cards and tune the ones in play">
-            <span className="workshop-board">
-              <Glyph name="hammer" size={15} />
-              Workshop
-            </span>
-          </button>
-          <button className="sign" onClick={() => setRulebookOpen(true)} title="how the table plays — the rules, written down">
-            <Glyph name="book" size={14} />
-            Rulebook
-          </button>
-          <div className="table-sign">
-            <button className="sign" onClick={() => setTableMenuOpen((open) => !open)} title="the table as a file — export, import, or reset">
-              <Glyph name="export" size={13} />
-              Table
-            </button>
-            {tableMenuOpen && (
-              <>
-                <div className="sign-veil" onClick={() => setTableMenuOpen(false)} aria-hidden="true" />
-                <ul className="sign-menu" role="menu" aria-label="Table actions">
-                  <li>
-                    <button
-                      role="menuitem"
-                      title="download the whole table as a JSON file — the backup/share path"
-                      onClick={() => {
-                        setTableMenuOpen(false)
-                        handleExport()
-                      }}
-                    >
-                      <Glyph name="export" size={13} />
-                      Export
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      role="menuitem"
-                      title="replace the table with a previously exported JSON file"
-                      onClick={() => {
-                        setTableMenuOpen(false)
-                        importInput.current?.click()
-                      }}
-                    >
-                      <Glyph name="import" size={13} />
-                      Import…
-                    </button>
-                  </li>
-                  <li className="menu-divide">
-                    <button
-                      role="menuitem"
-                      className="menu-burn menu-grave"
-                      title="the clean slate — a lone salary card, authored cards and saved hands cleared"
-                      onClick={() => {
-                        setTableMenuOpen(false)
-                        handleReset()
-                      }}
-                    >
-                      <Glyph name="skull" size={13} />
-                      Reset…
-                    </button>
-                  </li>
-                </ul>
-              </>
-            )}
-          </div>
-          <input
-            ref={importInput}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) handleImportFile(file)
-              e.target.value = ''
-            }}
-          />
-        </div>
-      </header>
+      <TopBar
+        goal={doc.goal}
+        from={doc.from}
+        to={to}
+        onGoal={(v) => store.update((d) => (d.goal = v))}
+        onStart={(month) => store.update((d) => (d.from = month))}
+        onEnd={(month) => store.update((d) => (d.horizonMonths = month === null ? null : Math.max(1, month - d.from + 1)))}
+        onOpenWorkshop={() => setWorkshopOpen(true)}
+        onOpenRulebook={() => setRulebookOpen(true)}
+        onExport={handleExport}
+        onImportFile={handleImportFile}
+        onReset={handleReset}
+      />
 
       {simState.error && (
         <div className="sim-error" role="alert">
@@ -681,34 +488,21 @@ export function App(): ReactElement {
             if (card.kind === 'hand') setOpenHandId(card.id)
             else handleFlipCard(card.id)
           }}
-          renderItem={(card) =>
-            card.kind === 'hand' ? (
-              <HandStack
-                hand={card}
-                sim={sim}
-                scrub={scrub}
-                from={doc.from}
-                compare={sim.compares.find((c) => c.cardId === card.id)}
-                range={mc?.ranges.get(card.id)}
-                onRemove={handleRemoveCard}
-                onToggle={handleToggleCard}
-                onReport={(handId) => setReport({ hand: handId })}
-              />
-            ) : (
-              <CardView
-                card={card}
-                sim={sim}
-                scrub={scrub}
-                from={doc.from}
-                compare={sim.compares.find((c) => c.cardId === card.id)}
-                flipped={flippedId === card.id}
-                onRemove={handleRemoveCard}
-                onToggle={handleToggleCard}
-                onTune={handleTuneCard}
-                onWorkshop={handleWorkshopCard}
-              />
-            )
-          }
+          renderItem={(card) => (
+            <TableCard
+              card={card}
+              sim={sim}
+              mc={mc}
+              scrub={scrub}
+              from={doc.from}
+              flippedId={flippedId}
+              onRemoveCard={handleRemoveCard}
+              onToggleCard={handleToggleCard}
+              onTuneCard={handleTuneCard}
+              onWorkshopCard={handleWorkshopCard}
+              onOpenHandReport={(handId) => setReport({ hand: handId })}
+            />
+          )}
         />
         {root.children.length === 0 && <p className="hand-empty">your hand is empty — draw from the pile</p>}
       </footer>
@@ -757,42 +551,20 @@ export function App(): ReactElement {
         onBurnSaved={handleBurnSaved}
       />
 
-      {/* the compare fixture: one card back beside the draw pile — anything
-          that can be a plan may challenge the table, so it is always there.
-          While a comparison plays, the card turns over into the challenger. */}
-      {!compareSel && (
-        <button
-          className="duel"
-          onClick={() => {
-            setOpenHandId(null) // the comparison lives on the chart — fold any opened hand
-            const lastSaved = savedHands[savedHands.length - 1]
-            setCompareSel(lastSaved ? { kind: 'saved', id: lastSaved.id } : { kind: 'preset', id: PRESETS[0]!.id })
-          }}
-          title="Compare — the table against a saved hand, a preset, or a single card, on one chart"
-          aria-label="Compare the table against another plan"
-        >
-          <span className="duel-card" aria-hidden="true">
-            <span className="duel-word">Compare</span>
-          </span>
-        </button>
-      )}
-
-      {/* comparing: the fixture's spot holds the challenger, turned over —
-          the card back wears the pick's name; the table is always the solid
-          line, so this one card is the whole choosing, and clicking it again
-          turns the comparison off */}
-      {compareSel && (
-        <ComparePicks
-          sel={compareSel}
-          savedHands={savedHands}
-          library={library}
-          onChange={setCompareSel}
-          onExit={() => {
-            setCompareSel(null)
-            setReport((r) => (r === 'compare-a' || r === 'compare-b' ? null : r))
-          }}
-        />
-      )}
+      <CompareFixture
+        sel={compareSel}
+        savedHands={savedHands}
+        library={library}
+        onEnter={(sel) => {
+          setOpenHandId(null) // the comparison lives on the chart — fold any opened hand
+          setCompareSel(sel)
+        }}
+        onChange={setCompareSel}
+        onExit={() => {
+          setCompareSel(null)
+          setReport((r) => (r === 'compare-a' || r === 'compare-b' ? null : r))
+        }}
+      />
 
       <Workshop
         open={workshopOpen}

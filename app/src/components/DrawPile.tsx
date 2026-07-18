@@ -9,6 +9,7 @@ import { PRESETS, type HandPreset } from '../presets'
 import { countLeaves, type SavedHand } from '../savedHands'
 import { newUid } from '../uid'
 import { Card } from './Card'
+import { Drawer } from './Drawer'
 
 /**
  * The draw pile: a face-down deck in the corner of the table. Open it and
@@ -232,22 +233,23 @@ export function DrawPile({ open, targetName, planName, authored, savedHands, onO
       </button>
 
       {open && (
-        <div className="drawer" onClick={onClose} role="dialog" aria-label="Draw pile">
-          <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
-            <header className="drawer-bar">
-              <h2>Draw pile</h2>
-              <p className="drawer-hint">
-                click to draw into <strong>{targetName}</strong> — draw as many as you like · order matters — a hand plays left to right
-              </p>
-              <button className="drawer-close" onClick={onClose} aria-label="Close">
-                ×
-              </button>
-              {dealt && (
-                <span className="drawer-dealt" key={dealt.n} aria-live="polite">
-                  ✓ {dealt.label} → {targetName}
-                </span>
-              )}
-            </header>
+        <Drawer
+          label="Draw pile"
+          title="Draw pile"
+          hint={
+            <>
+              click to draw into <strong>{targetName}</strong> — draw as many as you like · order matters — a hand plays left to right
+            </>
+          }
+          bar={
+            dealt && (
+              <span className="drawer-dealt" key={dealt.n} aria-live="polite">
+                ✓ {dealt.label} → {targetName}
+              </span>
+            )
+          }
+          onClose={onClose}
+        >
             {/* one shelf of hands — saved ones and presets alike; whose they are doesn't matter */}
             <h3 className="drawer-section">Hands</h3>
             <div className="preset-row">
@@ -311,8 +313,7 @@ export function DrawPile({ open, targetName, planName, authored, savedHands, onO
                 <DrawerCard key={bp.id} bp={bp} onChoose={chooseBlueprint} />
               ))}
             </div>
-          </div>
-        </div>
+        </Drawer>
       )}
     </>
   )

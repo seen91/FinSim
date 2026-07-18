@@ -99,7 +99,7 @@ export function contenderDoc(base: Doc, c: Contender): Doc {
   return doc
 }
 
-export interface ContenderRun {
+interface ContenderRun {
   label: string
   netWorth: Series
   /** The month this plan first (sustainably) reaches the goal — null if never within the horizon. */

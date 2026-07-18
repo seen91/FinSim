@@ -85,7 +85,7 @@ export function addSeries(doc: { world?: { series?: Record<string, SampledData> 
 }
 
 /** Every named world series a card (template) references, nested hands included. */
-export function seriesIdsIn(card: Card): string[] {
+function seriesIdsIn(card: Card): string[] {
   switch (card.kind) {
     case 'source':
       return card.flow.type === 'sampled' && card.flow.seriesId ? [card.flow.seriesId] : []

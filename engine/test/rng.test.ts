@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createRng, shuffle } from '../src/index.js'
+import { createRng } from '../src/index.js'
 
 describe('seeded rng', () => {
   it('is deterministic for a given seed', () => {
@@ -35,16 +35,5 @@ describe('seeded rng', () => {
     }
     expect(() => rng.int(0)).toThrow()
     expect(() => rng.int(2.5)).toThrow()
-  })
-
-  it('shuffle is a deterministic permutation and does not mutate', () => {
-    const deck = ['MSFT', 'INTC', 'NOK', 'ERIC', 'GE', 'KO', 'ENE']
-    const before = deck.slice()
-    const a = shuffle(createRng(1990), deck)
-    const b = shuffle(createRng(1990), deck)
-    expect(deck).toEqual(before)
-    expect(a).toEqual(b)
-    expect(a.slice().sort()).toEqual(deck.slice().sort())
-    expect(shuffle(createRng(1991), deck)).not.toEqual(a)
   })
 })

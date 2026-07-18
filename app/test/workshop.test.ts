@@ -1,6 +1,7 @@
 import { simulate, validateTable } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
-import { AUTHORABLE_KINDS, blankCard, headlineFor, mergeLibrary, redesign, validateAuthored, type AuthoredCard } from '../src/authored'
+import { AUTHORABLE_KINDS, blankCard, headlineFor, redesign, validateAuthored, type AuthoredCard } from '../src/authored'
+import { mergeLibrary } from '../src/identity'
 import { builtinOf, pileRef, presetRef } from '../src/builtins'
 import { addCard } from '../src/hands'
 import { canonicalOf, instanceOf, isInstance, resolveInstance, resolveTable } from '../src/instances'

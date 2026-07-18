@@ -1,7 +1,7 @@
 import { priceCurveOf, type Card as EngineCard, type Curve, type Take } from '@finsim/engine'
 import type { ReactElement } from 'react'
 import { CADENCE_SUFFIX } from '../authored'
-import { formatNumber } from '../format'
+import { formatNumber, round } from '../format'
 import { effectiveValue, tuneOf, withTune } from '../tune'
 
 /**
@@ -20,7 +20,6 @@ interface Dial {
   format: (v: number) => string
 }
 
-const round = (v: number): number => Math.round(v * 1000) / 1000
 const money = (v: number): string => formatNumber(Math.round(v))
 const rate = (v: number): string => `${formatNumber(round(v * 100))} %/yr`
 const share = (v: number): string => `${formatNumber(round(v * 100))} %`

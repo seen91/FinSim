@@ -1,6 +1,6 @@
 import type { SampledData } from '@finsim/engine'
-import type { AuthoredCard } from './authored'
-import { isInstance, refBase, type HandNode, type TableNode } from './instances'
+import { stampCardId, type AuthoredCard } from './authored'
+import { isInstance, nodesIn, refBase, type HandNode, type TableNode } from './instances'
 import { seriesIdsInNode } from './seriesImport'
 import { UID_SUFFIX } from './uid'
 
@@ -50,12 +50,11 @@ function remint(node: TableNode, freshUid: () => string): TableNode {
   if (isInstance(node)) return { ...node, id: `${refBase(node.ref)}-${freshUid()}` }
   if (node.kind === 'hand') return { ...node, id: `hand-${freshUid()}`, children: node.children.map((c) => remint(c, freshUid)) }
   // the raw-card door (solo charts, hand-built test tables): same readable-base remint
-  node.id = `${node.id.replace(UID_SUFFIX, '')}-${freshUid()}`
-  if (node.kind === 'rule') node.rule.id = `${node.id}-rule`
+  stampCardId(node, `${node.id.replace(UID_SUFFIX, '')}-${freshUid()}`)
   return node
 }
 
-/** How many cards a saved hand holds — instances and raw cards count, hands recurse. */
+/** How many cards a saved hand holds — instances and raw cards count, hands don't. */
 export function countLeaves(hand: HandNode): number {
-  return hand.children.reduce((n, c) => n + (!isInstance(c) && c.kind === 'hand' ? countLeaves(c) : 1), 0)
+  return [...nodesIn(hand)].filter((n) => isInstance(n) || n.kind !== 'hand').length
 }

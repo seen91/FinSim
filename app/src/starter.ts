@@ -5,7 +5,7 @@ import type { Doc } from './model'
 import { PRESETS } from './presets'
 
 /** A bare table: no cards, just the goal and an auto horizon. */
-export function emptyDoc(): Doc {
+function emptyDoc(): Doc {
   const now = new Date() // app-side only: the engine never touches wall-clock time
   return {
     from: ym(now.getFullYear(), now.getMonth() + 1),

@@ -29,7 +29,7 @@ export const MC_PATHS = 200
  * renders, and two tables must be judged under the same futures — the seed
  * is part of the product, not a knob.
  */
-export const MC_SEED = 0x515eed
+const MC_SEED = 0x515eed
 
 export interface BundleRange {
   cardId: string

@@ -1,5 +1,5 @@
 import type { Card, CashConfig, HandCard, Table, Take } from '@finsim/engine'
-import type { AuthoredCard } from './authored'
+import { stampCardId, type AuthoredCard } from './authored'
 import { builtinOf } from './builtins'
 import type { GlyphName } from './icons'
 import type { Tune } from './tune'
@@ -58,6 +58,11 @@ export function isInstance(node: TableNode): node is CardInstance {
   return 'ref' in node
 }
 
+/** A node's display name: hands and raw cards wear one, instances defer to their id. */
+export function nodeName(node: TableNode): string {
+  return 'name' in node ? (node.name ?? node.id) : node.id
+}
+
 /** The readable base of a ref: what follows a built-in's "pile:"/"preset:" prefix, a design id whole. */
 export function refBase(ref: string): string {
   return ref.slice(ref.indexOf(':') + 1)
@@ -81,8 +86,7 @@ export function resolveInstance(inst: CardInstance, library: AuthoredCard[]): Ca
   const canonical = canonicalOf(inst.ref, library)
   if (!canonical) throw new Error(`card "${inst.id}" plays a design this table does not know ("${inst.ref}")`)
   const card = structuredClone(canonical.card)
-  card.id = inst.id
-  if (card.kind === 'rule') card.rule.id = `${inst.id}-rule`
+  stampCardId(card, inst.id)
   if (inst.enabled === false) card.enabled = false
   const worn = card as Card & { glyph?: GlyphName; tune?: Tune }
   worn.glyph = canonical.glyph
@@ -107,10 +111,15 @@ export function resolveTable(table: AppTable, library: AuthoredCard[]): Table {
   return { ...table, root: resolveNode(table.root, library) as HandCard }
 }
 
+/** Every node in a subtree (the node itself included), depth-first, in table order — the one walk every collector shares. */
+export function* nodesIn(node: TableNode): Generator<TableNode> {
+  yield node
+  if (!isInstance(node) && node.kind === 'hand') for (const child of node.children) yield* nodesIn(child)
+}
+
 /** Every instance in a node's subtree (the node itself included), depth-first, in table order. */
 export function* instancesIn(node: TableNode): Generator<CardInstance> {
-  if (isInstance(node)) yield node
-  else if (node.kind === 'hand') for (const child of node.children) yield* instancesIn(child)
+  for (const n of nodesIn(node)) if (isInstance(n)) yield n
 }
 
 /** Every ref the table's instances play, deduplicated, in table order. */
@@ -122,14 +131,10 @@ export function refsIn(root: HandNode): string[] {
   return refs
 }
 
-/** Find any node — instance, hand or raw card — by id, depth-first. */
+/** Find any node — instance, hand or raw card — by id, depth-first (the root itself excluded). */
 export function findNode(root: HandNode, id: string): TableNode | null {
   for (const child of root.children) {
-    if (child.id === id) return child
-    if (!isInstance(child) && child.kind === 'hand') {
-      const found = findNode(child, id)
-      if (found) return found
-    }
+    for (const n of nodesIn(child)) if (n.id === id) return n
   }
   return null
 }

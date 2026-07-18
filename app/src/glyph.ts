@@ -27,7 +27,7 @@ export const CARD_GLYPHS: GlyphName[] = [
   'cash',
 ]
 
-export function isCardGlyph(value: unknown): value is GlyphName {
+function isCardGlyph(value: unknown): value is GlyphName {
   return typeof value === 'string' && (CARD_GLYPHS as string[]).includes(value)
 }
 

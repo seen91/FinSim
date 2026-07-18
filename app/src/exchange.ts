@@ -1,7 +1,7 @@
 import { validateTable } from '@finsim/engine'
 import type { AuthoredCard } from './authored'
 import { adoptNameIds } from './identity'
-import { isInstance, resolveTable, type TableNode } from './instances'
+import { isInstance, nodesIn, resolveTable, type HandNode } from './instances'
 import { migrateDoc, type Doc } from './model'
 import type { SavedHand } from './savedHands'
 
@@ -45,12 +45,11 @@ const VERSION = 3
 
 /** Does the file carry a margin card — in a design's template, raw on the table, or riding a saved hand? */
 function carriesMargin(doc: Doc, designs: AuthoredCard[], savedHands: SavedHand[]): boolean {
-  const raw = (node: TableNode): boolean =>
-    !isInstance(node) && (node.kind === 'hand' ? node.children.some(raw) : node.kind === 'margin')
+  const rawMargin = (hand: HandNode): boolean => [...nodesIn(hand)].some((n) => !isInstance(n) && n.kind === 'margin')
   return (
     designs.some((a) => a.card.kind === 'margin') ||
-    doc.table.root.children.some(raw) ||
-    savedHands.some((s) => s.hand.children.some(raw))
+    rawMargin(doc.table.root) ||
+    savedHands.some((s) => rawMargin(s.hand))
   )
 }
 

@@ -25,6 +25,11 @@ export function formatNumber(value: number): string {
   return editNum.format(value)
 }
 
+/** Round to the 3 decimals an editable field shows. */
+export function round(v: number): number {
+  return Math.round(v * 1000) / 1000
+}
+
 /** Compact money: 10 000 000 → "10 M", 1 500 000 → "1,5 M", 10 000 → "10 k". */
 export function formatCompact(value: number): string {
   const abs = Math.abs(value)

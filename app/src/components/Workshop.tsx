@@ -2,16 +2,15 @@ import { valueAt } from '@finsim/engine'
 import { useCallback, useRef, useState, type ReactElement } from 'react'
 import { AUTHORABLE_KINDS, blankCard, headlineFor, redesign, type AuthoredCard, type AuthorableKind } from '../authored'
 import { builtinOf } from '../builtins'
-import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
 import { nameIdOf, restampDesign, untaken } from '../identity'
 import { refsIn, repointInstances } from '../instances'
-import type { Doc, Sim } from '../model'
+import { isBalanceKind, type Doc, type Sim } from '../model'
 import type { SavedHand } from '../savedHands'
 import { newUid } from '../uid'
 import { Card } from './Card'
 import { CardMathEditor, FrontMatterEditor } from './CardEditor'
-import { frontStats } from './CardView'
+import { frontStats, liveHeadline } from './CardView'
 import { DataBench } from './DataBench'
 
 /**
@@ -172,15 +171,14 @@ export function Workshop({ open, onClose, doc, update, library, savedHands, onLi
     const inPlay = refsInPlay.includes(canonical.id)
     // the bench face reads like a table card: scrub the chart above and the
     // headline follows — this month's flow, or an asset/debt's balance
-    const isBalance = card.kind === 'asset' || card.kind === 'debt' || card.kind === 'margin'
+    const isBalance = isBalanceKind(card.kind)
     const liveSeries = focusSim && card.kind !== 'rule' ? (isBalance ? focusSim.active.balances : focusSim.active.contributions).find((s) => s.id === card.id) : undefined
     const live = liveSeries ? valueAt(liveSeries, scrub) : null
     const face = {
       kind: card.kind,
       name: card.name ?? canonical.id,
       glyph: canonical.glyph,
-      headline: live !== null ? (isBalance ? formatAmount(live) : formatPerMonth(live)) : headlineFor(card),
-      ...(live !== null ? { headlineClass: live > 0 ? ('pos' as const) : live < 0 ? ('neg' as const) : ('' as const) } : {}),
+      ...(live !== null ? liveHeadline(live, isBalance) : { headline: headlineFor(card) }),
       stats: frontStats(card, doc.world),
       ...(canonical.description ? { description: canonical.description } : {}),
     }

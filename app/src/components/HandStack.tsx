@@ -3,13 +3,13 @@ import type { ReactElement } from 'react'
 import { formatAmount, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
 import type { BundleRange } from '../mc'
-import type { CardCompare, Sim } from '../model'
+import { isBalanceKind, type CardCompare, type Sim } from '../model'
 import { deltaVerdict, rangeVerdict } from '../verdict'
 import { CardShelf } from './CardShelf'
 
 /** A hand at rest: a pile of stacked cards. Tap it to open the hand. */
 
-export function countCards(hand: HandCard): number {
+function countCards(hand: HandCard): number {
   return hand.children.reduce((sum, c) => sum + (c.kind === 'hand' ? countCards(c) : 1), 0)
 }
 
@@ -18,12 +18,12 @@ export function countCards(hand: HandCard): number {
  * its monthly flow builds. Null if the hand holds no balances at all, so a
  * pure flow hand shows nothing rather than a meaningless zero.
  */
-export function handHeld(hand: HandCard, sim: Sim, scrub: number): number | null {
+function handHeld(hand: HandCard, sim: Sim, scrub: number): number | null {
   let sum = 0
   let has = false
   const walk = (h: HandCard): void => {
     for (const c of h.children) {
-      if (c.kind === 'asset' || c.kind === 'debt' || c.kind === 'margin') {
+      if (isBalanceKind(c.kind)) {
         has = true
         const s = sim.active.balances.find((b) => b.id === c.id)
         if (s) sum += valueAt(s, scrub)

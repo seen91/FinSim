@@ -1,5 +1,5 @@
 import { evalCurve, monthlyFactor, periodsPerMonth, priceCurveOf, resolveSampled, sampleAt } from './curves.js'
-import { allCards } from './tree.js'
+import { allCards, cardsBelow } from './tree.js'
 import type {
   AssetCard,
   Card,
@@ -184,16 +184,15 @@ export function simulate(table: Table, world: World, from: number, to: number, s
   const collectPositional = (hand: HandCard): void => {
     for (const [index, child] of hand.children.entries()) {
       if (child.enabled === false) continue
-      const below = (): Card[] => hand.children.slice(index + 1).flatMap((c) => (c.kind === 'hand' ? [c, ...allCards(c)] : [c]))
       if (child.kind === 'rule') {
-        activeRules.push({ rule: child.rule, scope: new Set(below().map((c) => c.id)), start: child.startMonth ?? from })
+        activeRules.push({ rule: child.rule, scope: new Set(cardsBelow(hand, index).map((c) => c.id)), start: child.startMonth ?? from })
       } else if (child.kind === 'margin') {
         marginStates.set(child.id, {
           card: child,
           monthlyRate: monthlyFactor(child.interest.expected) - 1,
           balance: 0,
           start: child.startMonth ?? from,
-          pegged: below().filter((c): c is AssetCard => c.kind === 'asset'),
+          pegged: cardsBelow(hand, index).filter((c): c is AssetCard => c.kind === 'asset'),
         })
       } else if (child.kind === 'hand') {
         collectPositional(child)
@@ -439,13 +438,8 @@ export function simulate(table: Table, world: World, from: number, to: number, s
           balancePoints.get(state.card.id)![i] = state.balance
         }
       }
-      for (const state of debtStates.values()) {
-        if (month >= state.start && ruleApplies(r, state.card, month)) {
-          state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
-          balancePoints.get(state.card.id)![i] = neg(state.balance)
-        }
-      }
-      for (const state of marginStates.values()) {
+      // debts and margins are the same shape here: a positive balance reported negated
+      for (const state of [...debtStates.values(), ...marginStates.values()]) {
         if (month >= state.start && ruleApplies(r, state.card, month)) {
           state.balance = applyBalanceEffect(rule.effect, state.balance, rule.id)
           balancePoints.get(state.card.id)![i] = neg(state.balance)

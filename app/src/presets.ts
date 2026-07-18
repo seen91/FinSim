@@ -13,7 +13,7 @@ import type { CardInstance, HandNode } from './instances'
  * importing the card lands the data in `world.series` too, so a priced
  * preset works on any table — fresh or long-saved.
  */
-export interface PresetCard {
+interface PresetCard {
   key: string
   name: string
   glyph: GlyphName

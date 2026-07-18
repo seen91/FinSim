@@ -1,11 +1,26 @@
 import { formatMonth, formatMonthsDelta, fromMonthIndex, quantile } from '@finsim/engine'
 import type { ReactElement } from 'react'
 import { formatAmount, formatPercent } from '../format'
-import { Glyph } from '../icons'
-import { findNode } from '../instances'
+import { findNode, nodeName } from '../instances'
 import type { Mc } from '../mc'
 import type { PlayedDoc } from '../model'
 import { rangeVerdict, signedDelta } from '../verdict'
+import { Drawer } from './Drawer'
+
+/** The reports' one picture: a row of share bars, a tick under the labeled ones (an empty tick reads quiet). */
+function ReportHistogram({ label, bars }: { label: string; bars: { key: number; title: string; share: number; tick: string }[] }): ReactElement {
+  const maxShare = Math.max(...bars.map((b) => b.share), 1e-9)
+  return (
+    <div className="report-hist" role="img" aria-label={label}>
+      {bars.map((b) => (
+        <div key={b.key} className="report-hist-col" title={b.title}>
+          <div className="report-hist-bar" style={{ height: `${String(Math.round((b.share / maxShare) * 100))}%` }} />
+          <span className={`report-hist-year num${b.tick ? '' : ' quiet'}`}>{b.tick}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 /**
  * The bundle report: one hand's range line, unfolded. The "+X – Y in 80 % of
@@ -19,7 +34,7 @@ export function BundleReport({ handId, mc, doc, onClose }: { handId: string | nu
   const range = mc.ranges.get(handId)
   if (!range) return null
   const node = findNode(doc.table.root, handId)
-  const name = node && 'name' in node ? (node.name ?? node.id) : handId
+  const name = node ? nodeName(node) : handId
   const pct = (v: number): string => formatPercent(v, 0)
   const { deltas } = range
 
@@ -36,7 +51,6 @@ export function BundleReport({ handId, mc, doc, onClose }: { handId: string | nu
     for (const d of deltas) counts[Math.floor(d / width) - first]!++
     hist = counts.map((count, i) => ({ start: (first + i) * width, share: count / deltas.length }))
   }
-  const maxShare = Math.max(...hist.map((h) => h.share), 1e-9)
   const labelEvery = Math.ceil(hist.length / 6)
 
   const spanRows: [string, number][] =
@@ -56,17 +70,15 @@ export function BundleReport({ handId, mc, doc, onClose }: { handId: string | nu
   const reachedWithout = range.crossingsWithout.filter((m): m is number => m !== null).sort((a, b) => a - b)
 
   return (
-    <div className="drawer" role="dialog" aria-label={`Futures report for ${name}`} onClick={onClose}>
-      <div className="drawer-panel rulebook report" onClick={(e) => e.stopPropagation()}>
-        <header className="drawer-bar">
-          <Glyph name="bundle" size={22} />
-          <h2>{name}, across futures</h2>
-          <p className="drawer-hint">one hand&rsquo;s range, unfolded — press Esc or click outside to close</p>
-          <button className="drawer-close" onClick={onClose} aria-label="Close the hand's futures report">
-            ×
-          </button>
-        </header>
-
+    <Drawer
+      label={`Futures report for ${name}`}
+      panelClass="rulebook report"
+      glyph="bundle"
+      title={`${name}, across futures`}
+      hint={<>one hand&rsquo;s range, unfolded — press Esc or click outside to close</>}
+      closeLabel="Close the hand's futures report"
+      onClose={onClose}
+    >
         <div className="rulebook-body report-body">
           <section>
             <p className="report-headline">
@@ -92,20 +104,15 @@ export function BundleReport({ handId, mc, doc, onClose }: { handId: string | nu
             <section>
               <h3>How the shift is dealt</h3>
               {hist.length > 1 && (
-                <div className="report-hist" role="img" aria-label="Share of comparable futures, per size of the time-to-goal shift">
-                  {hist.map(({ start, share }, i) => (
-                    <div
-                      key={start}
-                      className="report-hist-col"
-                      title={`${signedDelta(start)} to ${signedDelta(start + width)} to goal: ${pct(share)} of comparable futures`}
-                    >
-                      <div className="report-hist-bar" style={{ height: `${String(Math.round((share / maxShare) * 100))}%` }} />
-                      <span className={`report-hist-year num${i % labelEvery === 0 ? '' : ' quiet'}`}>
-                        {i % labelEvery === 0 ? (start === 0 ? '0' : signedDelta(start)) : ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <ReportHistogram
+                  label="Share of comparable futures, per size of the time-to-goal shift"
+                  bars={hist.map(({ start, share }, i) => ({
+                    key: start,
+                    title: `${signedDelta(start)} to ${signedDelta(start + width)} to goal: ${pct(share)} of comparable futures`,
+                    share,
+                    tick: i % labelEvery === 0 ? (start === 0 ? '0' : signedDelta(start)) : '',
+                  }))}
+                />
               )}
               <table className="report-table">
                 <tbody>
@@ -156,8 +163,7 @@ export function BundleReport({ handId, mc, doc, onClose }: { handId: string | nu
             </p>
           </section>
         </div>
-      </div>
-    </div>
+    </Drawer>
   )
 }
 
@@ -191,7 +197,6 @@ export function FuturesReport({ open, mc, doc, onClose }: { open: boolean; mc: M
     const year = fromYear + i
     return { year, share: (byYear.get(year) ?? 0) / run.paths }
   })
-  const maxShare = Math.max(...years.map((y) => y.share), 1 / run.paths)
 
   // net worth when the horizon closes, across all futures
   const ending = run.netWorth.map((points) => points[points.length - 1]!).sort((a, b) => a - b)
@@ -217,24 +222,22 @@ export function FuturesReport({ open, mc, doc, onClose }: { open: boolean; mc: M
     .map((range) => {
       // ranges exist only for hands, and hands keep their name on the node
       const node = findNode(doc.table.root, range.cardId)
-      const name = node && 'name' in node ? (node.name ?? node.id) : node?.id
+      const name = node ? nodeName(node) : undefined
       const verdict = rangeVerdict(range)
       return name !== undefined && verdict ? { name, range, verdict } : null
     })
     .filter((b) => b !== null)
 
   return (
-    <div className="drawer" role="dialog" aria-label="Futures report" onClick={onClose}>
-      <div className="drawer-panel rulebook report" onClick={(e) => e.stopPropagation()}>
-        <header className="drawer-bar">
-          <Glyph name="trend" size={22} />
-          <h2>Futures report</h2>
-          <p className="drawer-hint">the fan, unfolded — press Esc or click outside to close</p>
-          <button className="drawer-close" onClick={onClose} aria-label="Close the futures report">
-            ×
-          </button>
-        </header>
-
+    <Drawer
+      label="Futures report"
+      panelClass="rulebook report"
+      glyph="trend"
+      title="Futures report"
+      hint="the fan, unfolded — press Esc or click outside to close"
+      closeLabel="Close the futures report"
+      onClose={onClose}
+    >
         <div className="rulebook-body report-body">
           <section>
             <p className="report-headline">
@@ -254,18 +257,15 @@ export function FuturesReport({ open, mc, doc, onClose }: { open: boolean; mc: M
           {reached.length > 0 && (
             <section>
               <h3>When the goal lands</h3>
-              <div className="report-hist" role="img" aria-label="Share of futures first reaching the goal, per calendar year">
-                {years.map(({ year, share }) => (
-                  <div
-                    key={year}
-                    className="report-hist-col"
-                    title={`${String(year)}: the goal first lands this year in ${pct(share)} of futures`}
-                  >
-                    <div className="report-hist-bar" style={{ height: `${String(Math.round((share / maxShare) * 100))}%` }} />
-                    <span className={`report-hist-year num${year % 5 === 0 ? '' : ' quiet'}`}>{year % 5 === 0 ? `’${String(year % 100).padStart(2, '0')}` : ''}</span>
-                  </div>
-                ))}
-              </div>
+              <ReportHistogram
+                label="Share of futures first reaching the goal, per calendar year"
+                bars={years.map(({ year, share }) => ({
+                  key: year,
+                  title: `${String(year)}: the goal first lands this year in ${pct(share)} of futures`,
+                  share,
+                  tick: year % 5 === 0 ? `’${String(year % 100).padStart(2, '0')}` : '',
+                }))}
+              />
               <table className="report-table">
                 <tbody>
                   {ttgRows.map(([label, month]) => (
@@ -331,7 +331,6 @@ export function FuturesReport({ open, mc, doc, onClose }: { open: boolean; mc: M
             </p>
           </section>
         </div>
-      </div>
-    </div>
+    </Drawer>
   )
 }

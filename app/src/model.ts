@@ -1,6 +1,5 @@
 import { allCards, firstCrossing, goalDelta, simulate, valueAt, withoutCard, type Card, type GoalDelta, type Series, type SimResult, type Table, type World } from '@finsim/engine'
-import { useCallback, useState } from 'react'
-import { stripRiders, type AuthoredCard } from './authored'
+import { stampCardId, stripRiders, type AuthoredCard } from './authored'
 import { builtinMatching, normalizedMath } from './builtins'
 import { glyphOf } from './glyph'
 import { isInstance, resolveTable, type AppTable, type CardInstance, type TableNode } from './instances'
@@ -30,6 +29,11 @@ export interface Doc {
 
 /** A doc whose horizon has been resolved to a concrete number — what the sim boundary consumes. */
 export type PlayedDoc = Doc & { horizonMonths: number }
+
+/** The kinds that hold a balance (asset, debt, margin) — everything else moves flow or scaffolds. */
+export function isBalanceKind(kind: Card['kind']): boolean {
+  return kind === 'asset' || kind === 'debt' || kind === 'margin'
+}
 
 /**
  * What the sim actually plays: instances resolved to their canonical cards,
@@ -103,8 +107,7 @@ export function migrateDoc(doc: Doc, library: AuthoredCard[] = []): AuthoredCard
     if (existing) return existing
     const template = stripRiders(card)
     const id = designId(card.id.replace(UID_SUFFIX, ''))
-    template.id = id
-    if (template.kind === 'rule') template.rule.id = `${id}-rule`
+    stampCardId(template, id)
     minted.push({ id, glyph: glyphOf(card), description: '', card: template })
     mintedByMath.set(math, id)
     return id
@@ -239,25 +242,4 @@ export function runSim(doc: Doc, library: AuthoredCard[] = []): Sim {
       }
     })
   return { active, remainder, compares, resolvedRoot: resolved.root, world }
-}
-
-export interface DocStore {
-  doc: Doc
-  /** Apply a mutation to a fresh clone of the current document. */
-  update: (mutate: (doc: Doc) => void) => void
-  replace: (doc: Doc) => void
-}
-
-export function useDoc(initial: Doc): DocStore {
-  const [doc, setDoc] = useState(initial)
-
-  const update = useCallback((mutate: (doc: Doc) => void) => {
-    setDoc((d) => {
-      const next = structuredClone(d)
-      mutate(next)
-      return next
-    })
-  }, [])
-
-  return { doc, update, replace: setDoc }
 }

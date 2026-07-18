@@ -7,9 +7,9 @@ import { Glyph } from '../icons'
 import type { Mc } from '../mc'
 import type { PlayedDoc, Sim } from '../model'
 import { signedDelta } from '../verdict'
-import { CardView } from './CardView'
 import { Fan, type FanGeometry } from './Fan'
-import { HandFigures, HandStack, handShortfall, shortfallTitle } from './HandStack'
+import { HandFigures, handShortfall, shortfallTitle } from './HandStack'
+import { TableCard } from './TableCard'
 import { Timeline } from './Timeline'
 
 /**
@@ -388,32 +388,13 @@ export function Arena(props: Props): ReactElement {
   }
 
   if (!hand) {
-    // the whole plan's verdict, in the same shape the hand stacks use —
-    // this one, of course, factors in every card and hand on the table
-    const cross = firstCrossing(sim.active, doc.goal)
+    // the whole plan's verdict, in exactly the shape a compare contender
+    // wears — this one, of course, factors in every card and hand on the table
     return (
       <section className="arena">
         <Timeline sim={sim} goal={doc.goal} from={doc.from} horizonMonths={doc.horizonMonths} scrub={scrub} onScrub={onScrub} mc={mc} />
         <div className="chart-verdict">
-          {cross !== null ? (
-            <span className="chart-verdict-text num" title={`the whole table reaches the goal ${formatMonth(cross)}`}>
-              goal in <span className="pos">{formatMonthsDelta(cross - doc.from)}</span>
-            </span>
-          ) : (
-            <span className="chart-verdict-text num neg" title="the whole table never reaches the goal within the horizon">
-              goal out of reach
-            </span>
-          )}
-          {mc && (
-            <button
-              className="chart-verdict-odds num"
-              onClick={onOpenReport}
-              title="share of simulated futures that reach the goal within the horizon — click to unfold the full futures report"
-            >
-              in {formatPercent(mc.goalProbability, 0)} of futures
-              <Glyph name="book" size={10} />
-            </button>
-          )}
+          <ContenderVerdict crossing={firstCrossing(sim.active, doc.goal)} from={doc.from} mc={mc} line="the whole table" onOpenReport={onOpenReport} />
         </div>
       </section>
     )
@@ -448,35 +429,22 @@ export function Arena(props: Props): ReactElement {
             if (card.kind === 'hand') onNavigate(card.id)
             else onFlipCard(card.id)
           }}
-          renderItem={(card) =>
-            card.kind === 'hand' ? (
-              <HandStack
-                hand={card}
-                sim={sim}
-                scrub={scrub}
-                from={doc.from}
-                compare={sim.compares.find((c) => c.cardId === card.id)}
-                range={mc?.ranges.get(card.id)}
-                onRemove={onRemoveCard}
-                onToggle={onToggleCard}
-                onReport={onOpenHandReport}
-              />
-            ) : (
-              <CardView
-                card={card}
-                sim={sim}
-                scrub={scrub}
-                from={doc.from}
-                compare={sim.compares.find((c) => c.cardId === card.id)}
-                size={circle.cardWidth < FULL_CARD_W ? 'hand' : 'table'}
-                flipped={flippedId === card.id}
-                onRemove={onRemoveCard}
-                onToggle={onToggleCard}
-                onTune={onTuneCard}
-                onWorkshop={onWorkshopCard}
-              />
-            )
-          }
+          renderItem={(card) => (
+            <TableCard
+              card={card}
+              sim={sim}
+              mc={mc}
+              scrub={scrub}
+              from={doc.from}
+              size={circle.cardWidth < FULL_CARD_W ? 'hand' : 'table'}
+              flippedId={flippedId}
+              onRemoveCard={onRemoveCard}
+              onToggleCard={onToggleCard}
+              onTuneCard={onTuneCard}
+              onWorkshopCard={onWorkshopCard}
+              onOpenHandReport={onOpenHandReport}
+            />
+          )}
         />
         {/* the name reads as a watermark across the felt, out of the numbers' way — still the rename button */}
         <div className="hand-watermark">

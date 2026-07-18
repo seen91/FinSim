@@ -1,6 +1,7 @@
 import { formatMonth, type SampledData } from '@finsim/engine'
 import { useRef, useState, type ReactElement } from 'react'
-import { mergeLibrary, type AuthoredCard } from '../authored'
+import type { AuthoredCard } from '../authored'
+import { mergeLibrary } from '../identity'
 import { errorMessage } from '../format'
 import { Glyph } from '../icons'
 import type { Doc } from '../model'

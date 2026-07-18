@@ -26,15 +26,6 @@ export function firstCrossing(x: Series | SimResult, target: number): number | n
   return idx === points.length ? null : series.startMonth + idx
 }
 
-/** The first month a series touches the target, sustained or not. */
-export function firstTouch(x: Series | SimResult, target: number): number | null {
-  const series = seriesOf(x)
-  for (let i = 0; i < series.points.length; i++) {
-    if (series.points[i]! >= target) return series.startMonth + i
-  }
-  return null
-}
-
 export interface GoalDelta {
   /** Month the base scenario reaches the goal, or null if never (in range). */
   baseMonth: number | null
