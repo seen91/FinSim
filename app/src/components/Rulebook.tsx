@@ -169,8 +169,8 @@ export function Rulebook({ open, onClose }: { open: boolean; onClose: () => void
             <p>
               When a card&rsquo;s history <strong>runs out mid-horizon</strong>, its generic growth component (the <em>%&nbsp;/yr ±</em> on its back) takes
               over from the last real price — and from there the Monte Carlo dice apply, so the fan opens exactly where the data ends. A card without a
-              generic component simply freezes at its last price. A sampled <em>flow</em> whose data ends just stops at zero. Only a start <em>before</em> a
-              series begins cannot play — the table says so in plain words above the chart: move the start into the months the data covers.
+              generic component simply freezes at its last price. A sampled <em>flow</em> is silent outside its data — before it begins and after it ends.
+              A card whose history starts <em>after</em> the table does simply idles — in play but worth nothing, buying nothing — until its first real month.
             </p>
             <p>
               Two data traps: use <strong>total-return</strong> series (a price-only index understates returns by leaving out dividends), and amounts are

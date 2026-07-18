@@ -130,9 +130,9 @@ export function evalCurve(curve: Curve, ctx: CurveContext): number {
     }
     case 'sampled': {
       const data = resolveSampled(curve, ctx.world, 'sampled curve')
-      // a flow whose history has run out simply ends — 0, not a guess; but a
-      // month BEFORE the data is still an error (start inside the data)
-      if (ctx.month > data.startMonth + data.values.length - 1) return 0
+      // a flow is silent outside its history — hasn't begun, or has run
+      // out: 0, not a guess (§0 revision 2026-07-18; before-data errored)
+      if (ctx.month < data.startMonth || ctx.month > data.startMonth + data.values.length - 1) return 0
       return sampleAt(data, ctx.month, 'sampled curve')
     }
     case 'expression':

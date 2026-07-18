@@ -183,7 +183,7 @@ export function App(): ReactElement {
   const horizonMonths = compareState?.run ? Math.max(ownHorizonMonths, compareState.run.horizonMonths) : ownHorizonMonths
   const playDoc: PlayedDoc = useMemo(() => ({ ...doc, horizonMonths }), [doc, horizonMonths])
 
-  // a table can still fail to play — a start before a series begins, a burned
+  // a table can still fail to play — a missing world series, a burned
   // design an import still references: keep the last good sim on screen and say why
   const simState = useMemo(() => {
     try {
@@ -601,7 +601,6 @@ export function App(): ReactElement {
       {simState.error && (
         <div className="sim-error" role="alert">
           the table cannot play: {simState.error}
-          {simState.error.includes('no data for') && ' — move the table’s start into the months the data covers'}
         </div>
       )}
 

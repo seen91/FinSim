@@ -88,6 +88,29 @@ describe('minting a priced design from an imported series', () => {
     expect(design.description).toMatch(/currency/)
   })
 
+  it('lives the full arc: idle before its data, real prices inside, growth fallback after', () => {
+    const brief: SampledData = { startMonth: ym(1999, 1), values: [100, 100] }
+    const design = mintPricedDesign('brief', brief) // ships take 1 000/mo, growth 7 % ± 15 %
+    const doc: Doc = {
+      table: { root: { id: 'root', kind: 'hand', children: [] } },
+      world: { series: { brief } },
+      goal: 1e9,
+      from: ym(1998, 11),
+      horizonMonths: 6,
+    }
+    addCard(doc, null, instanceOf(design.id, 'u1'))
+    const sim = runSim(doc, [design])
+    const fund = sim.active.balances[0]!.points
+    // before the data: idle — nothing bought, nothing owed
+    expect(fund.slice(0, 2)).toEqual([0, 0])
+    // inside the data: deposits buy at the real 100
+    expect(fund[2]).toBe(1_000)
+    expect(fund[3]).toBe(2_000)
+    // after the data: not silence — the generic growth extrapolates the price
+    // from the last real 100 (20 units ride to 100·1.07^(1/12), +1 000 deposit)
+    expect(fund[4]).toBeCloseTo(20 * 100 * Math.pow(1.07, 1 / 12) + 1_000, 8)
+  })
+
   it('plays onto a table (as an instance) and simulates against its series', () => {
     const doc = goldenDoc(ym(1999, 1))
     const design = mintPricedDesign('golden', data)
@@ -122,8 +145,12 @@ describe('the start date is the backtest control', () => {
     expect(sim.active.balances.find((b) => b.id === 'fund')!.points).toEqual(PRICES.map((_, i) => (i + 1) * 1_000))
   })
 
-  it('started before the data the table cannot play, readably', () => {
-    expect(() => runSim(goldenDoc(ym(1998, 12)))).toThrow(/no data for/)
+  it('started before the data the fund idles, then buys from its first real month', () => {
+    const sim = runSim(goldenDoc(ym(1998, 12)))
+    const fund = sim.active.balances.find((b) => b.id === 'fund')!.points
+    expect(fund[0]).toBe(0)
+    // the 12-month horizon covers 11 data months after the idle one
+    expect(fund.slice(1)).toEqual(GOLDEN_BALANCES.slice(0, 11))
   })
 
   it('a historical-only table draws no fan while the horizon stays inside the data', () => {
@@ -175,8 +202,11 @@ describe('the draw pile demo history ("Demo index fund")', () => {
     expect(runMc(doc)).not.toBeNull()
   })
 
-  it('a start before 1970 cannot play, readably', () => {
-    expect(() => runSim(demoDoc(ym(1969, 1)))).toThrow(/no data for/)
+  it('a start before 1970 plays — the fund idles until its data begins', () => {
+    const sim = runSim(demoDoc(ym(1969, 1)))
+    const fund = sim.active.balances[0]!.points
+    expect(fund.slice(0, 12).every((p) => p === 0)).toBe(true)
+    expect(fund[12]).toBeGreaterThan(0)
   })
 
   it('addSeries never rewrites a series already on the table', () => {

@@ -139,7 +139,7 @@ describe('the pipeline: a hand is played top to bottom', () => {
     expect(balance(r, 'msft')[2]).toBeCloseTo(3641, 9)
   })
 
-  it('priced assets can start from initial units; data ending mid-run freezes the price, starting before it is an error', () => {
+  it('priced assets can start from initial units; data ending mid-run freezes the price, data starting later idles', () => {
     const r = simulate(
       table([{ id: 'msft', kind: 'asset', price: { data: { startMonth: 0, values: [100, 90, 130] } }, initialUnits: 5 }]),
       {},
@@ -150,9 +150,9 @@ describe('the pipeline: a hand is played top to bottom', () => {
     // beyond the data with no growth component the last real price holds
     const frozen = simulate(table([{ id: 'x', kind: 'asset', price: { data: { startMonth: 0, values: [100] } }, initialUnits: 1 }]), {}, 0, 1)
     expect(balance(frozen, 'x')).toEqual([100, 100])
-    expect(() =>
-      simulate(table([{ id: 'x', kind: 'asset', price: { data: { startMonth: 1, values: [100] } }, initialUnits: 1 }]), {}, 0, 1),
-    ).toThrow(/no data/)
+    // before the data the card idles — worth nothing until its first real month
+    const idle = simulate(table([{ id: 'x', kind: 'asset', price: { data: { startMonth: 1, values: [100] } }, initialUnits: 1 }]), {}, 0, 1)
+    expect(balance(idle, 'x')).toEqual([0, 100])
   })
 
   it('cards respect their start month', () => {

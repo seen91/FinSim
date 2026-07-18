@@ -212,16 +212,21 @@ export function simulate(table: Table, world: World, from: number, to: number, s
   for (const card of cards) {
     if (card.kind === 'asset') {
       const price = card.price ? priceCurveOf(card.price) : null
+      const data = price?.type === 'sampled' ? resolveSampled(price, world, `Asset "${card.id}" price`) : null
+      const start = card.startMonth ?? from
       assetStates.set(card.id, {
         card,
         factor: monthlyFactor(card.growth?.expected ?? 0) * monthlyFactor(-(card.fee ?? 0)),
         sigmaMonthly: (card.growth?.volatility ?? 0) / Math.sqrt(12),
-        data: price?.type === 'sampled' ? resolveSampled(price, world, `Asset "${card.id}" price`) : null,
+        data,
         priceCurve: price && price.type !== 'sampled' ? price : null,
         price: null,
         balance: 0,
         units: 0,
-        start: card.startMonth ?? from,
+        // before its data begins the card has no price to exist at, so it
+        // idles — in play but worth nothing, taking nothing — until the
+        // first real month (§0 revision 2026-07-18; erroring came before)
+        start: data ? Math.max(start, data.startMonth) : start,
       })
     } else if (card.kind === 'debt') {
       debtStates.set(card.id, {
@@ -282,6 +287,8 @@ export function simulate(table: Table, world: World, from: number, to: number, s
         }
         case 'asset': {
           const state = assetStates.get(card.id)!
+          // a sampled price pinned to future months: idle until it begins
+          if (month < state.start) break
           if (state.data || state.priceCurve) {
             if (state.priceCurve) {
               // An analytic price IS the curve — exact at every month, in
@@ -292,8 +299,8 @@ export function simulate(table: Table, world: World, from: number, to: number, s
               // Beyond its end the card's growth component takes over from the
               // last price (frozen without one) — that stretch is simulated
               // future, so it is also the only stretch the dice may touch.
-              // Before the data starts there is nothing to fall back FROM:
-              // sampleAt throws, readably.
+              // (Months before the data never reach here — the idle guard
+              // above holds the card out of play until its data begins.)
               state.price = sampleAt(state.data!, month, `Asset "${card.id}" price`)
             } else if (state.price === null) {
               state.price = state.data!.values[state.data!.values.length - 1]!

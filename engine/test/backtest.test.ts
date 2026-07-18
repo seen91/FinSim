@@ -44,8 +44,21 @@ describe('golden backtest scenario (hand-checked)', () => {
     expect(result.netWorth.points).toEqual(balances)
   })
 
-  it('starting before the data is an error, readably — there is nothing to fall back FROM', () => {
-    expect(() => simulate(t, world, ym(1998, 12), ym(1999, 12))).toThrow(/no data for 1998-12.*1999-01\.\.1999-12/)
+  it('started before the data the card idles — salary piles into cash until the first real month', () => {
+    const result = simulate(t, world, ym(1998, 11), ym(1999, 12))
+    const fund = result.balances.find((b) => b.id === 'fund')!.points
+    // two idle months: no price to exist at, so no take fires and nothing is bought
+    expect(fund.slice(0, 2)).toEqual([0, 0])
+    expect(fund.slice(2)).toEqual(balances)
+    // the un-taken salary fell through to cash and stays there
+    expect(result.cash.points).toEqual([1_000, 2_000, ...balances.map(() => 2_000)])
+    expect(result.netWorth.points.slice(2)).toEqual(balances.map((b) => b + 2_000))
+  })
+
+  it('pinned initial units materialize the month the data begins', () => {
+    const car = table({ id: 'car', kind: 'asset', price: { data: { startMonth: 3, values: [500, 490] } }, initialUnits: 2 })
+    const result = simulate(car, {}, 0, 4)
+    expect(result.balances.find((b) => b.id === 'car')!.points).toEqual([0, 0, 0, 1_000, 980])
   })
 })
 
@@ -94,10 +107,9 @@ describe('when the price data runs out mid-horizon', () => {
     expect(shocked).toEqual([2, 3, 4, 5])
   })
 
-  it('a sampled flow simply ends at 0 when its history runs out', () => {
+  it('a sampled flow is silent outside its history — before it begins and after it runs out', () => {
     const salary: SourceCard = { id: 'salary', kind: 'source', flow: { type: 'sampled', data: { startMonth: 0, values: [500, 700] } } }
-    const result = simulate(table(salary), {}, 0, 3)
-    expect(result.contributions.find((c) => c.id === 'salary')!.points).toEqual([500, 700, 0, 0])
-    expect(() => simulate(table(salary), {}, -1, 3)).toThrow(/no data/)
+    const result = simulate(table(salary), {}, -1, 3)
+    expect(result.contributions.find((c) => c.id === 'salary')!.points).toEqual([0, 500, 700, 0, 0])
   })
 })
