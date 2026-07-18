@@ -1,3 +1,13 @@
+#Handscribbeled rought notes by me
+Game mode 'Survival'
+My thought was to battle agains 'real' and fictional crashes, like in the 90's scenario there is first a housing crash and then inflation and crazy repo interest rate raise (sweden scenario).
+Like Sushi roll? I think this is what current M4 is 'Surival'.
+
+Game mode 'Battle'
+You battle until you can 'cash out' an opponent (instead of traditional HP)
+Otherwise like 'Slay the spire 2'? Where you gain rewards after each and build a hand, and there are some classes with class specific cards like 'Worker' which has no asset cars, only Source or something.
+Combine with below for themes for act 1, 2 & 3?
+
 # The Game — specification of the removed M4 prototype
 
 The M4 hot-seat game prototype was removed on 2026-07-18 so the repo is a clear
