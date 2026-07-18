@@ -95,11 +95,13 @@ goal" — before any game work. Two kinds of confidence, in order:
   - Consequences to handle: table export/import must carry the designs its instances reference (as packs already carry worn series) — doc format version bump + migration (stamped copies → instances of their design; unedited one-offs recognizable as built-ins → re-point at the built-in; edited orphans → mint into the library); the Workshop's one-off focus stage and the 2026-07-14 "to shelf"/burn tools collapse into the built-in mint path; chart focus, ghosts and Monte Carlo resolve instances before simulating.
   - Acceptance: draw three copies of a built-in drain → copy to shelf → edit the design → all three change on the table; dial one copy → only that copy moves; set one aside → the others keep playing; golden baselines ("goal in 20 yr 6 mo", car "+1 yr 5 mo", golden "1 yr 3 mo") intact through migration.
 
-## M4 — Game prototype, hot-seat ✅ done (2026-07-13)
+## M4 — Game prototype, hot-seat ✅ done (2026-07-13) — 🗑 removed (2026-07-18)
 
 Spec: DESIGN §4–5. Purpose: find out if the game is fun before building sync.
-Lives behind `/#game` (the simulator route is untouched); everything under
-`app/src/game/`, playtest-ready.
+Lived behind `/#game`; everything under `app/src/game/`, playtest-ready.
+**Removed 2026-07-18** to keep the repo a clear simulator — future game
+experiments start fresh from `GAME.md` (the prototype's spec); the code
+remains in git history at `4e29583`.
 
 - [x] "1990: The Decade Trade" scenario data pack (`scenario1990.ts` + `series1990.json`): **41 real instruments** — split/dividend-adjusted monthly closes 1987–2002 fetched from Yahoo Finance, rebased to 100, listing dates ARE the data (Cisco enters 1991, Qualcomm 1992, Amazon 1997, eBay/Priceline 1998/99); the savings account compounds the real 13-week T-bill yield; four delisted names (Enron, WorldCom, AOL, Yahoo!) reconstructed from known split-adjusted anchor closes, marked + footnoted on the card. Period-accurate one-liners; epistemic rule enforced by shape (`trailing()` never reads past the in-game month; risk grade + sparkline are trailing-only). USD treated as table units — no FX in v1, said on the setup screen
 - [x] Round loop as a **pure, serializable state machine** (`game.ts`, no React): DEAL (seeded per `(seed, round)`, newly-listed instruments guaranteed a dealt copy) → DRAFT (simultaneous pick-1-pass, direction alternates by round, last card discarded face-up; drafted cards are standing options) → COMMIT (sells then buys, atomic per player) → SIMULATE (Jan-close trades, year valued monthly) → INTERIM (best return collects the bank's bonus). Every decision is recorded; a game is reproducible from `(scenario, seed, decisions)`. 19 tests in `app/test/game.test.ts`

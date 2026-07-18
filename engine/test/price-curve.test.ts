@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { priceCurveOf, simulate, validateTable, type AssetCard, type Table } from '../src/index.js'
+import { priceCurveOf, simulate, validateTable, type AssetCard, type RuleCard, type Table } from '../src/index.js'
 
 /**
  * A price is any curve f(t) (decision 2026-07-17): a car depreciating along
@@ -82,7 +82,7 @@ describe('deposits and rules on curve-priced assets', () => {
       initialUnits: 1,
       tags: ['car'],
     }
-    const rule = {
+    const rule: RuleCard = {
       id: 'wealth-tax',
       kind: 'rule',
       rule: {
@@ -91,7 +91,7 @@ describe('deposits and rules on curve-priced assets', () => {
         target: { tags: ['car'] },
         effect: { type: 'balanceTax', rate: 0.5 },
       },
-    } as const
+    }
     const points = balancesOf(table(rule, car), 0, 2)
     // month 1: price 199 000, then half the units taxed away; month 2 rides the curve at 0.5 units
     expect(points).toEqual([200_000, 99_500, 99_000])
