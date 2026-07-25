@@ -1596,6 +1596,9 @@ button.hub-range:hover {
   z-index: 40;
   display: flex;
   justify-content: flex-end;
+  /* exactly the span of the two piles below (draw pile + gap + compare card),
+     so the figures can't nudge the fixture column's width around */
+  width: calc(96px + 1.3rem + 88px);
 }
 
 /* an actual brass plate: brushed gradient, beveled edges, the figures
@@ -1604,6 +1607,7 @@ button.hub-range:hover {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  width: 100%;
   padding: 0.45rem 0.85rem 0.4rem 0.75rem;
   background:
     radial-gradient(ellipse at 30% 0%, rgba(255, 244, 205, 0.5), transparent 65%),
@@ -1635,6 +1639,8 @@ button.hub-range:hover {
   display: flex;
   flex-direction: column;
   gap: 0.08rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .dock-row {

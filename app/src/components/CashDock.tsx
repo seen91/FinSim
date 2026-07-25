@@ -1,6 +1,6 @@
 import { valueAt } from '@finsim/engine'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { formatAmount, formatPercent, formatPerMonth } from '../format'
+import { formatAmount, formatCompact, formatPercent, formatPerMonth } from '../format'
 import { Glyph } from '../icons'
 import type { Doc, Sim } from '../model'
 import { Sparkline } from './Sparkline'
@@ -99,18 +99,26 @@ export function CashDock({
       >
         <Glyph name="cash" size={22} />
         <span className="dock-rows">
+          {/* compact figures so the plaque holds the fixed width of the piles
+              below it; the exact amount is engraved on the tooltip */}
           <span className="dock-row">
             <span className="dock-label">net worth</span>
-            <span className={`dock-value num${netWorth < 0 ? ' neg' : ''}`}>{formatAmount(netWorth)}</span>
+            <span className={`dock-value num${netWorth < 0 ? ' neg' : ''}`} title={formatAmount(netWorth)}>
+              {formatCompact(netWorth)}
+            </span>
           </span>
           <span className="dock-row">
             <span className="dock-label">cash</span>
-            <span className="dock-value num">{formatAmount(cash)}</span>
+            <span className="dock-value num" title={formatAmount(cash)}>
+              {formatCompact(cash)}
+            </span>
           </span>
           <span className="dock-row">
             <span className="dock-label">monthly</span>
             {/* engraved ink like the cash figure; red only when the month runs negative */}
-            <span className={`dock-value num${flow < 0 ? ' neg' : ''}`}>{formatPerMonth(flow)}</span>
+            <span className={`dock-value num${flow < 0 ? ' neg' : ''}`} title={formatPerMonth(flow)}>
+              {formatCompact(flow)} /mo
+            </span>
           </span>
         </span>
       </button>
