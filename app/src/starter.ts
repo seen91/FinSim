@@ -9,7 +9,7 @@ function emptyDoc(): Doc {
   const now = new Date() // app-side only: the engine never touches wall-clock time
   return {
     from: ym(now.getFullYear(), now.getMonth() + 1),
-    horizonMonths: null, // auto: the chart ends five years after the goal is reached
+    horizonMonths: null, // auto: the chart ends a scaled margin (up to three years) after the goal is reached
     goal: 2_000_000,
     table: {
       root: { id: 'root', name: 'Your plan', kind: 'hand', children: [] },

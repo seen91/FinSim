@@ -78,7 +78,7 @@ export function App(): ReactElement {
   }, [compareSel, doc, library, savedHands])
 
   // the horizon resolves to a number exactly once, here — an explicit End
-  // passes through, auto ends five years past the goal crossing — and
+  // passes through, auto ends a scaled margin past the goal crossing — and
   // everything downstream (sims, chart, reports) plays the resolved doc.
   // A comparison's shared horizon can outrun the table's own; the table's sim
   // follows it, so every month the scrub can reach exists on every series a

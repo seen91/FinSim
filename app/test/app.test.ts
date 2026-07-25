@@ -283,14 +283,36 @@ describe('effectiveHorizon: the auto horizon follows the goal', () => {
     expect(effectiveHorizon(doc)).toBe(17 * 12)
   })
 
-  it('auto ends five years after the month the goal is reached', () => {
+  it('auto ends three years after the month a distant goal is reached', () => {
     const doc = starterAt2026()
     expect(doc.horizonMonths).toBeNull()
     const horizon = effectiveHorizon(doc)
     // the crossing must be measurable inside the resolved horizon itself
     const sim = runSim(doc)
     const cross = firstCrossing(sim.active, doc.goal)!
-    expect(horizon).toBe(cross - doc.from + 1 + 5 * 12)
+    const monthsToGoal = cross - doc.from + 1
+    // the starter's 10 MSEK goal takes well over six years, so the margin is at its cap
+    expect(monthsToGoal).toBeGreaterThan(6 * 12)
+    expect(horizon).toBe(monthsToGoal + 3 * 12)
+  })
+
+  it('a goal reached quickly gets a proportionally shorter margin — half the journey, at least three months', () => {
+    const doc = starterAt2026()
+    doc.goal = 1 // net worth starts positive, so the crossing is the first month
+    const sim = runSim(doc)
+    const cross = firstCrossing(sim.active, doc.goal)!
+    const monthsToGoal = cross - doc.from + 1
+    expect(monthsToGoal).toBe(1)
+    expect(effectiveHorizon(doc)).toBe(monthsToGoal + 3)
+
+    // a mid-length journey lands between the floor and the cap
+    doc.goal = 500_000
+    const midSim = runSim(doc)
+    const midCross = firstCrossing(midSim.active, doc.goal)!
+    const midMonths = midCross - doc.from + 1
+    expect(midMonths).toBeGreaterThan(6)
+    expect(midMonths).toBeLessThan(6 * 12)
+    expect(effectiveHorizon(doc)).toBe(midMonths + Math.round(midMonths / 2))
   })
 
   it('a goal never reached falls back to 30 years', () => {

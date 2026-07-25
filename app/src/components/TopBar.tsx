@@ -113,7 +113,7 @@ export function TopBar({
                       }}
                     />
                   </label>
-                  <label title="the table's last month — by default it follows the goal (five years past the crossing); set a month to pin it, clear the field to follow again">
+                  <label title="the table's last month — by default it follows the goal (a bit past the crossing — up to three years); set a month to pin it, clear the field to follow again">
                     End
                     <input type="month" value={formatMonth(to)} onChange={(e) => onEnd(parseMonthText(e.target.value))} />
                   </label>

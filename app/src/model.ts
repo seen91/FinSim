@@ -23,7 +23,7 @@ export interface Doc {
   world?: World
   goal: number
   from: number
-  /** Explicit horizon, or null = auto: the chart runs to five years past the goal crossing. */
+  /** Explicit horizon, or null = auto: the chart runs a scaled margin (up to three years) past the goal crossing. */
   horizonMonths: number | null
 }
 
@@ -44,19 +44,28 @@ export function playedTable(doc: Doc, library: AuthoredCard[] = []): { table: Ta
   return { table: applyTuneTable(resolveTable(doc.table, library)), world: doc.world ?? {} }
 }
 
-/** How far past the goal crossing an auto horizon runs — enough after-story to see the plan hold. */
-const AUTO_MARGIN_MONTHS = 5 * 12
+/** The most after-story an auto horizon shows past the goal crossing. */
+const AUTO_MARGIN_MAX_MONTHS = 3 * 12
+/** The least after-story, so a near-instant goal still shows the plan holding. */
+const AUTO_MARGIN_MIN_MONTHS = 3
 /** How far the auto probe looks for the crossing before giving up. */
 const AUTO_CAP_MONTHS = 100 * 12
 /** The auto horizon when the goal is never reached within the cap. */
 const AUTO_FALLBACK_MONTHS = 30 * 12
 
+/** After-story proportional to the journey — half the months-to-goal, clamped to [3mo, 3y]. */
+function autoMargin(monthsToGoal: number): number {
+  return Math.min(AUTO_MARGIN_MAX_MONTHS, Math.max(AUTO_MARGIN_MIN_MONTHS, Math.round(monthsToGoal / 2)))
+}
+
 /**
  * Resolve the doc's horizon: an explicit one passes through; the auto one
- * (null) runs a single deterministic probe and ends the table five years
- * after the month the goal is first reached — the x-axis follows the goal.
- * A table the probe cannot play falls back to 30 years; the real sim will
- * surface the error itself.
+ * (null) runs a single deterministic probe and ends the table a margin past
+ * the month the goal is first reached — the x-axis follows the goal. The
+ * margin scales with the journey (half of it, at most three years, at least
+ * three months) so a short plan isn't drowned in after-story. A table the
+ * probe cannot play falls back to 30 years; the real sim will surface the
+ * error itself.
  */
 export function effectiveHorizon(doc: Doc, library: AuthoredCard[] = []): number {
   if (doc.horizonMonths !== null) return doc.horizonMonths
@@ -64,7 +73,9 @@ export function effectiveHorizon(doc: Doc, library: AuthoredCard[] = []): number
     const { table, world } = playedTable(doc, library)
     const probe = simulate(table, world, doc.from, doc.from + AUTO_CAP_MONTHS - 1)
     const cross = firstCrossing(probe, doc.goal)
-    return cross !== null ? cross - doc.from + 1 + AUTO_MARGIN_MONTHS : AUTO_FALLBACK_MONTHS
+    if (cross === null) return AUTO_FALLBACK_MONTHS
+    const monthsToGoal = cross - doc.from + 1
+    return monthsToGoal + autoMargin(monthsToGoal)
   } catch {
     return AUTO_FALLBACK_MONTHS
   }
