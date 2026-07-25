@@ -1,0 +1,10 @@
+{
+  "name": "FinSim",
+  "short_name": "FinSim",
+  "description": "A financial simulator where every instrument is a card and every card is a curve f(t).",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ee",
+  "theme_color": "#f7f4ee",
+  "icons": []
+}

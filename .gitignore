@@ -1,24 +1,24 @@
-test-results
-node_modules
+# Dependencies
+node_modules/
 
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
+# Build output
+dist/
+*.tsbuildinfo
 
-# OS
+# Test / coverage
+coverage/
+.vitest/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Claude Code local (per-machine) settings
+.claude/settings.local.json
+
+# Editor / OS
 .DS_Store
-Thumbs.db
-
-# Env
-.env
-.env.*
-!.env.example
-!.env.test
-
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

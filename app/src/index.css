@@ -1,0 +1,2700 @@
+/* "A quest ledger you fight over with friends." D&D-table feel, real-world
+   content: parchment cards with gold frames and engraved sigils on a dark
+   wooden table; candlelight vignette. The rules of DESIGN.md §10 still bind —
+   green/red strictly for money direction, tabular numerals everywhere, no
+   fantasy instruments. The theme is the table, never the math. */
+
+:root {
+  color-scheme: light;
+
+  /* parchment surfaces (cards, arena, drawer) */
+  --card: #f4e9cd;
+  --card-deep: #ead9b1;
+  --ink: #3d2c17;
+  --ink-soft: #7c6749;
+  --line: #cbb489;
+  --accent-line: #a3874f;
+
+  /* the wooden table (page background, topbar) */
+  --wood: #59391f;
+  --wood-dark: #40270f;
+  --wood-ink: #e9d8ad;
+  --wood-ink-soft: #bda878;
+
+  --gold: #b08d3f;
+  --gold-deep: #7a5f2e;
+  /* ember: the discard flame — not a money color, so it stays outside green/red */
+  --flame: #c05a1a;
+  --shadow: rgba(28, 16, 4, 0.4);
+
+  --kind-source: var(--money-pos);
+  --kind-drain: var(--money-neg);
+  --kind-asset: #a67c2e;
+  --kind-debt: #7c4a33;
+  --kind-rule: #5f4b85;
+  --kind-hand: #5f4b85;
+  --kind-margin: #3f6e6e;
+
+  --money-pos: #2e6b2e;
+  --money-neg: #9c2b1f;
+
+  --display: 'Luminari', 'Trattatello', 'Iowan Old Style', Palatino, Georgia, serif;
+  --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --sans: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* night at the tavern: the table darkens, the cards stay candlelit parchment */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --card: #ecdcb4;
+    --card-deep: #e0cc9c;
+    --wood: #33200e;
+    --wood-dark: #201305;
+    --wood-ink: #d8c491;
+    --wood-ink-soft: #a68d5e;
+    --shadow: rgba(0, 0, 0, 0.55);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* clip, not hidden: nothing (not even scrollIntoView) may scroll the table */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: clip;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 130% 100% at 50% 15%, transparent 50%, rgba(15, 7, 0, 0.5)),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.09) 0 2px, transparent 2px 122px),
+    repeating-linear-gradient(0deg, rgba(255, 214, 140, 0.03) 0 2px, transparent 2px 43px),
+    linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
+  color: var(--wood-ink);
+  font-family: var(--sans);
+  font-size: 14px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  opacity: 0.55;
+}
+
+.app {
+  --hand-row: 288px;
+  display: grid;
+  grid-template-rows: auto 1fr var(--hand-row);
+  height: 100vh;
+}
+
+/* ---- top bar: a brass rail on the table's edge — everything gathered at
+   the middle, where the hands already are, not flung to the corners ---- */
+.topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.topbar h1 {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.08em;
+  color: var(--wood-ink);
+}
+
+.goal-input {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  color: var(--wood-ink-soft);
+}
+
+.goal-input input[type='text'] {
+  width: 5.5rem;
+}
+
+.goal-input input {
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--gold-deep);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  text-align: right;
+}
+
+/* the actions hang like shop signs from one shared wooden rail; each board
+   dangles on two links, tilts a touch, and swings on hover — the Workshop's
+   yellow board among plain dark-wood kin */
+.topbar-actions {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding-top: 12px;
+}
+
+/* the rail itself */
+.topbar-actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -8px;
+  right: -8px;
+  height: 5px;
+  border-radius: 2.5px;
+  background: linear-gradient(180deg, #5d3c1d, #3c250e);
+  box-shadow: 0 1px 2px var(--shadow);
+}
+
+.topbar-actions .sign {
+  position: relative;
+  transform: rotate(-1deg);
+  transform-origin: 50% -8px;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* the two links each board hangs from */
+.topbar-actions .sign::before,
+.topbar-actions .sign::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 2.5px;
+  height: 9px;
+  border-radius: 1.5px;
+  background: #3c250e;
+}
+
+.topbar-actions .sign::before {
+  left: 18%;
+}
+
+.topbar-actions .sign::after {
+  right: 18%;
+}
+
+.topbar-actions .sign:not(:disabled):hover {
+  transform: rotate(1deg);
+}
+
+/* the Table sign's menu: export, import and reset under one hanging board */
+.table-sign {
+  position: relative;
+}
+
+/* a click on the wood puts the menu away */
+.sign-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 119;
+}
+
+.sign-menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 120;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  min-width: 148px;
+  background: linear-gradient(180deg, var(--card) 0%, var(--card-deep) 100%);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px var(--shadow);
+}
+
+.sign-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  font-family: var(--serif);
+  font-size: 0.82rem;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sign-menu button:hover {
+  background: rgba(163, 135, 79, 0.18);
+}
+
+.sign-menu button .glyph {
+  opacity: 0.7;
+}
+
+/* burn actions wear the ember, same as the discard flame on the cards */
+.sign-menu button.menu-burn .glyph {
+  color: var(--flame);
+  opacity: 1;
+}
+
+/* Reset torches the shelves too — set apart below a rule, dressed in ember */
+.sign-menu li.menu-divide {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid rgba(163, 135, 79, 0.45);
+}
+
+.sign-menu button.menu-grave {
+  color: color-mix(in srgb, var(--flame) 80%, black);
+}
+
+.sign-menu button.menu-grave:hover {
+  background: color-mix(in srgb, var(--flame) 14%, transparent);
+}
+
+/* the Workshop's tavern sign: a road-work-yellow board hanging from the
+   topbar rail — the one loud thing on the table, so it reads from afar.
+   (Signal yellow is signage, not money — green/red stay untouched.) */
+.workshop {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  display: flex;
+}
+
+.workshop-board {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.6rem 0.2rem;
+  font-family: var(--display);
+  font-size: 0.78rem;
+  letter-spacing: 0.07em;
+  color: #3d2a08;
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 80, 10, 0.1) 0 1.5px, transparent 1.5px 7px),
+    radial-gradient(ellipse at 30% 20%, rgba(255, 240, 180, 0.6), transparent 60%),
+    #ecb31f;
+  border: 2px solid #6b4a12;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px var(--shadow), inset 0 0 6px rgba(140, 95, 10, 0.35);
+  transform: rotate(-2.5deg);
+  transform-origin: 50% -8px;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.workshop-board .glyph {
+  color: #4d3608;
+}
+
+/* the two links it hangs from */
+.workshop-board::before,
+.workshop-board::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 2.5px;
+  height: 9px;
+  border-radius: 1.5px;
+  background: #3c250e;
+}
+
+.workshop-board::before {
+  left: 18%;
+}
+
+.workshop-board::after {
+  right: 18%;
+}
+
+.workshop:hover .workshop-board {
+  transform: rotate(2deg);
+}
+
+button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--accent-line);
+  border-radius: 4px;
+  padding: 0.2rem 0.7rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button:not(:disabled):hover {
+  border-color: var(--gold-deep);
+}
+
+/* The table's one button dress: a planked wooden board with gilt lettering,
+   kin to the Workshop's sign board — but plain dark wood, so the Workshop's
+   signal yellow stays the one loud thing on the table. Every labeled action
+   wears it; links, × closers and card-shaped things keep their own dress. */
+.sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  padding: 0.26rem 0.65rem 0.24rem;
+  font-family: var(--display);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--gold) 72%, var(--wood-ink));
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0 1.5px, transparent 1.5px 7px),
+    radial-gradient(ellipse at 30% 20%, rgba(255, 220, 150, 0.12), transparent 60%),
+    linear-gradient(170deg, #6a4526, #482a11);
+  border: 1.5px solid #2b1808;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px var(--shadow), inset 0 1px 0 rgba(255, 220, 150, 0.14);
+}
+
+.sign .glyph {
+  opacity: 0.8;
+}
+
+.sign:not(:disabled):hover {
+  color: var(--gold);
+  border-color: #2b1808;
+  box-shadow: 0 3px 6px var(--shadow), inset 0 1px 0 rgba(255, 220, 150, 0.22);
+}
+
+/* ---- the arena: a parchment map pinned to the table ---- */
+.arena {
+  position: relative;
+  /* clamp the open hand's layers (hub 90, hovered 95, dragged 100) inside the
+     map — they order cards against each other, not against the fixed drawer,
+     workbench, or pile. The hand-strip's own z-index already does the same. */
+  isolation: isolate;
+  margin: 0.7rem 1rem 0.35rem;
+  border: 2px solid var(--gold-deep);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 25% 15%, rgba(255, 252, 240, 0.5), transparent 55%),
+    radial-gradient(ellipse at 80% 90%, rgba(130, 85, 25, 0.14), transparent 50%),
+    var(--card);
+  color: var(--ink);
+  overflow: hidden;
+  min-height: 0;
+  box-shadow: inset 0 0 70px rgba(95, 60, 15, 0.22), 0 10px 26px -10px var(--shadow);
+}
+
+/* the workbench unfolds over the lower table — shove the map's bottom edge
+   above it so the chart rescales into the visible strip instead of drawing
+   its low beginnings behind the bench (--workbench-h is measured live) */
+.app:has(.workbench) .arena {
+  margin-bottom: calc(max(0px, var(--workbench-h, 62vh) - var(--hand-row)) + 0.35rem);
+}
+
+/* the map's inner rule line */
+.arena::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid color-mix(in srgb, var(--accent-line) 55%, transparent);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+.arena-game {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(130, 85, 25, 0.16), transparent 60%),
+    radial-gradient(ellipse at 25% 10%, rgba(255, 252, 240, 0.45), transparent 55%),
+    var(--card-deep);
+}
+
+/* breadcrumb back to the chart / up through nested hands */
+.trail {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.95rem;
+  z-index: 10;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.trail button {
+  border: none;
+  background: none;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-decoration: underline dotted;
+}
+
+.trail button:disabled {
+  opacity: 1;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: default;
+}
+
+.trail button + button::before {
+  content: '/ ';
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+
+.arena-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.85rem;
+  z-index: 10;
+  border: none;
+  background: none;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  padding: 0.1rem 0.3rem;
+}
+
+/* ---- the chart: one honest line, drawn in ink ---- */
+.timeline {
+  position: absolute;
+  inset: 0;
+}
+
+.timeline svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.timeline .tick,
+.timeline .goal-label,
+.timeline .scrub-label {
+  fill: var(--ink-soft);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline .goal-line {
+  stroke: var(--gold-deep);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+}
+
+.timeline .goal-label {
+  fill: var(--gold-deep);
+}
+
+/* the percentile fan: the middle 80 % of futures, a wash of the same ink */
+.timeline .fan {
+  fill: var(--ink);
+  opacity: 0.08;
+  stroke: none;
+}
+
+/* the debt line: cash, dotted, only there while the plan owes money —
+   dotted is the goal line's language for "not a solid thing you have" */
+.timeline .cash-line {
+  fill: none;
+  stroke: var(--money-neg);
+  stroke-width: 1.6;
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+
+.timeline .cash-under {
+  fill: var(--money-neg);
+  opacity: 0.1;
+  stroke: none;
+}
+
+.timeline .zero-line {
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+  stroke-dasharray: 1 3;
+  opacity: 0.7;
+}
+
+.timeline .curve {
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.timeline .curve.active {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.timeline .cross.active {
+  fill: var(--ink);
+}
+
+.timeline .scrub-line {
+  stroke: var(--accent-line);
+  stroke-width: 1;
+}
+
+.timeline .scrub-dot {
+  fill: var(--ink);
+}
+
+.timeline .scrub-label {
+  fill: var(--ink);
+}
+
+/* the debt figure in the scrub readout: the cash line's red is its label */
+.timeline .scrub-label .scrub-debt {
+  fill: var(--money-neg);
+}
+
+/* compare mode: contender B, a dashed gold rival on the same chart — the
+   table's own ink stays contender A, so the picture reads as "my chart,
+   plus a challenger", not a new screen */
+.timeline .curve.rival {
+  stroke: var(--gold);
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+}
+
+.timeline .cross.rival,
+.timeline .scrub-dot.rival {
+  fill: var(--gold);
+}
+
+/* the rival's figure in the scrub readout: the rival curve's gold is its label */
+.timeline .scrub-label .scrub-rival {
+  fill: var(--gold-deep);
+}
+
+/* the plan's own verdict, top-left on the map — same shape as on the stacks */
+.chart-verdict {
+  position: absolute;
+  top: 0.8rem;
+  right: 1.2rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  text-align: right;
+  pointer-events: none;
+}
+
+.chart-verdict-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  pointer-events: auto;
+}
+
+/* "goal in" stays ink — only the time itself wears the money color */
+.chart-verdict-text .pos { color: var(--money-pos); }
+.chart-verdict-text .neg { color: var(--money-neg); }
+.chart-verdict-text.neg { color: var(--money-neg); }
+
+/* the goal-probability read under the plan's verdict — quieter than the date */
+.chart-verdict-odds {
+  font-size: 0.78rem;
+  font-weight: 600;
+  pointer-events: auto;
+}
+
+.chart-verdict-odds.pos { color: var(--money-pos); }
+.chart-verdict-odds.neg { color: var(--money-neg); }
+
+/* the odds are a door, not just a number — dressed as a link so it reads as one */
+button.chart-verdict-odds {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+button.chart-verdict-odds:hover {
+  text-decoration-style: solid;
+}
+
+/* ---- compare mode: the pick lives at the compare fixture, on the wood.
+   The fixture's card back turns over into the challenger, wearing its plan's
+   name; the card IS the picker, and clicking it raises the list of hands off
+   the wood ---- */
+.compare-duel {
+  position: fixed;
+  right: 1.4rem;
+  bottom: 1.6rem;
+  z-index: 40;
+}
+
+.compare-card {
+  position: relative;
+  width: 88px;
+  aspect-ratio: 63 / 88;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+  background:
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 8px var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.compare-card:hover,
+.compare-card.choosing {
+  transform: translateY(-4px);
+}
+
+.compare-card.choosing {
+  border-color: var(--gold);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 0 0 2px rgba(176, 141, 63, 0.35), 0 3px 10px var(--shadow);
+}
+
+/* the pick's name, engraved on the card back */
+.compare-card-name {
+  font-family: var(--display);
+  font-size: 0.68rem;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--gold);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+/* a click on the wood puts the list away */
+.compare-veil {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
+/* the list of hands, risen off the wood above the card */
+.compare-menu {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  min-width: 168px;
+  max-width: 240px;
+  max-height: 42vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, var(--card) 0%, var(--card-deep) 100%);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px var(--shadow);
+}
+
+.compare-menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* the challenger list's section names — engraved, not clickable */
+.compare-menu-section {
+  display: block;
+  padding: 0.4rem 0.55rem 0.1rem;
+  font-family: var(--display);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  opacity: 0.85;
+}
+
+.compare-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  font-family: var(--serif);
+  font-size: 0.82rem;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.compare-menu button:hover {
+  background: rgba(163, 135, 79, 0.18);
+}
+
+.compare-menu button.chosen {
+  font-weight: 700;
+  color: var(--gold-deep);
+}
+
+.compare-menu button.chosen::after {
+  content: ' ✓';
+}
+
+/* the dashed plan's verdict: identical to the usual one, in the opposite
+   corner — top-right belongs to the solid line, bottom-right to the dashed,
+   and that placement is the whole legend */
+.chart-verdict.compare-rival {
+  top: auto;
+  bottom: 2.6rem;
+}
+
+/* the rival's verdict wears its curve's gold, so the corner reads as the
+   dashed line's — the time keeps its money color, "out of reach" its red,
+   and the Δ its direction */
+.chart-verdict.compare-rival .chart-verdict-text:not(.neg),
+.chart-verdict.compare-rival button.chart-verdict-odds {
+  color: var(--gold-deep);
+}
+
+.chart-verdict-note {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  pointer-events: auto;
+}
+
+/* the compare fixture: one card back beside the draw pile */
+.duel {
+  position: fixed;
+  right: 1.4rem;
+  bottom: 1.6rem;
+  z-index: 40;
+  width: 88px;
+  aspect-ratio: 63 / 88;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.duel-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+  background:
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 8px var(--shadow);
+  transition: transform 0.15s ease;
+}
+
+.duel:hover .duel-card {
+  transform: translateY(-4px);
+}
+
+/* the fixture's name, engraved on the card back */
+.duel-word {
+  font-family: var(--display);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+/* ---- playing cards: parchment, gold frame, engraved sigil ---- */
+.pcard {
+  --card-w: 184px;
+  width: var(--card-w);
+  aspect-ratio: 63 / 88;
+  perspective: 1000px;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  color: var(--ink);
+}
+
+.pcard-hand {
+  --card-w: 124px;
+}
+
+.pcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+
+.pcard-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.pcard-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse at 30% 15%, rgba(255, 252, 240, 0.55), transparent 60%),
+    radial-gradient(ellipse at 75% 95%, rgba(130, 85, 25, 0.12), transparent 55%),
+    var(--card);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 9px;
+  padding: 0 0.6rem 0.5rem;
+  box-shadow: 0 1px 2px var(--shadow), 0 4px 10px -4px var(--shadow);
+  overflow: hidden;
+}
+
+/* the inner rule line of the card frame */
+.pcard-face::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--accent-line) 55%, transparent);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.pcard-back {
+  transform: rotateY(180deg);
+}
+
+.pcard-band {
+  margin: 0 -0.6rem;
+  padding: 0.2rem 0.6rem 0.16rem;
+  border-bottom: 2px solid var(--line);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+.kind-source .pcard-band { border-color: var(--kind-source); color: var(--kind-source); }
+.kind-drain .pcard-band { border-color: var(--kind-drain); color: var(--kind-drain); }
+.kind-asset .pcard-band { border-color: var(--kind-asset); color: var(--kind-asset); }
+.kind-debt .pcard-band { border-color: var(--kind-debt); color: var(--kind-debt); }
+.kind-rule .pcard-band { border-color: var(--kind-rule); color: var(--kind-rule); }
+.kind-hand .pcard-band { border-color: var(--kind-hand); color: var(--kind-hand); }
+.kind-margin .pcard-band { border-color: var(--kind-margin); color: var(--kind-margin); }
+
+.pcard-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.15;
+  margin: 0.4rem 0 0;
+}
+
+.pcard-hand .pcard-name {
+  font-size: 0.82rem;
+}
+
+/* the sigil: engraved glyph inside a diamond seal */
+.pcard-art {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+}
+
+.pcard-art::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  opacity: 0.4;
+}
+
+.pcard-hand .pcard-art::before {
+  width: 44px;
+  height: 44px;
+}
+
+.kind-source .pcard-art { color: var(--kind-source); }
+.kind-drain .pcard-art { color: var(--kind-drain); }
+.kind-asset .pcard-art { color: var(--kind-asset); }
+.kind-debt .pcard-art { color: var(--kind-debt); }
+.kind-hand .pcard-art { color: var(--kind-hand); }
+.kind-margin .pcard-art { color: var(--kind-margin); }
+
+.pcard-stats {
+  margin: 0 0 0.2rem;
+}
+
+.pcard-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  padding: 0.08rem 0;
+  border-top: 1px dotted var(--line);
+}
+
+.pcard-stat:first-child {
+  border-top: none;
+}
+
+.pcard-stat dt {
+  color: var(--ink-soft);
+}
+
+.pcard-stat dd {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pcard-headline {
+  font-size: 0.92rem;
+  margin: 0;
+  text-align: right;
+}
+
+.pcard-hand .pcard-headline {
+  font-size: 0.78rem;
+}
+
+.pcard-headline.pos { color: var(--money-pos); }
+.pcard-headline.neg { color: var(--money-neg); }
+
+/* the verdict: what this card costs (or earns), in time-to-goal */
+.pcard-delta {
+  font-size: 0.68rem;
+  font-weight: 600;
+  margin: 0;
+  text-align: right;
+}
+
+.pcard-delta.pos { color: var(--money-pos); }
+.pcard-delta.neg { color: var(--money-neg); }
+
+.pcard-spark {
+  color: var(--ink-soft);
+  text-align: right;
+  margin-top: 0.15rem;
+}
+
+.pcard-desc {
+  font-size: 0.6rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
+  margin: 0.3rem 0 0;
+}
+
+.pcard-back-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 0.35rem;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+}
+
+/* parameter sliders on card backs (the Workshop seed, M2) */
+.param {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.param-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.05rem;
+}
+
+.param-value {
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+input[type='range'] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent-line);
+}
+
+/* a turned tuning dial: off-center, so it should read as "in effect" */
+input[type='range'].tuned {
+  accent-color: var(--gold);
+}
+
+/* "+35 % → 87 750/mo" — the played value while the authored one stands */
+.tune-note {
+  display: block;
+  font-style: normal;
+  font-size: 0.62rem;
+  text-align: right;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* the fine print under a turned card's dials */
+.tune-hint {
+  margin: auto 0 0;
+  padding-top: 0.3rem;
+  font-size: 0.58rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+.card-action {
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.card-action:last-child {
+  margin-top: auto;
+}
+
+/* ---- a card on the table: face + hover-revealed set-aside ---- */
+.stack {
+  position: relative;
+  width: 100%;
+}
+
+/* discard: burn the card back to the draw pile (hover-revealed flame) */
+.mod-remove {
+  border: none;
+  background: none;
+  color: var(--flame);
+  padding: 0 0.15rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mod-remove:hover {
+  color: color-mix(in srgb, var(--flame) 75%, black);
+}
+
+/* to the Workshop: carry the card to the bench (hover-revealed hammer) */
+.mod-workshop {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  padding: 0 0.15rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mod-workshop:hover {
+  color: var(--ink);
+}
+
+/* set aside: pause the card in place — the sim plays as if it were not there */
+.mod-toggle {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  padding: 0 0.15rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mod-toggle:hover {
+  color: var(--ink);
+}
+
+.stack:hover .mod-remove,
+.stack:hover .mod-toggle,
+.stack:hover .mod-workshop,
+.stack.set-aside .mod-toggle,
+.hand-stack:hover .mod-remove,
+.hand-stack:hover .mod-toggle,
+.hand-stack.muted .mod-toggle {
+  opacity: 1;
+}
+
+.card-shelf {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  z-index: 30;
+  display: flex;
+}
+
+/* ---- the fan: cards around a virtual circle ---- */
+.fan-anchor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+}
+
+.fan-slot {
+  position: absolute;
+  top: 0;
+  z-index: var(--z, 1);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.28s ease, opacity 0.2s ease;
+}
+
+.fan-slot:hover,
+.fan-slot.lifted {
+  z-index: 95;
+}
+
+.fan-slot.lifting {
+  transition: opacity 0.2s ease;
+  z-index: 100;
+  cursor: grabbing;
+}
+
+.fan-slot.offstage {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* the card a picked-up card hovers over — drop here and the two stack into a hand */
+.fan-slot.stack-target {
+  z-index: 99;
+}
+
+/* the hub whispers where a lifted card will land while it hovers over no sibling */
+.hub-eject-hint {
+  display: none;
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.circle:has(.fan-ejecting) .hub-eject-hint {
+  display: block;
+}
+
+.fan-slot.stack-target > .fan-item {
+  transform: translateY(-10px) scale(1.05);
+  filter: drop-shadow(0 0 12px rgb(255 178 64 / 0.85)) drop-shadow(0 6px 14px rgb(15 7 0 / 0.35));
+}
+
+/* the card fills whatever width the fan's geometry gave its slot */
+.fan-slot .pcard {
+  --card-w: 100%;
+}
+
+/* the lift rides inside the rotated slot, so "up" means radially outward */
+.fan-item {
+  transition: transform 0.22s ease;
+}
+
+.fan-slot:hover > .fan-item,
+.fan-slot.lifted > .fan-item {
+  transform: translateY(-28px);
+}
+
+.fan-slot.lifting > .fan-item {
+  transform: translateY(-34px) scale(1.04);
+  filter: drop-shadow(0 14px 22px rgb(15 7 0 / 0.4));
+}
+
+/* ---- the main hand: bottom of the screen, a wide gentle arc ---- */
+.hand-strip {
+  position: relative;
+  z-index: 5;
+}
+
+.hand-strip .fan-anchor {
+  top: 14px;
+}
+
+.hand-empty {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  color: var(--wood-ink-soft);
+  margin: 0;
+}
+
+/* ---- an opened hand in the arena: cards around the top of a circle ---- */
+.circle {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ring and hub hang off the same 96% line, so the cards' bottom edge stays
+   clear of the hub top at any arena height — --ring-h (card height + hub
+   room) comes inline from the Arena, which scales cards to what fits */
+.circle .fan-anchor {
+  top: calc(96% - var(--ring-h, 475px));
+}
+
+.circle .hand-empty {
+  top: 45%;
+  color: var(--ink-soft);
+}
+
+.circle-hub {
+  position: absolute;
+  left: 50%;
+  top: 96%;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding-bottom: 1.1rem;
+  text-align: center;
+  max-width: 260px;
+  /* above resting cards (z 1..n) — a small hand dangles over the hub and would
+     bury the name input — but below hovered (95) and dragged (100) cards; the
+     box stays click-through so the cards behind remain grabbable */
+  z-index: 90;
+  pointer-events: none;
+}
+
+.circle-hub > * {
+  pointer-events: auto;
+}
+
+/* the hand's name: a huge faded watermark across the felt, behind the cards —
+   click still renames; hover raises it just enough to say so */
+.hand-watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hand-watermark > * {
+  pointer-events: auto;
+}
+
+.hand-watermark .hand-name {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: var(--display);
+  font-weight: 500;
+  /* size comes inline from the component — it depends on the name's length */
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  opacity: 0.12;
+  cursor: text;
+  white-space: nowrap;
+  max-width: 94%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s ease;
+}
+
+.hand-watermark .hand-name:hover {
+  opacity: 0.25;
+}
+
+.hand-name-input {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--accent-line);
+  border-radius: 4px;
+  padding: 0 0.25rem;
+  width: 12rem;
+  text-align: center;
+}
+
+.hub-count {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+}
+
+/* what the hand draws out of its parent each month — the one line that
+   decides whether the hand receives money at all, so it wears a plaque,
+   not a footnote */
+.hub-take {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--ink);
+  background: var(--card-deep);
+  border: 1px solid var(--gold-deep);
+  border-radius: 999px;
+  padding: 0.18rem 0.7rem;
+  min-height: 29px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(28, 16, 4, 0.15);
+}
+
+.hub-take:hover {
+  border-color: var(--gold);
+}
+
+/* no take yet: an empty slot asking to be filled, not a settled plaque —
+   without one the hand receives nothing and money flows past it */
+.hub-take.unset {
+  border-style: dashed;
+  background: none;
+  color: var(--ink-soft);
+}
+
+.hub-take.unset:hover {
+  color: var(--ink);
+}
+
+/* the take overdraws its parent — the sanity flag, not a prohibition */
+.hub-take.overdrawn,
+.hub-take.overdrawn:hover {
+  color: var(--money-neg);
+}
+
+/* the editor wears the same plaque, so opening it doesn't jump the hub */
+.hub-take-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--ink);
+  background: var(--card-deep);
+  border: 1px solid var(--gold-deep);
+  border-radius: 999px;
+  padding: 0.18rem 0.7rem;
+  min-height: 29px;
+}
+
+.hub-take-edit select,
+.hub-take-edit input {
+  font-size: 0.78rem;
+  font-style: normal;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--accent-line);
+  border-radius: 4px;
+  padding: 0.1rem 0.25rem;
+}
+
+.hub-take-edit input {
+  width: 4.5rem;
+  text-align: right;
+}
+
+.hub-take-unit {
+  font-style: normal;
+}
+
+.hub-net {
+  font-size: 0.95rem;
+}
+
+.hub-net.pos { color: var(--money-pos); }
+.hub-net.neg { color: var(--money-neg); }
+
+/* the stock the flow builds: what the hand's assets and debts hold, net */
+.hub-held {
+  font-size: 0.82rem;
+}
+
+.hub-held.pos { color: var(--money-pos); }
+.hub-held.neg { color: var(--money-neg); }
+
+.hub-delta {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.hub-delta.pos { color: var(--money-pos); }
+.hub-delta.neg { color: var(--money-neg); }
+
+/* the Monte Carlo range under the verdict — the same read, in futures */
+.hub-range {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.hub-range.pos { color: var(--money-pos); }
+.hub-range.neg { color: var(--money-neg); }
+
+.hub-remove,
+.hub-toggle {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* flame raised toward candlelight so it reads on the dark board */
+.hub-remove .glyph {
+  color: color-mix(in srgb, var(--flame) 60%, #ffc890);
+}
+
+/* ---- a hand at rest: unmistakably a pile of several cards ---- */
+.hand-stack {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 63 / 88;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.hand-stack-under,
+.hand-stack-front {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--gold-deep) 7%, transparent) 6px 7px),
+    var(--card);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 10px;
+}
+
+.hand-stack-under.u1 {
+  transform: rotate(-2.4deg) translate(3px, 2px);
+}
+
+.hand-stack-under.u2 {
+  transform: rotate(3.2deg) translate(-3px, 5px);
+}
+
+.hand-stack-front {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.5rem 0.6rem 0.45rem;
+  box-shadow: 0 1px 2px var(--shadow), 0 4px 10px -4px var(--shadow);
+}
+
+.hand-stack-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.hand-stack-art {
+  flex: 1;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  color: var(--kind-hand);
+  opacity: 0.6;
+}
+
+.hand-stack-count {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
+
+.hand-stack-net {
+  align-self: flex-end;
+  font-size: 0.78rem;
+}
+
+.hand-stack-net.pos { color: var(--money-pos); }
+.hand-stack-net.neg { color: var(--money-neg); }
+
+/* the stock the flow builds: what the hand's assets and debts hold, net */
+.hand-stack-held {
+  align-self: flex-end;
+  font-size: 0.74rem;
+}
+
+.hand-stack-held.pos { color: var(--money-pos); }
+.hand-stack-held.neg { color: var(--money-neg); }
+
+/* the verdict: what this bundle costs, in time-to-goal */
+.hand-stack-delta {
+  align-self: flex-end;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.hand-stack-delta.pos { color: var(--money-pos); }
+.hand-stack-delta.neg { color: var(--money-neg); }
+
+/* the same verdict spoken in futures, when the table carries volatility */
+.hand-stack-range {
+  align-self: flex-end;
+  text-align: right;
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.hand-stack-range.pos { color: var(--money-pos); }
+.hand-stack-range.neg { color: var(--money-neg); }
+
+/* the range is a door too — the same dotted-link dress as the chart's odds */
+button.hand-stack-range,
+button.hub-range {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+button.hand-stack-range:hover,
+button.hub-range:hover {
+  text-decoration-style: solid;
+}
+
+/* ---- the pipeline's mouth: a brass plaque stacked above the draw pile,
+   one fixture column in the right corner. Not a card. ---- */
+.cash-dock {
+  position: fixed;
+  right: 1.4rem;
+  bottom: calc(1.6rem + 130px + 1rem);
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* an actual brass plate: brushed gradient, beveled edges, the figures
+   engraved (dark ink, light catch below) */
+.dock-plaque {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.85rem 0.4rem 0.75rem;
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(255, 244, 205, 0.5), transparent 65%),
+    linear-gradient(168deg, #c9a24d 0%, #ab8138 55%, #8f6a2a 100%);
+  border: 1px solid #55401a;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 195, 0.55),
+    inset 0 -1px 1px rgba(55, 38, 8, 0.5),
+    0 2px 6px var(--shadow);
+  color: #33240c;
+}
+
+.dock-plaque:not(:disabled):hover {
+  border-color: #33240c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 195, 0.7),
+    inset 0 -1px 1px rgba(55, 38, 8, 0.5),
+    0 3px 8px var(--shadow);
+}
+
+.dock-plaque .glyph {
+  flex-shrink: 0;
+  color: #55401a;
+  opacity: 0.9;
+}
+
+.dock-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.dock-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.dock-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #6d5423;
+  text-shadow: 0 1px 0 rgba(255, 240, 195, 0.4);
+}
+
+.dock-value {
+  font-size: 0.8rem;
+  text-shadow: 0 1px 0 rgba(255, 240, 195, 0.45);
+}
+
+/* a negative month, engraved deep — brass is bright, so the ink goes darker
+   than the parchment red to keep contrast */
+.dock-value.neg { color: #6e150c; }
+
+/* the editing panel: a parchment slip that unfolds above the plaque */
+.dock-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.55rem);
+  width: 232px;
+  padding: 0.6rem 0.75rem 0.55rem;
+  background:
+    radial-gradient(ellipse at 30% 15%, rgba(255, 252, 240, 0.55), transparent 60%),
+    var(--card);
+  color: var(--ink);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 9px;
+  box-shadow: 0 8px 20px -6px var(--shadow);
+}
+
+.dock-panel-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.dock-panel-hint {
+  font-size: 0.64rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
+  margin: 0.1rem 0 0.5rem;
+}
+
+.dock-panel-spark {
+  color: var(--ink-soft);
+  margin-top: 0.2rem;
+}
+
+/* the clear fixture: a small burn token beside the draw pile — an action,
+   not a card, so it sits lower and smaller than the two card backs */
+.burn-table {
+  position: fixed;
+  right: calc(1.4rem + 88px + 1.3rem + 96px + 1.2rem);
+  bottom: 1.6rem;
+  z-index: 40;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.burn-table-token {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background:
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.14) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 6px var(--shadow);
+  color: var(--flame);
+  transition: transform 0.15s ease;
+}
+
+.burn-table:hover .burn-table-token {
+  transform: translateY(-4px);
+}
+
+.burn-table-word {
+  font-family: var(--display);
+  font-size: 0.56rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  opacity: 0.9;
+}
+
+/* ---- the draw pile: a leather-backed deck ---- */
+.pile {
+  position: fixed;
+  right: calc(1.4rem + 88px + 1.3rem);
+  bottom: 1.6rem;
+  z-index: 40;
+  width: 96px;
+  height: 131px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.pile-card {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 88px;
+  aspect-ratio: 63 / 88;
+  background:
+    repeating-linear-gradient(45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, rgba(190, 150, 70, 0.18) 0 2px, transparent 2px 9px),
+    #4c3018;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 9px;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.12), 0 2px 6px var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pile-card:nth-child(1) {
+  transform: translate(6px, 8px) rotate(2.5deg);
+}
+
+.pile-card:nth-child(2) {
+  transform: translate(3px, 4px) rotate(-1.5deg);
+}
+
+/* the deck's name lives on the top card itself — no caption row below */
+.pile-top {
+  flex-direction: column;
+}
+
+.pile-word {
+  font-family: var(--display);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  opacity: 0.9;
+}
+
+.pile:hover .pile-top {
+  transform: translateY(-5px) rotate(0.5deg);
+  transition: transform 0.15s ease;
+}
+
+/* ---- the open draw pile: everything not in play, spread out ---- */
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(16, 8, 0, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.drawer-panel {
+  background:
+    radial-gradient(ellipse at 30% 10%, rgba(255, 252, 240, 0.5), transparent 55%),
+    var(--card-deep);
+  color: var(--ink);
+  border: 2px solid var(--gold-deep);
+  border-radius: 14px;
+  box-shadow: 0 22px 60px -12px rgba(0, 0, 0, 0.6);
+  padding: 1.1rem 1.4rem 1.4rem;
+  max-width: 1080px;
+  width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+/* the header bar: title, hint and the Workshop sign gathered at the middle
+   (shared by the draw pile, rulebook and report); only the × keeps its corner */
+.drawer-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 0.5rem 2rem;
+  margin-bottom: 0.6rem;
+}
+
+.drawer-bar .drawer-hint {
+  flex: 0 1 auto;
+}
+
+.drawer-bar .drawer-close {
+  position: absolute;
+  right: 0.9rem;
+}
+
+.drawer-bar h2 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.drawer-hint {
+  flex: 1;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.drawer-close {
+  border: none;
+  background: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  padding: 0 0.2rem;
+}
+
+/* the deal's echo — the pile stays open across draws, so each click answers
+   twice: a "✓ Salary → Main hand" note in the bar and a gold ring flashed
+   over whatever was clicked. Both are keyed per deal so they replay every
+   time, and both animate transform/opacity only: the deal kicks off a sim
+   recompute on the main thread, and anything paint-bound would freeze. */
+.drawer-dealt {
+  position: absolute;
+  left: 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gold-deep);
+  animation: dealt-note 1.6s ease-in forwards;
+}
+
+@keyframes dealt-note {
+  0%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.deal-ring {
+  position: absolute;
+  inset: -3px;
+  z-index: 2;
+  border: 3px solid var(--gold);
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: deal-ring 0.5s ease-out;
+}
+
+.preset-cards .deal-ring {
+  inset: -1px;
+  border-width: 2px;
+  border-radius: 6px;
+}
+
+@keyframes deal-ring {
+  0% {
+    opacity: 1;
+    transform: scale(0.97);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+/* ---- the Rulebook: the table's rules in ledger prose ---- */
+.rulebook {
+  max-width: 720px;
+}
+
+.rulebook-body {
+  font-family: var(--serif);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  padding: 0.2rem 0.5rem 0;
+}
+
+.rulebook-body section + section {
+  margin-top: 1.1rem;
+}
+
+.rulebook-body h3 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 1.02rem;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.35rem;
+  border-bottom: 1px solid var(--accent-line);
+  padding-bottom: 0.15rem;
+}
+
+.rulebook-body p {
+  margin: 0 0 0.5rem;
+}
+
+.rulebook-body code {
+  font-family: var(--sans);
+  font-size: 0.82em;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0 0.25em;
+  white-space: nowrap;
+}
+
+.rulebook-body .glyph {
+  vertical-align: -0.08em;
+}
+
+.rulebook-kinds {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.8rem;
+  row-gap: 0.35rem;
+}
+
+.rulebook-kinds dt {
+  font-family: var(--display);
+  letter-spacing: 0.03em;
+}
+
+.rulebook-kinds dd {
+  margin: 0;
+}
+
+/* ---- the Futures report: the fan, unfolded into ledger tables ---- */
+.report {
+  max-width: 640px;
+}
+
+.report-headline {
+  font-size: 1.02rem;
+}
+
+.report-body .quiet {
+  color: var(--ink-soft);
+}
+
+.report-table {
+  border-collapse: collapse;
+  min-width: 60%;
+}
+
+.report-table td {
+  padding: 0.14rem 1.4rem 0.14rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.report-table td:last-child {
+  padding-right: 0;
+}
+
+.report-table td.num {
+  text-align: right;
+}
+
+.report-table .pos { color: var(--money-pos); }
+.report-table .neg { color: var(--money-neg); }
+
+.report-note {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin-top: 0.35rem;
+}
+
+/* the one picture: when the goal lands, year by year — engraved ink, no legend */
+.report-hist {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 96px;
+  margin: 0.4rem 0 1.3rem;
+  border-bottom: 1px solid var(--accent-line);
+}
+
+.report-hist-col {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.report-hist-bar {
+  background: var(--gold-deep);
+  border-radius: 2px 2px 0 0;
+}
+
+.report-hist-year {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
+.report-hist + .report-table {
+  margin-top: 1.1rem;
+}
+
+
+.drawer-section {
+  font-family: var(--serif);
+  font-size: 0.92rem;
+  margin: 0.9rem 0 0.5rem;
+  border-bottom: 1px solid var(--accent-line);
+  padding-bottom: 0.2rem;
+  text-align: center;
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.preset {
+  width: 200px;
+}
+
+.preset-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.6rem 0.7rem 0.55rem;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--gold-deep) 7%, transparent) 6px 7px),
+    var(--card);
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 9px;
+  box-shadow: 0 1px 0 var(--card), 0 2px 0 var(--line), 0 3px 0 var(--card), 0 4px 0 var(--line), 0 6px 8px -2px var(--shadow);
+  cursor: pointer;
+  text-align: left;
+}
+
+.preset-tile:hover {
+  transform: translateY(-3px);
+}
+
+/* the "save this hand" tile: an empty slot on the pile, not a card yet */
+.preset-tile.save-target {
+  width: 200px;
+  background: none;
+  border: 1.5px dashed var(--gold-deep);
+  box-shadow: none;
+  color: var(--ink-soft);
+}
+
+.preset-tile.save-target .preset-glyph {
+  color: var(--ink-soft);
+}
+
+.preset-glyph {
+  color: var(--kind-hand);
+  opacity: 0.65;
+}
+
+.preset-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.preset-count {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+}
+
+.preset-open {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  padding: 0.35rem 0.2rem 0;
+  text-decoration: underline dotted;
+}
+
+.preset-cards {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+}
+
+.preset-cards button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0.22rem 0.2rem;
+  border-bottom: 1px dotted var(--accent-line);
+  font-size: 0.72rem;
+  color: var(--ink);
+  text-align: left;
+}
+
+.preset-cards button:hover {
+  background: var(--card);
+}
+
+.preset-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-card-headline {
+  margin-left: auto;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-size: 0.66rem;
+}
+
+.drawer-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.drawer-slot {
+  position: relative;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.14s ease;
+}
+
+.drawer-slot:hover {
+  transform: translateY(-6px) scale(1.04);
+}
+
+.drawer-slot .pcard {
+  pointer-events: none;
+  --card-w: 140px;
+}
+
+/* ---- the Workshop: a workbench that unfolds over the lower table ----
+   Two stages: BROWSE (small cards on two shelves) and FOCUS (one card, its
+   face and its back, alone with its curve on the chart above). */
+.workbench {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 0.5rem 1rem 0.8rem;
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(255, 252, 240, 0.5), transparent 55%),
+    var(--card-deep);
+  color: var(--ink);
+  border-top: 2px solid var(--gold-deep);
+  box-shadow: 0 -14px 40px -8px rgba(0, 0, 0, 0.55);
+}
+
+/* title and hint gather at the middle like everything below; only the × keeps its corner */
+.workbench-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  border: 1.5px solid var(--gold-deep);
+  border-radius: 10px;
+  background: var(--card);
+  padding: 0.3rem 2rem;
+}
+
+.workbench-bar h2 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 1.02rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.workbench-bar .drawer-hint {
+  flex: 0 1 auto;
+  font-size: 0.7rem;
+}
+
+.workbench-bar button {
+  font-size: 0.74rem;
+  padding: 0.15rem 0.55rem;
+}
+
+.workbench-bar .drawer-close {
+  position: absolute;
+  right: 0.7rem;
+  font-size: 1.25rem;
+  padding: 0 0.2rem;
+}
+
+/* the shelf: small cards, click to pick one up — gathered mid-screen so the
+   mouse never travels to a far corner */
+.work-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem 0.55rem;
+  align-items: flex-start;
+  padding: 0.65rem 0 0.85rem;
+}
+
+.work-grid .drawer-slot:hover {
+  transform: translateY(-3px);
+}
+
+.work-item {
+  position: relative;
+}
+
+/* the focus stage: the tools ride above the card, face and back side by side */
+.work-focus {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.45rem 0.9rem;
+  padding: 0.4rem 0 0.2rem;
+}
+
+.work-back {
+  font-size: 0.74rem;
+}
+
+.work-tools {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+/* the same tools row on the BROWSE stage, standing between bar and shelf */
+.workbench > .work-tools {
+  margin-top: 0.55rem;
+}
+
+.work-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  padding: 0.25rem 0.6rem;
+}
+
+/* explicit save: the sanctioned non-money green (Sebastian's decree) —
+   lit while edits are unsaved, settling into a quiet "saved" after.
+   The green is raised toward candlelight so it reads on the dark board. */
+.work-tools .work-save:not(:disabled) {
+  color: color-mix(in srgb, var(--money-pos) 55%, #e8f5d8);
+  border-color: color-mix(in srgb, var(--money-pos) 55%, #2b1808);
+  font-weight: 600;
+}
+
+.work-tools .work-save:disabled {
+  font-style: italic;
+  opacity: 0.65;
+}
+
+/* flame raised toward candlelight so it reads on the dark board */
+.work-tools .work-burn:not(:disabled) {
+  color: color-mix(in srgb, var(--flame) 60%, #ffc890);
+}
+
+/* the workbench card: room enough for its math */
+.pcard-work {
+  --card-w: 208px;
+}
+
+.pcard-work .pcard-name {
+  font-size: 0.85rem;
+}
+
+/* the focused card, alone on the chart */
+.chart-focus {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.chart-focus-note {
+  font-size: 0.66rem;
+  color: var(--ink-soft);
+}
+
+/* a blank card, waiting for a maker — shelf-sized, like its neighbours
+   (the shelf's cards ride in .drawer-slot, which widens them to 140px) */
+.blank-card {
+  width: 140px;
+  aspect-ratio: 63 / 88;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border: 1.5px dashed var(--accent-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+}
+
+.blank-card:hover {
+  color: var(--ink);
+}
+
+.blank-plus {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.kind-pick {
+  width: 140px;
+  aspect-ratio: 63 / 88;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.22rem;
+  padding: 0.5rem 0.6rem;
+  border: 1.5px dashed var(--accent-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+}
+
+.kind-pick-btn {
+  text-transform: capitalize;
+  font-size: 0.68rem;
+  padding: 0.12rem 0.3rem;
+}
+
+.kind-pick-btn.kind-source { color: var(--kind-source); }
+.kind-pick-btn.kind-drain { color: var(--kind-drain); }
+.kind-pick-btn.kind-asset { color: var(--kind-asset); }
+.kind-pick-btn.kind-debt { color: var(--kind-debt); }
+.kind-pick-btn.kind-rule { color: var(--kind-rule); }
+.kind-pick-btn.kind-margin { color: var(--kind-margin); }
+.kind-pick-btn.kind-data { color: var(--kind-asset); }
+
+/* ---- the card creator: fields on the back of the card ---- */
+.card-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.param-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.param-value em {
+  font-style: normal;
+  font-size: 0.62rem;
+  color: var(--ink-soft);
+}
+
+.param-value input {
+  width: 5.8rem;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card-deep) 60%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.05rem 0.25rem;
+  text-align: right;
+}
+
+.param > select,
+.param > input[type='text'],
+.param > input[type='month'],
+.param > textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card-deep) 60%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.15rem 0.25rem;
+}
+
+.param > textarea {
+  resize: vertical;
+  font-family: var(--sans);
+}
+
+.param-error {
+  margin: 0.1rem 0 0;
+  font-size: 0.62rem;
+  line-height: 1.3;
+  color: var(--money-neg);
+}
+
+/* a read-only fact in a field's place — inline data's coverage, not editable here */
+.param-note {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+/* the little inked ⓘ beside a label — an italic i in a hand-drawn ring
+   (a span, not a button: the Workshop's read-only fieldset must not mute it) */
+.param-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.78rem;
+  height: 0.78rem;
+  margin-left: 0.3rem;
+  vertical-align: text-bottom;
+  font-family: var(--display);
+  font-size: 0.55rem;
+  font-style: italic;
+  line-height: 1;
+  color: var(--ink-soft);
+  border: 1px solid var(--ink-soft);
+  border-radius: 50%;
+  cursor: help;
+  user-select: none;
+}
+
+.param-info:hover,
+.param-info:focus-visible {
+  color: var(--gold-deep);
+  border-color: var(--gold-deep);
+}
+
+/* the fine print the ⓘ shows on hover: one spelling of the rate grammar per
+   line. Portaled to <body> and floating fixed — the card back is a scroll box
+   inside the flip's rotateY (which clips and re-anchors fixed), and the
+   fields must never shuffle under the cursor. Above every table layer. */
+.param-hint {
+  position: fixed;
+  z-index: 110;
+  width: 16rem;
+  margin: 0;
+  padding: 0.3rem 0.4rem;
+  list-style: none;
+  font-size: 0.6rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  background: var(--card-deep);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  box-shadow: 0 2px 6px var(--shadow);
+  pointer-events: none;
+}
+
+.param-hint code {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.step-row {
+  border-top: 1px dotted var(--line);
+  padding-top: 0.25rem;
+}
+
+.step-tools {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.step-tools .param {
+  flex: 1;
+}
+
+.step-tools .card-action {
+  margin-bottom: 0.35rem;
+}
+
+.glyph-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+}
+
+.glyph-pick button {
+  padding: 0.15rem 0.25rem;
+  line-height: 0;
+  border-color: transparent;
+  background: none;
+  color: var(--ink-soft);
+}
+
+.glyph-pick button.on {
+  border-color: var(--gold-deep);
+  background: var(--card-deep);
+  color: var(--ink);
+}
+
+/* ---- backtesting: the data bench and the cannot-play banner ---- */
+
+/* when the table cannot play, the last good chart stays and the reason hangs over it */
+.sim-error {
+  position: absolute;
+  top: 3.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: min(46rem, 90vw);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.74rem;
+  color: var(--money-neg);
+  background: var(--card-deep);
+  border: 1.5px solid var(--money-neg);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px var(--shadow);
+}
+
+/* the Workshop's data bench: import form beside the series shelf */
+.data-bench {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.6rem;
+  padding: 0.65rem 0.2rem 0.85rem;
+}
+
+.data-bench h3 {
+  margin: 0 0 0.3rem;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+}
+
+.data-import {
+  flex: 1 1 22rem;
+  max-width: 30rem;
+}
+
+.data-import .drawer-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.data-import .param > input,
+.data-import .param > textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.74rem;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card-deep) 60%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.15rem 0.3rem;
+}
+
+.data-import .param > textarea {
+  resize: vertical;
+  font-family: var(--sans);
+}
+
+.data-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.data-tools button {
+  font-size: 0.74rem;
+  padding: 0.15rem 0.55rem;
+}
+
+.data-mint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.data-list {
+  flex: 1 1 20rem;
+  max-width: 34rem;
+}
+
+.data-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0;
+  border-top: 1px dotted var(--line);
+  font-size: 0.74rem;
+}
+
+.data-row:last-child {
+  border-bottom: 1px dotted var(--line);
+}
+
+.data-row .data-name {
+  font-weight: 600;
+}
+
+.data-row .data-span {
+  margin-left: auto;
+  color: var(--ink-soft);
+}
+
+.data-row .work-burn {
+  color: var(--flame);
+  background: none;
+  border-color: transparent;
+  padding: 0 0.2rem;
+}
+
+.data-row .work-burn:disabled {
+  color: var(--ink-soft);
+  opacity: 0.45;
+}

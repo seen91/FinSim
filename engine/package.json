@@ -1,0 +1,19 @@
+{
+  "name": "@finsim/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "FinSim engine: pure, deterministic, dependency-free financial simulation. Every card is a curve f(t).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
