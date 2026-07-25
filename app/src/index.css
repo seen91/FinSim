@@ -1068,6 +1068,37 @@ input[type='range'].tuned {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- the formula on a card's back: ƒ(t) in full, drawn over the horizon ---- */
+.curve-expr {
+  display: block;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.62rem;
+  line-height: 1.4;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.back-plot {
+  margin: 0.1rem 0 0.3rem;
+  color: var(--ink-soft);
+}
+
+/* the plot rides the card's width — hand-size cards shrink it with them */
+.back-plot .sparkline {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* what the formula's variables mean — fine print right under it */
+.curve-vars {
+  margin: 0 0 0.35rem;
+  font-size: 0.58rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
 /* the fine print under a turned card's dials */
 .tune-hint {
   margin: auto 0 0;

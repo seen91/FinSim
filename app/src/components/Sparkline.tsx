@@ -17,7 +17,7 @@ export function Sparkline({ points, width = 72, height = 20 }: { points: number[
     })
     .join('')
   return (
-    <svg className="sparkline" width={width} height={height} aria-hidden>
+    <svg className="sparkline" width={width} height={height} viewBox={`0 0 ${String(width)} ${String(height)}`} aria-hidden>
       <path d={d} fill="none" stroke="currentColor" strokeWidth="1" />
     </svg>
   )

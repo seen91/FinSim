@@ -8,6 +8,7 @@ import { applyTune } from '../tune'
 import { deltaVerdict } from '../verdict'
 import { Card, type CardStat } from './Card'
 import { CardShelf } from './CardShelf'
+import { CurveMath, hasCurveMath } from './CurveMath'
 import { TuneDials, dialsOf } from './TuneDials'
 
 /** An engine card dressed for the table: glyph, live headline, stat rows. */
@@ -24,6 +25,20 @@ function scheduleLabel(schedule: RuleSchedule): string {
 }
 
 const signCls = (v: number): CardStat['cls'] => (v > 0 ? 'pos' : v < 0 ? 'neg' : '')
+
+/** A formula as a face stat: enough to say "this one is ƒ(t)" — the back prints it in full. */
+const fxStat = (expr: string): CardStat => ({ label: 'ƒ(t)', value: expr.length > 24 ? `${expr.slice(0, 23)}…` : expr })
+
+/** The face stats of an expression/sampled flow — the shapes whose math the plain stats can't say. */
+function flowCurveStats(curve: Curve, world: World | undefined): CardStat[] {
+  if (curve.type === 'expression') return [fxStat(curve.expr)]
+  if (curve.type === 'sampled') {
+    const data = curve.data ?? (curve.seriesId !== undefined ? world?.series?.[curve.seriesId] : undefined)
+    if (data) return [{ label: 'Data', value: `${formatMonth(data.startMonth)} → ${formatMonth(data.startMonth + data.values.length - 1)}` }]
+    return [{ label: 'Data', value: curve.seriesId ?? '—' }]
+  }
+  return []
+}
 
 /** How a live value reads on a face: balances as plain amounts, flows per month — signed green/red. */
 export function liveHeadline(value: number, isBalance: boolean): { headline: string; headlineClass: '' | 'pos' | 'neg' } {
@@ -56,7 +71,7 @@ function priceStats(price: Curve, card: AssetCard, world: World | undefined): Ca
       stats.push({ label: 'Price', value: `${formatAmount(price.base)} ±${formatAmount(price.amplitude)}` })
       break
     case 'expression':
-      stats.push({ label: 'ƒ(t)', value: price.expr.length > 24 ? `${price.expr.slice(0, 23)}…` : price.expr })
+      stats.push(fxStat(price.expr))
       break
     case 'sampled': {
       const data = price.data ?? (price.seriesId !== undefined ? world?.series?.[price.seriesId] : undefined)
@@ -85,11 +100,15 @@ function priceStats(price: Curve, card: AssetCard, world: World | undefined): Ca
 
 export function frontStats(card: EngineCard, world?: World): CardStat[] {
   const stats: CardStat[] = []
-  if (card.kind === 'source' && card.flow.type === 'compound' && card.flow.annualRate.expected > 0) {
-    const anchor = card.flow.holdAnchor !== undefined ? ` each ${MONTH_NAMES[card.flow.holdAnchor - 1]!.slice(0, 3)}` : ''
-    stats.push({ label: 'Raise', value: `${formatPercent(card.flow.annualRate.expected)} /yr${anchor}` })
-  } else if (card.kind === 'drain' && card.percent !== undefined) {
-    stats.push({ label: 'Takes', value: `${formatPercent(card.percent, 0)} of subtotal` })
+  if (card.kind === 'source') {
+    if (card.flow.type === 'compound' && card.flow.annualRate.expected > 0) {
+      const anchor = card.flow.holdAnchor !== undefined ? ` each ${MONTH_NAMES[card.flow.holdAnchor - 1]!.slice(0, 3)}` : ''
+      stats.push({ label: 'Raise', value: `${formatPercent(card.flow.annualRate.expected)} /yr${anchor}` })
+    }
+    stats.push(...flowCurveStats(card.flow, world))
+  } else if (card.kind === 'drain') {
+    if (card.percent !== undefined) stats.push({ label: 'Takes', value: `${formatPercent(card.percent, 0)} of subtotal` })
+    else if (card.amount) stats.push(...flowCurveStats(card.amount, world))
   } else if (card.kind === 'asset') {
     if (card.price) stats.push(...priceStats(priceCurveOf(card.price), card, world))
     else stats.push({ label: 'Growth', value: `${formatPercent(card.growth?.expected ?? 0)} /yr` })
@@ -155,7 +174,15 @@ export function CardView({
   const value = isBalance ? (balanceSeries ? valueAt(balanceSeries, scrub) : 0) : contribution ? valueAt(contribution, scrub) : 0
   const sparkline = isRule ? undefined : isBalance ? balanceSeries?.points : contribution?.points
   const verdict = compare ? deltaVerdict(compare, from) : null
-  const back = onTune && dialsOf(card).length > 0 ? <TuneDials card={card} onChange={onTune} /> : undefined
+  // the back = math: the formula for expression/sampled shapes (which have no
+  // dials), the what-if dials for everything with a number to scale — or both
+  const back =
+    onTune && (dialsOf(card).length > 0 || hasCurveMath(card)) ? (
+      <>
+        <CurveMath card={card} world={sim.world} from={from} months={sim.remainder.points.length} />
+        {dialsOf(card).length > 0 && <TuneDials card={card} onChange={onTune} />}
+      </>
+    ) : undefined
   // the front shows what the table plays: dials applied (the back keeps the authored numbers)
   const played = applyTune(card)
 
