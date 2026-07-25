@@ -143,6 +143,7 @@ export function HandStack({
   range,
   onRemove,
   onToggle,
+  onDuplicate,
   onReport,
 }: {
   hand: HandCard
@@ -153,6 +154,8 @@ export function HandStack({
   range?: BundleRange
   onRemove: (cardId: string) => void
   onToggle: (cardId: string) => void
+  /** Deal a fresh copy of the whole hand right beside it; absent = no copy icon on the shelf. */
+  onDuplicate?: (cardId: string) => void
   /** Unfold this hand's futures report (the range line becomes a door). */
   onReport?: (handId: string) => void
 }): ReactElement {
@@ -162,7 +165,13 @@ export function HandStack({
     <div className={`hand-stack${setAside ? ' muted' : ''}`} title="Open this hand">
       <span className="hand-stack-under u2" />
       <span className="hand-stack-under u1" />
-      <CardShelf noun="hand" setAside={setAside} onToggle={() => onToggle(hand.id)} onRemove={() => onRemove(hand.id)} />
+      <CardShelf
+        noun="hand"
+        setAside={setAside}
+        onToggle={() => onToggle(hand.id)}
+        onRemove={() => onRemove(hand.id)}
+        {...(onDuplicate ? { onDuplicate: () => onDuplicate(hand.id) } : {})}
+      />
       <div className="hand-stack-front">
         <span className="hand-stack-name">{hand.name ?? hand.id}</span>
         <span className="hand-stack-art">

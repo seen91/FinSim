@@ -17,7 +17,7 @@ import type { ArenaCompare, ArenaFocus } from './components/Arena'
 import { downloadJson } from './download'
 import { deserializeDoc, serializeDoc } from './exchange'
 import { errorMessage } from './format'
-import { addCard, findParentHand, groupOnto, moveCard, moveOut, removeCard } from './hands'
+import { addCard, duplicateCard, findParentHand, groupOnto, moveCard, moveOut, removeCard } from './hands'
 import { Glyph } from './icons'
 import { mergeLibrary } from './identity'
 import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, repointInstances, type TableNode } from './instances'
@@ -255,6 +255,12 @@ export function App(): ReactElement {
     store.update((d) => removeCard(d, cardId))
   }
 
+  // the copy icon: a fresh deep copy — new ids throughout, dials and
+  // set-asides riding along — landing right beside the original
+  const handleDuplicateCard = (cardId: string): void => {
+    store.update((d) => duplicateCard(d, cardId, newUid))
+  }
+
   // snapshot the whole table — always the root, never the hand the user
   // happens to be inside — to the draw pile: a named copy of the tree as it
   // stands (instances with their dials and set-asides, nested hands whole),
@@ -429,6 +435,7 @@ export function App(): ReactElement {
         onEject={handleEject}
         onRemoveCard={handleRemoveCard}
         onToggleCard={handleToggleCard}
+        onDuplicateCard={handleDuplicateCard}
         flippedId={flippedId}
         onFlipCard={handleFlipCard}
         onTuneCard={handleTuneCard}
@@ -498,6 +505,7 @@ export function App(): ReactElement {
               flippedId={flippedId}
               onRemoveCard={handleRemoveCard}
               onToggleCard={handleToggleCard}
+              onDuplicateCard={handleDuplicateCard}
               onTuneCard={handleTuneCard}
               onWorkshopCard={handleWorkshopCard}
               onOpenHandReport={(handId) => setReport({ hand: handId })}

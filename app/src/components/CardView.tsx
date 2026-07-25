@@ -125,6 +125,7 @@ export function CardView({
   flipped = false,
   onRemove,
   onToggle,
+  onDuplicate,
   onTune,
   onWorkshop,
 }: {
@@ -138,6 +139,8 @@ export function CardView({
   flipped?: boolean
   onRemove: (cardId: string) => void
   onToggle: (cardId: string) => void
+  /** Deal a fresh copy of this card right beside it; absent = no copy icon on the shelf. */
+  onDuplicate?: (cardId: string) => void
   /** Commit a re-dialed card back onto the table; absent = the back stays sealed. */
   onTune?: (next: EngineCard) => void
   /** Carry this card to the Workshop bench; absent = no hammer on the shelf. */
@@ -177,6 +180,7 @@ export function CardView({
         setAside={setAside}
         onToggle={() => onToggle(card.id)}
         onRemove={() => onRemove(card.id)}
+        {...(onDuplicate ? { onDuplicate: () => onDuplicate(card.id) } : {})}
         {...(onWorkshop ? { onWorkshop: () => onWorkshop(card.id) } : {})}
       />
     </div>

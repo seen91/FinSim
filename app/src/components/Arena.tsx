@@ -123,6 +123,8 @@ interface Props {
   onEject: (cardId: string) => void
   onRemoveCard: (cardId: string) => void
   onToggleCard: (cardId: string) => void
+  /** Deal a fresh copy of a card or hand right beside the original. */
+  onDuplicateCard: (cardId: string) => void
   /** The one card currently showing its what-if dials (a tap turns it). */
   flippedId: string | null
   onFlipCard: (cardId: string) => void
@@ -307,6 +309,7 @@ export function Arena(props: Props): ReactElement {
     onEject,
     onRemoveCard,
     onToggleCard,
+    onDuplicateCard,
     flippedId,
     onFlipCard,
     onTuneCard,
@@ -440,6 +443,7 @@ export function Arena(props: Props): ReactElement {
               flippedId={flippedId}
               onRemoveCard={onRemoveCard}
               onToggleCard={onToggleCard}
+              onDuplicateCard={onDuplicateCard}
               onTuneCard={onTuneCard}
               onWorkshopCard={onWorkshopCard}
               onOpenHandReport={onOpenHandReport}
@@ -478,6 +482,13 @@ export function Arena(props: Props): ReactElement {
             onClick={() => onToggleCard(hand.id)}
           >
             <Glyph name={hand.enabled === false ? 'play' : 'pause'} size={12} /> {hand.enabled === false ? 'bring back' : 'set aside'}
+          </button>
+          <button
+            className="sign hub-duplicate"
+            title="Duplicate — a fresh copy of the whole hand, right beside it"
+            onClick={() => onDuplicateCard(hand.id)}
+          >
+            <Glyph name="copy" size={12} /> duplicate hand
           </button>
           <button
             className="sign hub-remove"

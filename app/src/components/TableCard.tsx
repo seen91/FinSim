@@ -19,6 +19,7 @@ export function TableCard({
   flippedId,
   onRemoveCard,
   onToggleCard,
+  onDuplicateCard,
   onTuneCard,
   onWorkshopCard,
   onOpenHandReport,
@@ -33,6 +34,7 @@ export function TableCard({
   flippedId: string | null
   onRemoveCard: (cardId: string) => void
   onToggleCard: (cardId: string) => void
+  onDuplicateCard: (cardId: string) => void
   onTuneCard: (next: EngineCard) => void
   onWorkshopCard: (cardId: string) => void
   onOpenHandReport: (handId: string) => void
@@ -48,6 +50,7 @@ export function TableCard({
       range={mc?.ranges.get(card.id)}
       onRemove={onRemoveCard}
       onToggle={onToggleCard}
+      onDuplicate={onDuplicateCard}
       onReport={onOpenHandReport}
     />
   ) : (
@@ -61,6 +64,7 @@ export function TableCard({
       flipped={flippedId === card.id}
       onRemove={onRemoveCard}
       onToggle={onToggleCard}
+      onDuplicate={onDuplicateCard}
       onTune={onTuneCard}
       onWorkshop={onWorkshopCard}
     />

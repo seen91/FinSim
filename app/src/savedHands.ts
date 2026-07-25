@@ -1,8 +1,7 @@
 import type { SampledData } from '@finsim/engine'
-import { stampCardId, type AuthoredCard } from './authored'
-import { isInstance, nodesIn, refBase, type HandNode, type TableNode } from './instances'
+import type { AuthoredCard } from './authored'
+import { isInstance, nodesIn, remintNode, type HandNode } from './instances'
 import { seriesIdsInNode } from './seriesImport'
-import { UID_SUFFIX } from './uid'
 
 /**
  * Saved hands: a whole hand — the root included — snapshotted to the draw
@@ -43,15 +42,7 @@ export function snapshotHand(
  * wearing a fresh id (per node — a hand may hold two copies of one design).
  */
 export function unpackSavedHand(saved: SavedHand, freshUid: () => string): HandNode {
-  return remint(structuredClone(saved.hand), freshUid) as HandNode
-}
-
-function remint(node: TableNode, freshUid: () => string): TableNode {
-  if (isInstance(node)) return { ...node, id: `${refBase(node.ref)}-${freshUid()}` }
-  if (node.kind === 'hand') return { ...node, id: `hand-${freshUid()}`, children: node.children.map((c) => remint(c, freshUid)) }
-  // the raw-card door (solo charts, hand-built test tables): same readable-base remint
-  stampCardId(node, `${node.id.replace(UID_SUFFIX, '')}-${freshUid()}`)
-  return node
+  return remintNode(structuredClone(saved.hand), freshUid) as HandNode
 }
 
 /** How many cards a saved hand holds — instances and raw cards count, hands don't. */

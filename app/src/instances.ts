@@ -3,6 +3,7 @@ import { stampCardId, type AuthoredCard } from './authored'
 import { builtinOf } from './builtins'
 import type { GlyphName } from './icons'
 import type { Tune } from './tune'
+import { UID_SUFFIX } from './uid'
 
 /**
  * One card — instances, not clones (DESIGN.md §0, 2026-07-14). Every leaf
@@ -137,6 +138,19 @@ export function findNode(root: HandNode, id: string): TableNode | null {
     for (const n of nodesIn(child)) if (n.id === id) return n
   }
   return null
+}
+
+/**
+ * The same tree, every node wearing a fresh id (per node — a hand may hold
+ * two copies of one design): what dealing a saved hand and duplicating a
+ * node share. May stamp ids in place — hand it a clone.
+ */
+export function remintNode(node: TableNode, freshUid: () => string): TableNode {
+  if (isInstance(node)) return { ...node, id: `${refBase(node.ref)}-${freshUid()}` }
+  if (node.kind === 'hand') return { ...node, id: `hand-${freshUid()}`, children: node.children.map((c) => remintNode(c, freshUid)) }
+  // the raw-card door (solo charts, hand-built test tables): same readable-base remint
+  stampCardId(node, `${node.id.replace(UID_SUFFIX, '')}-${freshUid()}`)
+  return node
 }
 
 /** Re-point every instance of one canonical card at another (the built-in mint). */

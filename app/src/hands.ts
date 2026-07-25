@@ -1,5 +1,5 @@
 import type { HandCard } from '@finsim/engine'
-import { findNode, isInstance, nodesIn, type HandNode, type TableNode } from './instances'
+import { findNode, isInstance, nodesIn, remintNode, type HandNode, type TableNode } from './instances'
 import type { Doc } from './model'
 
 export const NEW_HAND_NAME = 'New hand'
@@ -35,6 +35,19 @@ export function removeCard(doc: Doc, cardId: string): void {
   const parent = findParentHand(doc.table.root, cardId)
   if (!parent) return
   parent.children = parent.children.filter((c) => c.id !== cardId)
+}
+
+/**
+ * Duplicate a node in place: a deep copy — a hand goes with everything in it,
+ * per-copy state (dials, set-asides) riding along — every node wearing a
+ * fresh id, landing right after the original in its hand.
+ */
+export function duplicateCard(doc: Doc, cardId: string, freshUid: () => string): void {
+  const parent = findParentHand(doc.table.root, cardId)
+  if (!parent) return
+  const index = parent.children.findIndex((c) => c.id === cardId)
+  const copy = remintNode(structuredClone(parent.children[index]!), freshUid)
+  parent.children.splice(index + 1, 0, copy)
 }
 
 /**

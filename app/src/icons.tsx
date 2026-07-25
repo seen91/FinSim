@@ -29,6 +29,7 @@ export type GlyphName =
   | 'play'
   | 'hammer'
   | 'book'
+  | 'copy'
   | 'export'
   | 'import'
 
@@ -179,6 +180,12 @@ const PATHS: Record<GlyphName, ReactElement> = {
     <>
       <path d="M12 6.8C10.4 5.2 8.3 4.6 4.5 4.6v13.2c3.8 0 5.9.6 7.5 2.2 1.6-1.6 3.7-2.2 7.5-2.2V4.6c-3.8 0-5.9.6-7.5 2.2Z" />
       <path d="M12 6.8V20" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="1.5" />
+      <path d="M5.5 15.5h-.5a1.5 1.5 0 0 1-1.5-1.5V5.5A1.5 1.5 0 0 1 5 4h8.5A1.5 1.5 0 0 1 15 5.5" opacity="0.5" />
     </>
   ),
   save: (

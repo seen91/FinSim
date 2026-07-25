@@ -2,21 +2,23 @@ import type { ReactElement } from 'react'
 import { Glyph } from '../icons'
 
 /**
- * The hover-revealed shelf above a card or hand stack: set aside / bring
- * back, and discard. One shelf serves both — only the noun in the titles
- * changes. Cards also get a hammer that carries them to the Workshop.
+ * The hover-revealed shelf above a card or hand stack: duplicate, set aside /
+ * bring back, and discard. One shelf serves both — only the noun in the
+ * titles changes. Cards also get a hammer that carries them to the Workshop.
  */
 export function CardShelf({
   noun,
   setAside,
   onToggle,
   onRemove,
+  onDuplicate,
   onWorkshop,
 }: {
   noun: 'card' | 'hand'
   setAside: boolean
   onToggle: () => void
   onRemove: () => void
+  onDuplicate?: () => void
   onWorkshop?: () => void
 }): ReactElement {
   return (
@@ -24,6 +26,16 @@ export function CardShelf({
       {onWorkshop && (
         <button className="mod-workshop" title="To the Workshop — pick this card up on the bench to edit it" aria-label="To the Workshop" onClick={onWorkshop}>
           <Glyph name="hammer" size={15} />
+        </button>
+      )}
+      {onDuplicate && (
+        <button
+          className="mod-duplicate"
+          title={noun === 'hand' ? 'Duplicate — a fresh copy of the whole hand, right beside it' : 'Duplicate — a fresh copy of this card, right beside it'}
+          aria-label="Duplicate"
+          onClick={onDuplicate}
+        >
+          <Glyph name="copy" size={15} />
         </button>
       )}
       <button

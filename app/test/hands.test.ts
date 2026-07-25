@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { pileRef, presetRef } from '../src/builtins'
-import { NEW_HAND_NAME, addCard, groupOnto, moveOut } from '../src/hands'
-import { instanceOf, isInstance, type HandNode } from '../src/instances'
+import { NEW_HAND_NAME, addCard, duplicateCard, groupOnto, moveOut } from '../src/hands'
+import { instanceOf, isInstance, type CardInstance, type HandNode } from '../src/instances'
 import { runSim, type Doc } from '../src/model'
 
 /**
@@ -104,6 +104,45 @@ describe('moveOut — the inverse gesture', () => {
     const doc = fourCardDoc()
     const before = structuredClone(doc.table.root)
     moveOut(doc, 'rent-a')
+    expect(doc.table.root).toEqual(before)
+  })
+})
+
+describe('duplicateCard — the copy icon', () => {
+  it('a card: a fresh id on the same ref, per-copy state riding along, right after the original', () => {
+    const doc = fourCardDoc()
+    const rentA = doc.table.root.children[1] as CardInstance
+    rentA.tune = { percent: 0.5 }
+    rentA.enabled = false
+    let n = 0
+    duplicateCard(doc, 'rent-a', () => `d${String(++n)}`)
+
+    expect(rootIds(doc)).toEqual(['salary-x', 'rent-a', 'rent-d1', 'rent-b', 'savings-x'])
+    const copy = doc.table.root.children[2] as CardInstance
+    expect(copy.ref).toBe(rentA.ref)
+    expect(copy.tune).toEqual({ percent: 0.5 })
+    expect(copy.enabled).toBe(false)
+    expect(copy.tune).not.toBe(rentA.tune) // a deep copy, nothing shared
+    expect(() => runSim(doc, [])).not.toThrow()
+  })
+
+  it('a hand goes with everything in it, every node wearing a fresh id', () => {
+    const doc = fourCardDoc()
+    groupOnto(doc, 'salary-x', 'rent-b', 'u1') // root: rent-a, hand-u1[rent-b, salary-x], savings-x
+    let n = 0
+    duplicateCard(doc, 'hand-u1', () => `d${String(++n)}`)
+
+    expect(rootIds(doc)).toEqual(['rent-a', 'hand-u1', 'hand-d1', 'savings-x'])
+    const copy = doc.table.root.children[2] as HandNode
+    expect(copy.children.map((c) => c.id)).toEqual(['rent-d2', 'salary-d3'])
+    expect((copy.children[0] as CardInstance).ref).toBe(pileRef('rent'))
+    expect(() => runSim(doc, [])).not.toThrow()
+  })
+
+  it('an unknown id is a no-op', () => {
+    const doc = fourCardDoc()
+    const before = structuredClone(doc.table.root)
+    duplicateCard(doc, 'ghost', () => 'd1')
     expect(doc.table.root).toEqual(before)
   })
 })

@@ -1121,6 +1121,21 @@ input[type='range'].tuned {
   color: var(--ink);
 }
 
+/* duplicate: deal a fresh copy right beside the original (hover-revealed) */
+.mod-duplicate {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  padding: 0 0.15rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mod-duplicate:hover {
+  color: var(--ink);
+}
+
 /* set aside: pause the card in place — the sim plays as if it were not there */
 .mod-toggle {
   border: none;
@@ -1138,10 +1153,12 @@ input[type='range'].tuned {
 
 .stack:hover .mod-remove,
 .stack:hover .mod-toggle,
+.stack:hover .mod-duplicate,
 .stack:hover .mod-workshop,
 .stack.set-aside .mod-toggle,
 .hand-stack:hover .mod-remove,
 .hand-stack:hover .mod-toggle,
+.hand-stack:hover .mod-duplicate,
 .hand-stack.muted .mod-toggle {
   opacity: 1;
 }
@@ -1458,7 +1475,8 @@ input[type='range'].tuned {
 .hub-range.neg { color: var(--money-neg); }
 
 .hub-remove,
-.hub-toggle {
+.hub-toggle,
+.hub-duplicate {
   margin-top: 0.2rem;
   font-size: 0.7rem;
   display: inline-flex;
