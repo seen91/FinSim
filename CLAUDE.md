@@ -2,7 +2,7 @@
 
 A financial simulator where every instrument is a card and every card is a curve f(t), plus a deliberately boring multiplayer card game (pick-and-pass drafting, real historical data) built on the same engine.
 
-**`DESIGN.md` is the founding document and single source of truth.** Read it before making design-level decisions. Its §0 decision log records confirmed choices — do not re-litigate them; propose changes to Sebastian instead.
+**`docs/DESIGN.md` is the founding document and single source of truth.** Read it before making design-level decisions. Its §0 decision log records confirmed choices — do not re-litigate them; propose changes to Sebastian instead.
 
 ## Current state
 
