@@ -5,8 +5,9 @@ import { Glyph } from '../icons'
 import { parseMonthText } from '../seriesImport'
 
 /**
- * The top bar: the plan's three numbers (goal, start, end), the Workshop and
- * Rulebook doors, and the Table sign with its little export/import/reset menu.
+ * The top bar: the Workshop and Rulebook doors, and the Table sign whose menu
+ * holds the plan's three numbers (goal, start, end — set seldom) above the
+ * export/import/reset actions.
  */
 
 /** The goal in compact money ("10 M", "250 k"); accepts "1,5m", "10M", "250k" or a plain number. */
@@ -70,29 +71,6 @@ export function TopBar({
 
   return (
     <header className="topbar">
-      <h1>FinSim</h1>
-      <label className="goal-input">
-        Goal
-        <GoalInput goal={goal} onCommit={onGoal} />
-      </label>
-      <label className="goal-input" title="the table's first month — set it in the past to backtest against historical data">
-        Start
-        <input
-          type="month"
-          value={formatMonth(from)}
-          onChange={(e) => {
-            const month = parseMonthText(e.target.value)
-            if (month !== null) onStart(month)
-          }}
-        />
-      </label>
-      <label
-        className="goal-input"
-        title="the table's last month — by default it follows the goal (five years past the crossing); set a month to pin it, clear the field to follow again"
-      >
-        End
-        <input type="month" value={formatMonth(to)} onChange={(e) => onEnd(parseMonthText(e.target.value))} />
-      </label>
       <div className="topbar-actions">
         {/* planked boards hanging from one wooden rail; the Workshop's
             signal-yellow board stays the one loud thing on the table */}
@@ -107,15 +85,40 @@ export function TopBar({
           Rulebook
         </button>
         <div className="table-sign">
-          <button className="sign" onClick={() => setTableMenuOpen((open) => !open)} title="the table as a file — export, import, or reset">
-            <Glyph name="export" size={13} />
+          <button
+            className="sign"
+            onClick={() => setTableMenuOpen((open) => !open)}
+            title="the table's plan and file — goal, dates, export, import, reset"
+          >
+            <Glyph name="cog" size={13} />
             Table
           </button>
           {tableMenuOpen && (
             <>
               <div className="sign-veil" onClick={() => setTableMenuOpen(false)} aria-hidden="true" />
               <ul className="sign-menu" role="menu" aria-label="Table actions">
-                <li>
+                <li className="menu-fields">
+                  <label>
+                    Goal
+                    <GoalInput goal={goal} onCommit={onGoal} />
+                  </label>
+                  <label title="the table's first month — set it in the past to backtest against historical data">
+                    Start
+                    <input
+                      type="month"
+                      value={formatMonth(from)}
+                      onChange={(e) => {
+                        const month = parseMonthText(e.target.value)
+                        if (month !== null) onStart(month)
+                      }}
+                    />
+                  </label>
+                  <label title="the table's last month — by default it follows the goal (five years past the crossing); set a month to pin it, clear the field to follow again">
+                    End
+                    <input type="month" value={formatMonth(to)} onChange={(e) => onEnd(parseMonthText(e.target.value))} />
+                  </label>
+                </li>
+                <li className="menu-divide">
                   <button
                     role="menuitem"
                     title="download the whole table as a JSON file — the backup/share path"

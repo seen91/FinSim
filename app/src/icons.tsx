@@ -32,6 +32,7 @@ export type GlyphName =
   | 'copy'
   | 'export'
   | 'import'
+  | 'cog'
 
 const PATHS: Record<GlyphName, ReactElement> = {
   coins: (
@@ -205,6 +206,14 @@ const PATHS: Record<GlyphName, ReactElement> = {
     <>
       <path d="M12 4.5v10M8.5 11 12 14.5 15.5 11" />
       <path d="M4.5 14v4a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-4" />
+    </>
+  ),
+  cog: (
+    <>
+      <circle cx="12" cy="12" r="5.5" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M12 4v2.5M12 17.5V20M4 12h2.5M17.5 12H20" />
+      <path d="m6.3 6.3 1.8 1.8M15.9 15.9l1.8 1.8M17.7 6.3l-1.8 1.8M8.1 15.9l-1.8 1.8" />
     </>
   ),
 }

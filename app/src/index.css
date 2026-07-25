@@ -106,37 +106,6 @@ body {
   background: rgba(0, 0, 0, 0.18);
 }
 
-.topbar h1 {
-  font-family: var(--display);
-  font-size: 1.25rem;
-  font-weight: 500;
-  margin: 0;
-  letter-spacing: 0.08em;
-  color: var(--wood-ink);
-}
-
-.goal-input {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  color: var(--wood-ink-soft);
-}
-
-.goal-input input[type='text'] {
-  width: 5.5rem;
-}
-
-.goal-input input {
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  background: var(--card);
-  border: 1px solid var(--gold-deep);
-  border-radius: 4px;
-  padding: 0.15rem 0.4rem;
-  text-align: right;
-}
-
 /* the actions hang like shop signs from one shared wooden rail; each board
    dangles on two links, tilts a touch, and swings on hover — the Workshop's
    yellow board among plain dark-wood kin */
@@ -241,6 +210,39 @@ body {
 
 .sign-menu button .glyph {
   opacity: 0.7;
+}
+
+/* the plan's three numbers (goal, start, end) live at the top of the Table
+   menu — set seldom, so they stay off the rail */
+.sign-menu .menu-fields {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.3rem 0.55rem 0.4rem;
+}
+
+.sign-menu .menu-fields label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-family: var(--serif);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.sign-menu .menu-fields input {
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--gold-deep);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  text-align: right;
+}
+
+.sign-menu .menu-fields input[type='text'] {
+  width: 5.5rem;
 }
 
 /* burn actions wear the ember, same as the discard flame on the cards */
