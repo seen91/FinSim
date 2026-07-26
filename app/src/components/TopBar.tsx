@@ -2,11 +2,12 @@ import { formatMonth } from '@finsim/engine'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { formatCompact, parseCompact } from '../format'
 import { Glyph } from '../icons'
+import { MC_PATHS_MAX, MC_PATHS_MIN } from '../mc'
 import { parseMonthText } from '../seriesImport'
 
 /**
  * The top bar: the Workshop and Rulebook doors, and the Table sign whose menu
- * holds the plan's three numbers (goal, start, end — set seldom) above the
+ * holds the plan's numbers (goal, start, end, futures — set seldom) above the
  * export/import/reset actions.
  */
 
@@ -38,13 +39,45 @@ function GoalInput({ goal, onCommit }: { goal: number; onCommit: (v: number) => 
   )
 }
 
+/** Simulated futures per Monte Carlo run; commits clamped to the range that keeps the table responsive. */
+function PathsInput({ paths, onCommit }: { paths: number; onCommit: (v: number) => void }): ReactElement {
+  const [draft, setDraft] = useState(() => String(paths))
+  useEffect(() => setDraft(String(paths)), [paths])
+  const commit = (): void => {
+    const parsed = Number.parseInt(draft, 10)
+    if (Number.isFinite(parsed)) {
+      const clamped = Math.min(MC_PATHS_MAX, Math.max(MC_PATHS_MIN, parsed))
+      onCommit(clamped)
+      setDraft(String(clamped))
+    } else {
+      setDraft(String(paths))
+    }
+  }
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      className="num"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') setDraft(String(paths))
+      }}
+    />
+  )
+}
+
 export function TopBar({
   goal,
   from,
   to,
+  paths,
   onGoal,
   onStart,
   onEnd,
+  onPaths,
   onOpenWorkshop,
   onOpenRulebook,
   onExport,
@@ -55,10 +88,13 @@ export function TopBar({
   from: number
   /** The resolved last month — what the End field shows. */
   to: number
+  /** The resolved Monte Carlo path count — what the Futures field shows. */
+  paths: number
   onGoal: (goal: number) => void
   onStart: (month: number) => void
   /** A pinned end month, or null = follow the goal again. */
   onEnd: (month: number | null) => void
+  onPaths: (paths: number) => void
   onOpenWorkshop: () => void
   onOpenRulebook: () => void
   onExport: () => void
@@ -116,6 +152,12 @@ export function TopBar({
                   <label title="the table's last month — by default it follows the goal (a bit past the crossing — up to three years); set a month to pin it, clear the field to follow again">
                     End
                     <input type="month" value={formatMonth(to)} onChange={(e) => onEnd(parseMonthText(e.target.value))} />
+                  </label>
+                  <label
+                    title={`how many simulated futures the fan and every verdict sample (${String(MC_PATHS_MIN)}–${String(MC_PATHS_MAX)}) — more paths steady the percentiles but cost a full replay each, per hand in play`}
+                  >
+                    Futures
+                    <PathsInput paths={paths} onCommit={onPaths} />
                   </label>
                 </li>
                 <li className="menu-divide">

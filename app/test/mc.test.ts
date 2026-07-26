@@ -2,7 +2,7 @@ import { allCards, firstCrossing } from '@finsim/engine'
 import { describe, expect, it } from 'vitest'
 import { addCard } from '../src/hands'
 import { resolveTable } from '../src/instances'
-import { runMc, MC_PATHS } from '../src/mc'
+import { MC_PATHS, MC_PATHS_MAX, MC_PATHS_MIN, mcPathsOf, runMc } from '../src/mc'
 import { runSim, type Doc } from '../src/model'
 import { PRESETS } from '../src/presets'
 import { starterDoc } from '../src/starter'
@@ -72,6 +72,19 @@ describe('runMc', () => {
     const verdict = rangeVerdict(carRange)!
     expect(verdict.cls).toBe('neg')
     expect(verdict.text).toContain('in 80 % of futures')
+  })
+
+  it('the doc chooses its path count, clamped to the Table menu range', () => {
+    const doc = docWithCar()
+    doc.mcPaths = 300
+    expect(mcPathsOf(doc)).toBe(300)
+    expect(runMc(doc)!.run.paths).toBe(300)
+    doc.mcPaths = 7
+    expect(mcPathsOf(doc)).toBe(MC_PATHS_MIN)
+    doc.mcPaths = 1e9
+    expect(mcPathsOf(doc)).toBe(MC_PATHS_MAX)
+    delete doc.mcPaths
+    expect(mcPathsOf(doc)).toBe(MC_PATHS)
   })
 
   it('is deterministic: the fixed seed pins the fan run to run', () => {

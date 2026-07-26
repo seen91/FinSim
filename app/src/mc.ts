@@ -21,8 +21,17 @@ import { effectiveHorizon, playedTable, type Doc } from './model'
  * deterministic answer stays instant; the fan may arrive a beat later.
  */
 
-/** Paths per run: enough for a steady P10–P90 fan, cheap enough to rerun on every edit. */
+/** Paths per run when the table doesn't say: enough for a steady P10–P90 fan, cheap enough to rerun on every edit. */
 export const MC_PATHS = 200
+/** The Table menu's range: below ~50 the fan is noise, far above 5000 every edit-beat drags (one ghost run per hand). */
+export const MC_PATHS_MIN = 50
+export const MC_PATHS_MAX = 5000
+
+/** The doc's path count, defaulted and clamped — every Monte Carlo consumer reads it through this. */
+export function mcPathsOf(doc: Doc): number {
+  const raw = doc.mcPaths ?? MC_PATHS
+  return Number.isFinite(raw) ? Math.min(MC_PATHS_MAX, Math.max(MC_PATHS_MIN, Math.round(raw))) : MC_PATHS
+}
 
 /**
  * One fixed seed for the whole app. The fan must not flicker between
@@ -88,7 +97,7 @@ export function runMc(doc: Doc, library: AuthoredCard[] = []): Mc | null {
   const { table, world } = playedTable(doc, library)
   const to = doc.from + effectiveHorizon(doc, library) - 1
   if (!hasVolatility(table, world, to)) return null
-  const opts = { paths: MC_PATHS, seed: MC_SEED }
+  const opts = { paths: mcPathsOf(doc), seed: MC_SEED }
 
   const active = monteCarlo(table, world, doc.from, to, opts)
   const activeCrossings = crossingMonths(active, doc.goal)

@@ -21,7 +21,7 @@ import { addCard, duplicateCard, findParentHand, groupOnto, moveCard, moveOut, r
 import { Glyph } from './icons'
 import { mergeLibrary } from './identity'
 import { canonicalOf, findNode, instanceOf, instancesIn, isInstance, repointInstances, type TableNode } from './instances'
-import { runMc } from './mc'
+import { MC_PATHS, mcPathsOf, runMc } from './mc'
 import { effectiveHorizon, runSim, type Doc, type PlayedDoc, type Sim } from './model'
 import { snapshotHand, unpackSavedHand, type SavedHand } from './savedHands'
 import { addSeries } from './seriesImport'
@@ -401,9 +401,11 @@ export function App(): ReactElement {
         goal={doc.goal}
         from={doc.from}
         to={to}
+        paths={mcPathsOf(doc)}
         onGoal={(v) => store.update((d) => (d.goal = v))}
         onStart={(month) => store.update((d) => (d.from = month))}
         onEnd={(month) => store.update((d) => (d.horizonMonths = month === null ? null : Math.max(1, month - d.from + 1)))}
+        onPaths={(n) => store.update((d) => (n === MC_PATHS ? delete d.mcPaths : (d.mcPaths = n)))}
         onOpenWorkshop={() => setWorkshopOpen(true)}
         onOpenRulebook={() => setRulebookOpen(true)}
         onExport={handleExport}

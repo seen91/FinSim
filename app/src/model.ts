@@ -25,6 +25,8 @@ export interface Doc {
   from: number
   /** Explicit horizon, or null = auto: the chart runs a scaled margin (up to three years) past the goal crossing. */
   horizonMonths: number | null
+  /** Simulated futures per Monte Carlo run; absent = the app default (mc.ts). Read through mcPathsOf, never raw. */
+  mcPaths?: number
 }
 
 /** A doc whose horizon has been resolved to a concrete number — what the sim boundary consumes. */
