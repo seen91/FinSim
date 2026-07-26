@@ -1,5 +1,5 @@
 import { priceCurveOf, type Card as EngineCard, type Curve, type Take } from '@finsim/engine'
-import type { ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { CADENCE_SUFFIX } from '../authored'
 import { formatNumber, round } from '../format'
 import { effectiveValue, tuneOf, withTune } from '../tune'
@@ -104,37 +104,87 @@ export function dialsOf(card: EngineCard): Dial[] {
   }
 }
 
+/** How often a drag replays the table — the thumb and readout track every pixel regardless. */
+const COMMIT_EVERY_MS = 150
+
+function DialRow({ card, row, onChange }: { card: EngineCard; row: Dial; onChange: (next: EngineCard) => void }): ReactElement {
+  const { label, path, base, format } = row
+  const committed = tuneOf(card)[path] ?? 0
+  // a full replay of the table per pointer move melts the CPU — the thumb and
+  // the readout follow the pointer instantly on local state, and the table
+  // replays on a throttled beat, with a final commit when the drag settles
+  const [draft, setDraft] = useState<number | null>(null)
+  const pct = draft ?? committed
+  const latest = useRef(committed)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const push = useRef<(v: number) => void>(() => undefined)
+  push.current = (v) => onChange(withTune(card, path, v))
+
+  const slide = (v: number): void => {
+    latest.current = v
+    setDraft(v)
+    timer.current ??= setTimeout(() => {
+      timer.current = null
+      push.current(latest.current)
+    }, COMMIT_EVERY_MS)
+  }
+
+  const settle = (v = latest.current): void => {
+    if (timer.current !== null) {
+      clearTimeout(timer.current)
+      timer.current = null
+    }
+    latest.current = v
+    if (draft !== null || v !== committed) push.current(v)
+    setDraft(null)
+  }
+
+  // turning the card back mid-drag must not lose the last position
+  useEffect(
+    () => () => {
+      if (timer.current !== null) {
+        clearTimeout(timer.current)
+        push.current(latest.current)
+      }
+    },
+    [],
+  )
+
+  return (
+    <div className="param">
+      <span className="param-label">
+        <span>{label}</span>
+        <span className="param-value num">{format(base)}</span>
+      </span>
+      <input
+        type="range"
+        className={pct === 0 ? undefined : 'tuned'}
+        min={-100}
+        max={100}
+        step={1}
+        value={pct}
+        onChange={(e) => slide(Number(e.target.value))}
+        onPointerUp={() => settle()}
+        onKeyUp={() => settle()}
+        onBlur={() => settle()}
+        onDoubleClick={() => settle(0)}
+      />
+      {pct !== 0 && (
+        <em className="tune-note">
+          {pct > 0 ? '+' : ''}
+          {pct} % → {format(effectiveValue(path, base, pct))}
+        </em>
+      )}
+    </div>
+  )
+}
+
 export function TuneDials({ card, onChange }: { card: EngineCard; onChange: (next: EngineCard) => void }): ReactElement {
-  const tune = tuneOf(card)
   return (
     <>
-      {dialsOf(card).map(({ label, path, base, format }) => {
-        const pct = tune[path] ?? 0
-        return (
-          <div className="param" key={path}>
-            <span className="param-label">
-              <span>{label}</span>
-              <span className="param-value num">{format(base)}</span>
-            </span>
-            <input
-              type="range"
-              className={pct === 0 ? undefined : 'tuned'}
-              min={-100}
-              max={100}
-              step={1}
-              value={pct}
-              onChange={(e) => onChange(withTune(card, path, Number(e.target.value)))}
-              onDoubleClick={() => onChange(withTune(card, path, 0))}
-            />
-            {pct !== 0 && (
-              <em className="tune-note">
-                {pct > 0 ? '+' : ''}
-                {pct} % → {format(effectiveValue(path, base, pct))}
-              </em>
-            )}
-          </div>
-        )
-      })}
+      {dialsOf(card).map((row) => (
+        <DialRow key={row.path} card={card} row={row} onChange={onChange} />
+      ))}
       <p className="tune-hint">what-if dials — the written numbers stand · double-click recenters</p>
     </>
   )
